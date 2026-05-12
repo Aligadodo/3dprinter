@@ -1,0 +1,43 @@
+# Text-to-Image Provider Configuration
+# Priority: 火山引擎(首选) > 智谱AI(免费备选) > OpenAI(海外) > Stability(海外)
+#
+# API keys can be set in two ways (checked in order):
+#   1. Environment variables (e.g. set VOLCENGINE_API_KEY=xxx)
+#   2. Create config/.env file with KEY=VALUE pairs (never commit this file)
+
+providers:
+  - id: volcengine
+    name: 火山引擎 Seedream (豆包)
+    enabled: true
+    api_key: ${VOLCENGINE_API_KEY}
+    api_base: https://ark.cn-beijing.volces.com/api/v3
+    model: doubao-seedream-5-0-260128
+    default_size: "2048x2048"
+    sizes: ["2048x2048", "4096x4096"]
+
+  - id: zhipu
+    name: 智谱AI CogView (免费)
+    enabled: false
+    api_key: ${ZHIPU_API_KEY}
+    api_base: https://open.bigmodel.cn/api/paas/v4
+    model: cogview-3-flash
+    default_size: "1024x1024"
+    sizes: ["1024x1024", "768x1344", "1152x864"]
+
+  - id: openai
+    name: OpenAI DALL-E 3
+    enabled: false
+    api_key: ${OPENAI_API_KEY}
+    api_base: https://api.openai.com/v1
+    model: dall-e-3
+    default_size: "1024x1024"
+    sizes: ["1024x1024", "1792x1024", "1024x1792"]
+
+  - id: stability
+    name: Stability AI
+    enabled: false
+    api_key: ${STABILITY_API_KEY}
+    api_base: https://api.stability.ai/v2beta
+    model: stable-image-generate
+    default_size: "1024x1024"
+    sizes: ["1024x1024"]

@@ -1,0 +1,111 @@
+/* ═══════════════════════════════════════════
+   workflow.css — DAG Editor, Palette, Runner Layout, Node Detail, STL Cards
+   ═══════════════════════════════════════════ */
+
+/* ── Workflow Editor Layout ── */
+.wf-layout{display:flex;height:calc(100vh - 140px);gap:0}
+.wf-palette{width:180px;min-width:180px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:8px}
+.wf-palette .cat-title{font-size:10px;font-weight:700;color:var(--fg2);text-transform:uppercase;padding:8px 4px 4px;letter-spacing:1px}
+.wf-palette .node-item{display:flex;align-items:center;gap:6px;padding:6px 8px;margin:2px 0;border-radius:var(--radius-sm);cursor:grab;font-size:12px;background:var(--bg3);border:1px solid transparent;transition:border-color var(--transition)}
+.wf-palette .node-item:hover{border-color:var(--accent)}
+.wf-palette .node-item:active{cursor:grabbing}
+.wf-palette .node-item .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.wf-canvas-wrap{flex:1;background:var(--bg);position:relative;overflow:hidden}
+.wf-canvas-wrap canvas{display:block}
+.wf-toolbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.wf-toolbar .wf-name{flex:1;font-weight:600;font-size:14px}
+.wf-log{height:160px;background:var(--bg);border-top:1px solid var(--border);padding:8px 16px;overflow-y:auto;font:11px/1.5 "Cascadia Code","Fira Code","Consolas",monospace;color:var(--fg2);white-space:pre-wrap}
+.wf-log .wf-log-error{color:var(--red)}
+.wf-log .wf-log-ok{color:var(--green)}
+
+/* ── Workflow Instance List ── */
+.wf-instance-list .wf-instance-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin-bottom:8px;cursor:pointer;transition:border-color var(--transition),transform var(--transition);display:flex;align-items:center;gap:12px}
+.wf-instance-list .wf-instance-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+
+/* ── Workflow Runner — Vertical Top-Bottom Layout ── */
+.wf-runner-layout{display:flex;flex-direction:column;gap:0;height:calc(100vh - 260px);min-height:650px}
+.wf-dag-panel{width:100%;height:35%;min-height:280px;background:var(--bg);position:relative;overflow:hidden;border-bottom:2px solid var(--border);flex-shrink:0}
+.wf-dag-panel canvas{display:block}
+.wf-results-panel{width:100%;flex:1;background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.wf-results-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg3);overflow-x:auto;flex-shrink:0}
+.wf-results-tabs button{flex-shrink:0;padding:8px 14px;border:none;background:transparent;color:var(--fg2);font-size:11px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color var(--transition),border-color var(--transition)}
+.wf-results-tabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.wf-results-tabs button:hover{color:var(--fg)}
+.wf-results-content{flex:1;overflow-y:auto;padding:16px}
+
+/* ── Overview Cards Grid (runner overview tab) ── */
+.wf-overview-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:10px}
+.wf-overview-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;transition:border-color var(--transition),transform var(--transition),box-shadow var(--transition)}
+.wf-overview-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.ovc-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ovc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ovc-title{font-weight:600;font-size:13px}
+.ovc-meta{display:flex;align-items:center;gap:12px;font-size:10px;color:var(--fg2)}
+.ovc-task-link{font-size:10px;color:var(--accent);text-decoration:none;margin-left:auto}
+.ovc-task-link:hover{text-decoration:underline}
+.ovc-error{font-size:10px;color:var(--red);margin-top:4px;padding:4px 6px;background:var(--red-dim);border-radius:var(--radius-sm)}
+
+/* ── Node Detail Panel (nd-) ── */
+.nd-panel{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+
+.nd-header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.nd-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.nd-title{font-weight:600;font-size:13px;flex:1}
+.nd-status{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.nd-task-link{font-size:10px;color:var(--accent);text-decoration:none;white-space:nowrap}
+.nd-task-link:hover{text-decoration:underline}
+
+.nd-error{margin:10px 14px;padding:8px 12px;background:var(--red-dim);border:1px solid var(--red);border-radius:var(--radius-sm);font-size:12px;color:var(--red);word-break:break-word}
+
+/* Inputs | Outputs 2-column grid */
+.nd-io-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border)}
+.nd-io-col{padding:12px 14px;overflow-y:auto;max-height:500px}
+.nd-io-col:first-child{border-right:1px solid var(--border)}
+.nd-section-title{font-size:10px;font-weight:700;color:var(--fg2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.nd-empty-hint{font-size:11px;color:var(--fg2);font-style:italic;padding:8px 0}
+
+/* Port entry in inputs/outputs column */
+.nd-port-entry{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:8px;margin-bottom:8px;transition:border-color var(--transition)}
+.nd-port-entry:hover{border-color:var(--fg2)}
+.nd-port-entry:last-child{margin-bottom:0}
+.nd-port-label{font-size:9px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.nd-filename{font-size:10px;color:var(--fg2);word-break:break-all;margin-bottom:4px}
+
+.nd-thumb{display:block;max-width:100%;max-height:200px;border-radius:var(--radius-sm);object-fit:contain;margin:4px 0;background:var(--bg3);cursor:pointer;transition:opacity var(--transition)}
+.nd-thumb:hover{opacity:0.85}
+
+.nd-file-icon{width:100%;height:80px;display:flex;align-items:center;justify-content:center;font-size:36px;background:var(--bg3);border-radius:var(--radius-sm);margin:4px 0}
+.nd-icon-mesh{color:#56d364}
+.nd-icon-file{color:var(--fg2)}
+
+.nd-actions{display:flex;gap:4px;margin-top:4px}
+.nd-actions .btn-xs{padding:2px 6px;font-size:10px}
+
+/* Parameters */
+.nd-params{padding:12px 14px;border-bottom:1px solid var(--border)}
+.nd-param-table{width:100%;border-collapse:collapse;font-size:11px}
+.nd-param-table th{text-align:left;font-size:9px;color:var(--fg2);text-transform:uppercase;letter-spacing:0.5px;padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600}
+.nd-param-table td{padding:4px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.nd-param-table tbody tr:nth-child(even){background:var(--bg3)}
+.nd-param-table tbody tr:hover{background:var(--bg2)}
+.nd-param-key{color:var(--fg2);font-weight:500;width:30%}
+.nd-param-val{font-weight:500;word-break:break-all}
+
+.nd-src-tag{font-size:8px;padding:1px 6px;border-radius:8px;white-space:nowrap;text-transform:uppercase;letter-spacing:0.3px}
+.nd-src-editor{background:rgba(88,166,255,0.15);color:var(--accent)}
+.nd-src-default{background:var(--bg3);color:var(--fg2)}
+.nd-src-runtime{background:var(--green-dim);color:var(--green)}
+
+/* Stats */
+.nd-stats{padding:12px 14px;border-bottom:1px solid var(--border)}
+.nd-stats-grid{display:flex;flex-wrap:wrap;gap:8px}
+.nd-stat-item{background:var(--bg2);border-radius:var(--radius-sm);padding:8px 14px;text-align:center;min-width:80px}
+.nd-stat-val{display:block;font-size:15px;font-weight:700;color:var(--fg)}
+.nd-stat-lbl{display:block;font-size:9px;color:var(--fg2);text-transform:uppercase;letter-spacing:0.5px;margin-top:2px}
+
+/* Replay bar */
+.nd-replay-bar{padding:8px 14px;background:var(--bg2);border-top:1px solid var(--border)}
+
+/* ── Breadcrumb ── */
+.wf-breadcrumb{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--purple-dim);border:1px solid var(--purple);border-radius:var(--radius);color:var(--purple);font-size:12px;text-decoration:none;margin-bottom:16px;transition:background var(--transition),transform var(--transition)}
+.wf-breadcrumb:hover{background:rgba(163,113,247,0.2);transform:translateX(-2px)}

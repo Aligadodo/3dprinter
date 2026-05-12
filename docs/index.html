@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Print Pipeline — AI 图像转 3D 打印指南</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --sidebar-bg: #161b22;
+    --card-bg: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #7c3aed;
+    --accent2: #06d6a0;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --code-bg: #0d1117;
+    --inline-code: #30363d;
+    --heading: #f0f6fc;
+    --link: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    display: flex;
+  }
+
+  /* ── sidebar ── */
+  nav {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 260px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px 0;
+    z-index: 10;
+  }
+  nav .logo {
+    font-size: 1.15rem; font-weight: 700; color: var(--heading);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  nav .logo span { color: var(--accent); }
+  nav a {
+    display: block; padding: 6px 20px;
+    color: var(--text-muted); text-decoration: none;
+    font-size: 0.875rem;
+    transition: color .15s, background .15s;
+  }
+  nav a:hover, nav a.active { color: var(--text); background: #1c2333; }
+  nav .section-title {
+    padding: 14px 20px 6px;
+    font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent2);
+  }
+  nav .badge {
+    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
+    font-size: 0.65rem; font-weight: 600;
+  }
+  nav .badge-fast { background: #06d6a022; color: var(--accent2); }
+  nav .badge-slow { background: #f59e0b22; color: var(--warn); }
+
+  /* ── main ── */
+  main {
+    margin-left: 260px; padding: 40px 48px; max-width: 960px; width: 100%;
+  }
+  h1 { font-size: 2rem; color: var(--heading); margin-bottom: 8px; }
+  h2 {
+    font-size: 1.4rem; color: var(--heading); margin: 40px 0 16px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.1rem; color: var(--heading); margin: 28px 0 12px; }
+  h4 { font-size: 0.95rem; color: var(--text); margin: 20px 0 8px; }
+  p { margin: 10px 0; }
+  a { color: var(--link); }
+  .subtitle { color: var(--text-muted); font-size: 1rem; margin-bottom: 24px; }
+
+  /* cards */
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; margin: 16px 0;
+  }
+  .card.warn { border-color: #f59e0b44; background: #f59e0b0a; }
+  .card.danger { border-color: #ef444444; background: #ef44440a; }
+  .card.good { border-color: #06d6a044; background: #06d6a00a; }
+  .card h4 { margin-top: 0; }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--heading); font-weight: 600; background: #1c2333; }
+  td { vertical-align: top; }
+
+  /* code */
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 18px; overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem; line-height: 1.55;
+    margin: 12px 0;
+  }
+  code {
+    background: var(--inline-code); padding: 2px 6px; border-radius: 3px;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+  }
+  pre code { background: none; padding: 0; }
+
+  /* syntax highlight */
+  .kw { color: #ff7b72; }  /* keyword */
+  .str { color: #a5d6ff; } /* string */
+  .cm { color: #8b949e; }  /* comment */
+  .fn { color: #d2a8ff; }  /* function/command */
+  .opt { color: #7ee787; } /* option/flag */
+  .path { color: #ffa657; } /* path */
+  .val { color: #79c0ff; } /* value/number */
+
+  /* tags */
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 0.75rem; font-weight: 600; margin-right: 4px;
+  }
+  .tag-green { background: #06d6a022; color: var(--accent2); }
+  .tag-purple { background: #7c3aed22; color: var(--accent); }
+  .tag-yellow { background: #f59e0b22; color: var(--warn); }
+  .tag-red { background: #ef444422; color: var(--danger); }
+
+  /* responsive */
+  @media (max-width: 768px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<nav>
+  <div class="logo">🎨 3D <span>Print</span> Pipeline</div>
+
+  <div class="section-title">快速入门</div>
+  <a href="#quickstart">一行命令上手</a>
+  <a href="#web-platform">Web 管理平台</a>
+  <a href="#hardware">硬件要求</a>
+  <a href="#directory">目录结构</a>
+
+  <div class="section-title">引擎</div>
+  <a href="#triposr">TripoSR <span class="badge badge-fast">快速</span></a>
+  <a href="#triposr-install">└ 安装</a>
+  <a href="#triposr-usage">└ 使用</a>
+  <a href="#triposr-params">└ 参数</a>
+  <a href="#triposr-errors">└ 常见错误</a>
+  <a href="#hunyuan">Hunyuan3D-2.1 <span class="badge badge-slow">高精度</span></a>
+  <a href="#hunyuan-install">└ 安装</a>
+  <a href="#hunyuan-usage">└ 使用</a>
+  <a href="#hunyuan-params">└ 参数</a>
+  <a href="#hunyuan-errors">└ 常见错误</a>
+
+  <div class="section-title">后处理</div>
+  <a href="#repair">Mesh Repair 修复</a>
+  <a href="#views">六视图渲染</a>
+  <a href="#pipeline">Pipeline 流水线</a>
+
+  <div class="section-title">建模工具</div>
+  <a href="#relief">浮雕生成</a>
+  <a href="#lithophane">└ 透光浮雕</a>
+
+  <div class="section-title">参考</div>
+  <a href="#compare">引擎对比</a>
+  <a href="#formats">输出格式选择</a>
+  <a href="#tips">避坑指南</a>
+</nav>
+
+<!-- ═══════════ MAIN CONTENT ═══════════ -->
+<main>
+
+<h1>AI 图像转 3D 打印指南</h1>
+<p class="subtitle">
+  从一张参考图片到 Bambu 打印机可用的 STL 文件 — AI 3D 生成、浮雕建模、网格修复、六视图渲染、端到端流水线
+</p>
+
+<!-- ────── QUICKSTART ────── -->
+<h2 id="quickstart">🚀 一行命令上手</h2>
+<div class="card good">
+<h4>TripoSR 快速预览（约 30 秒）</h4>
+<pre><code><span class="fn">python</span> scripts/image-to-3d.py photo.jpg --format glb</code></pre>
+</div>
+<div class="card warn">
+<h4>Hunyuan3D-2.1 高精度（6GB: ~1h, 8GB+: ~10min）</h4>
+<pre><code><span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg --steps 10 --resolution 128</code></pre>
+</div>
+
+<!-- ────── WEB PLATFORM ────── -->
+<h2 id="web-platform">🌐 Web 管理平台</h2>
+<p>
+  项目提供了完整的 Web 管理界面，可通过浏览器提交任务、实时监控进度、管理输出文件、编辑工作流。
+  前端为模块化 ES modules SPA，支持中英文切换，暗色主题，响应式布局。
+</p>
+
+<h3>启动方式</h3>
+<div class="card good">
+<h4>Windows (PowerShell)</h4>
+<pre><code><span class="cm"># 默认启动 (127.0.0.1:8080, 自动打开浏览器)</span>
+<span class="fn">.\launch.ps1</span>
+
+<span class="cm"># 指定端口</span>
+<span class="fn">.\launch.ps1</span> <span class="opt">-Port</span> <span class="val">9090</span>
+
+<span class="cm"># LAN 局域网访问</span>
+<span class="fn">.\launch.ps1</span> <span class="opt">-Host</span> <span class="val">0.0.0.0</span> <span class="opt">-Port</span> <span class="val">8080</span>
+
+<span class="cm"># 不自动打开浏览器</span>
+<span class="fn">.\launch.ps1</span> <span class="opt">-NoBrowser</span></code></pre>
+</div>
+
+<div class="card">
+<h4>Linux / macOS</h4>
+<pre><code><span class="cm"># 默认启动</span>
+<span class="fn">./launch.sh</span>
+
+<span class="cm"># 指定端口 + LAN 访问</span>
+<span class="fn">./launch.sh</span> <span class="opt">--host</span> <span class="val">0.0.0.0</span> <span class="opt">--port</span> <span class="val">8080</span>
+
+<span class="cm"># 不自动打开浏览器</span>
+<span class="fn">./launch.sh</span> <span class="opt">--no-browser</span>
+
+<span class="cm"># 查看帮助</span>
+<span class="fn">./launch.sh</span> <span class="opt">--help</span></code></pre>
+</div>
+
+<h3>功能概览</h3>
+<table>
+  <tr><th>页面</th><th>路由</th><th>功能</th></tr>
+  <tr><td>工作台</td><td><code>#/dashboard</code></td><td>统计概览、任务列表、5s 自动刷新</td></tr>
+  <tr><td>新建任务</td><td><code>#/new</code></td><td>6 种流水线类型、文件上传、文生图面板</td></tr>
+  <tr><td>任务详情</td><td><code>#/task/:id</code></td><td>SSE 实时日志、输出文件预览、取消/重试</td></tr>
+  <tr><td>文件浏览</td><td><code>#/browse</code></td><td>网格/列表视图、右键菜单、批量下载</td></tr>
+  <tr><td>工作流管理</td><td><code>#/workflows</code></td><td>工作流 CRUD、模板库</td></tr>
+  <tr><td>工作流编辑器</td><td><code>#/workflow/:id</code></td><td>DAG 拖拽编辑、节点参数配置、一键运行</td></tr>
+  <tr><td>工作流运行器</td><td><code>#/workflow/instance/:id</code></td><td>实时 DAG 状态、节点 Tab 切换、结果下载</td></tr>
+  <tr><td>设计文档</td><td><code>#/docs</code></td><td>中英双语架构/管线/工作流文档</td></tr>
+</table>
+
+<div class="card">
+<h4>技术架构</h4>
+<p>
+  <strong>后端：</strong>FastAPI + SQLite (WAL) + asyncio 任务调度 + GPU 锁 (asyncio.Lock)<br>
+  <strong>前端：</strong>Vanilla JS SPA (ES modules, 零构建) + LiteGraph.js DAG 编辑器<br>
+  <strong>实时通信：</strong>SSE (Server-Sent Events) 推送任务/工作流进度<br>
+  <strong>i18n：</strong>JSON locale 文件按需加载，中文/English 即时切换<br>
+  <strong>样式：</strong>CSS 自定义属性设计系统，暗色主题，响应式（768px/480px 断点）
+</p>
+</div>
+
+<!-- ────── HARDWARE ────── -->
+<h2 id="hardware">💻 硬件要求</h2>
+<table>
+  <tr><th></th><th>TripoSR</th><th>Hunyuan3D-2.1</th></tr>
+  <tr>
+    <td>GPU</td>
+    <td>NVIDIA 4GB+<br><span class="tag tag-green">RTX 3060 ✓</span></td>
+    <td>NVIDIA 8GB+ 推荐<br><span class="tag tag-yellow">6GB 可用但慢</span></td>
+  </tr>
+  <tr><td>RAM</td><td>8GB+</td><td>32GB+ 推荐 (64GB 充足)</td></tr>
+  <tr><td>磁盘</td><td>~3GB (模型权重)</td><td>~50GB (含所有模型)</td></tr>
+  <tr><td>OS</td><td>Win/Mac/Linux</td><td>Windows (ComfyUI 便携版)</td></tr>
+  <tr><td>Python</td><td>3.10+</td><td>使用内嵌 Python 3.12</td></tr>
+</table>
+<div class="card warn">
+  <h4>⚠ RTX 3060 Laptop (6GB) 实测</h4>
+  <p>Hunyuan3D-2.1 模型加载后占用 6.86 GB VRAM，超出 6GB 约 0.9GB。<br>
+  溢出部分使用共享 GPU 内存，导致推理速度从 ~30s/步 下降到 67-287s/步。<br>
+  <strong>建议：</strong>使用 <code>--steps 10</code> 预览效果，挂机过夜跑高质量。</p>
+</div>
+
+<!-- ────── DIRECTORY ────── -->
+<h2 id="directory">📁 目录结构</h2>
+<pre><code>3dprint/
+├── scripts/
+│   ├── image-to-3d.py       <span class="cm"># TripoSR 单图→3D</span>
+│   ├── hunyuan-to-3d.py     <span class="cm"># Hunyuan3D-2.1 单图→3D</span>
+│   ├── image-to-relief.py   <span class="cm"># 图像→浮雕/lithophane</span>
+│   ├── mesh-repair.py       <span class="cm"># 网格修复 (水密+去重+填洞)</span>
+│   ├── mesh-to-views.py     <span class="cm"># 六视图正交渲染</span>
+│   └── pipeline.py          <span class="cm"># 端到端流水线</span>
+├── models/                   <span class="cm"># TripoSR 权重 (model.ckpt 1.6GB)</span>
+├── triposr/src/              <span class="cm"># TripoSR 推理代码</span>
+├── config/                   <span class="cm"># 模型配置文件</span>
+├── output/                   <span class="cm"># 生成输出</span>
+│   ├── lithophane/           <span class="cm"># 透光浮雕 STL</span>
+│   ├── relief/               <span class="cm"># 普通浮雕 STL</span>
+│   └── views/                <span class="cm"># 六视图 PNG</span>
+├── docs/                     <span class="cm"># 使用指南 (index.html)</span>
+└── 混元3D2.1+comfyui便携版+.../ <span class="cm"># Hunyuan3D-2.1 ComfyUI 整合包</span>
+    └── extracted/ComfyUI_windows_portable/
+        ├── python_embeded/   <span class="cm"># 内嵌 Python 环境</span>
+        └── ComfyUI/
+            ├── models/       <span class="cm"># DiT + VAE 模型权重</span>
+            └── custom_nodes/ <span class="cm"># Hunyuan3D 插件</span></code></pre>
+
+<!-- ═══════════ TRIPOSR ═══════════ -->
+<h2 id="triposr">⚡ TripoSR — 快速预览引擎</h2>
+<p>Stability AI × Tripo AI 联合开源 (MIT)，单图 ~2 秒生成带顶点色的 3D 网格。</p>
+
+<h3 id="triposr-install">安装</h3>
+<pre><code><span class="cm"># 1. 安装依赖</span>
+<span class="fn">pip</span> install torch torchvision <span class="cm"># PyTorch (CUDA)</span>
+<span class="fn">pip</span> install trimesh rembg[gpu] pillow numpy huggingface_hub omegaconf
+
+<span class="cm"># 2. 下载模型权重 (1.6GB)</span>
+<span class="kw">set</span> <span class="val">HF_ENDPOINT</span>=<span class="str">https://hf-mirror.com</span>
+<span class="fn">python</span> -c <span class="str">"from huggingface_hub import hf_hub_download; \
+  hf_hub_download('stabilityai/TripoSR','model.ckpt',local_dir='models'); \
+  hf_hub_download('stabilityai/TripoSR','config.yaml',local_dir='config')"</span></code></pre>
+
+<h3 id="triposr-usage">基本用法</h3>
+<pre><code><span class="cm"># 生成 GLB (预览用, 带顶点色)</span>
+<span class="fn">python</span> scripts/image-to-3d.py photo.jpg
+
+<span class="cm"># 指定输出格式和精度</span>
+<span class="fn">python</span> scripts/image-to-3d.py photo.jpg \
+    <span class="opt">--format</span> obj \
+    <span class="opt">--resolution</span> <span class="val">384</span>
+
+<span class="cm"># 已有透明背景的图片跳过背景去除</span>
+<span class="fn">python</span> scripts/image-to-3d.py render.png <span class="opt">--no-bg-remove</span></code></pre>
+
+<h3 id="triposr-params">参数说明</h3>
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>image</code></td><td>必填</td><td>输入图片路径 (jpg/png/webp)</td></tr>
+  <tr><td><code>--format</code></td><td>glb</td><td>输出格式: glb (预览) / obj (通用)</td></tr>
+  <tr><td><code>--resolution</code></td><td>256</td><td>MC 分辨率: 128 (快) → 384 (精细)</td></tr>
+  <tr><td><code>--no-bg-remove</code></td><td>关闭</td><td>跳过 rembg 背景去除</td></tr>
+  <tr><td><code>--foreground-ratio</code></td><td>0.85</td><td>前景占比 (0.7–0.95)</td></tr>
+</table>
+
+<h3 id="triposr-errors">常见错误</h3>
+<div class="card danger">
+  <h4><code>No onnxruntime backend found</code></h4>
+  <p>rembg 需要 GPU 支持。修复：</p>
+  <pre><code><span class="fn">pip</span> install rembg[gpu]</code></pre>
+</div>
+<div class="card danger">
+  <h4><code>ModuleNotFoundError: No module named 'torchmcubes'</code></h4>
+  <p>torchmcubes 仅支持 Linux。项目已替换为 skimage 实现，无需额外操作。</p>
+</div>
+<div class="card warn">
+  <h4>背面/底面糊成一片</h4>
+  <p>单视图输入的固有限制。试试多角度拍摄输入图片。</p>
+</div>
+
+<!-- ═══════════ HUNYUAN3D ═══════════ -->
+<h2 id="hunyuan">🏆 Hunyuan3D-2.1 — 高精度引擎</h2>
+<p>腾讯混元开源，两阶段架构：几何生成 (ShapeVAE + DiT Flow Matching) → PBR 纹理生成。<br>
+  当前脚本为 <strong>geometry-only 模式</strong>（无纹理白模，可直接打印）。</p>
+
+<h3 id="hunyuan-install">安装</h3>
+<div class="card">
+<h4>前提：ComfyUI 便携版已解压</h4>
+<p>整合包（百度/夸克网盘）解压到项目目录下，路径含中文不影响内嵌 Python 运行。<br>
+Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>python_embeded/python.exe</code>），<br>
+不需要额外安装依赖。</p>
+</div>
+
+<h3 id="hunyuan-usage">基本用法</h3>
+<pre><code><span class="cm"># 快速预览 (6GB 卡推荐, ~1h)</span>
+<span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg \
+    <span class="opt">--steps</span> <span class="val">10</span> \
+    <span class="opt">--resolution</span> <span class="val">128</span>
+
+<span class="cm"># 高质量 (8GB+ 卡推荐, 约 15min)</span>
+<span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg \
+    <span class="opt">--steps</span> <span class="val">25</span> \
+    <span class="opt">--resolution</span> <span class="val">256</span>
+
+<span class="cm"># 指定输出格式</span>
+<span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg \
+    <span class="opt">--format</span> stl \
+    <span class="opt">--seed</span> <span class="val">123</span>
+
+<span class="cm"># 图片已有透明背景</span>
+<span class="fn">python</span> scripts/hunyuan-to-3d.py render.png <span class="opt">--skip-bg-remove</span>
+
+<span class="cm"># 指定便携版路径</span>
+<span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg \
+    <span class="opt">--base-dir</span> <span class="str">"D:/projects/3dprint/混元3D2.1+..."</span></code></pre>
+
+<h3 id="hunyuan-params">参数说明</h3>
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>image</code></td><td>必填</td><td>输入图片路径</td></tr>
+  <tr><td><code>--steps</code></td><td>15</td><td>扩散步数: 5-10 预览 / 25-50 高质量</td></tr>
+  <tr><td><code>--resolution</code></td><td>256</td><td>MC 分辨率: 128 (快) → 384 (精细)</td></tr>
+  <tr><td><code>--format</code></td><td>glb</td><td>输出格式: glb / obj / stl</td></tr>
+  <tr><td><code>--seed</code></td><td>42</td><td>随机种子 (可复现结果)</td></tr>
+  <tr><td><code>--mode</code></td><td>geometry</td><td>geometry (白模) / full (纹理, 开发中)</td></tr>
+  <tr><td><code>--skip-bg-remove</code></td><td>关闭</td><td>跳过背景去除</td></tr>
+  <tr><td><code>--base-dir</code></td><td>自动检测</td><td>整合包根目录</td></tr>
+</table>
+
+<h3 id="hunyuan-errors">常见错误</h3>
+<div class="card danger">
+  <h4><code>RuntimeError: CUDA out of memory</code></h4>
+  <p>VRAM 不足。降低参数重试：</p>
+  <pre><code><span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg <span class="opt">--steps</span> <span class="val">5</span> <span class="opt">--resolution</span> <span class="val">128</span></code></pre>
+</div>
+<div class="card danger">
+  <h4><code>ModuleNotFoundError: No module named 'ComfyUI-Hunyuan3d-2-1'</code></h4>
+  <p>目录名含连字符导致 Python import 失败。脚本已内置 monkey-patch 修复此问题。<br>
+  如仍出现，检查 <code>--base-dir</code> 是否正确。</p>
+</div>
+<div class="card danger">
+  <h4><code>Inference tensors cannot be saved for backward</code></h4>
+  <p>pipeline 的 <code>@torch.inference_mode()</code> 导致。脚本已通过 <code>latents * 1.0</code> 处理。</p>
+</div>
+<div class="card warn">
+  <h4>生成速度极慢 (287s/步)</h4>
+  <p>RTX 3060 Laptop 热降频 (<em>thermal throttling</em>)。降低环境温度或使用散热底座。</p>
+</div>
+
+<!-- ═══════════ MESH REPAIR ═══════════ -->
+<h2 id="repair">🔧 Mesh Repair — 网格修复</h2>
+<p>将生成的网格修复为<strong>水密 (watertight)</strong> 可打印 STL：</p>
+<ul>
+  <li>删除重复面 (<code>unique_faces</code>)</li>
+  <li>删除退化三角面 (<code>nondegenerate_faces</code>)</li>
+  <li>pymeshfix 填洞 + 修复流形错误</li>
+  <li>输出可直接切片打印的 STL</li>
+</ul>
+
+<pre><code><span class="cm"># 基本修复</span>
+<span class="fn">python</span> scripts/mesh-repair.py output/photo_3d.glb
+
+<span class="cm"># 缩放 + 指定输出</span>
+<span class="fn">python</span> scripts/mesh-repair.py model.glb \
+    <span class="opt">--scale</span> <span class="val">0.5</span> \
+    <span class="opt">--output</span> stl
+
+<span class="cm"># 详细日志</span>
+<span class="fn">python</span> scripts/mesh-repair.py model.glb <span class="opt">--verbose</span></code></pre>
+
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>input</code></td><td>必填</td><td>输入网格 (.glb/.obj/.stl)</td></tr>
+  <tr><td><code>--output</code></td><td>stl</td><td>输出格式: stl (打印) / 3mf / obj</td></tr>
+  <tr><td><code>--scale</code></td><td>1.0</td><td>统一缩放比例</td></tr>
+  <tr><td><code>--verbose</code></td><td>关闭</td><td>显示修复详情</td></tr>
+</table>
+
+<!-- ═══════════ VIEWS ═══════════ -->
+<h2 id="views">📷 六视图渲染 — 模型验证</h2>
+<p>从任意 3D 网格渲染正交六视图（前/后/左/右/上/下），用于：</p>
+<ul>
+  <li>验证 AI 生成模型的几何质量（无需打开 3D 查看器）</li>
+  <li>生成模型卡片 / 文档配图</li>
+  <li>为后续多视图重建提供输入</li>
+</ul>
+
+<pre><code><span class="cm"># 基本用法</span>
+<span class="fn">python</span> scripts/mesh-to-views.py model.glb
+
+<span class="cm"># 高分辨率 + 仅网格图</span>
+<span class="fn">python</span> scripts/mesh-to-views.py model.stl \
+    <span class="opt">--resolution</span> <span class="val">2048</span> \
+    <span class="opt">--no-individual</span>
+
+<span class="cm"># 指定输出目录</span>
+<span class="fn">python</span> scripts/mesh-to-views.py model.obj \
+    <span class="opt">--output-dir</span> D:/renders/</code></pre>
+
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>mesh</code></td><td>必填</td><td>输入网格 (.glb/.obj/.stl)</td></tr>
+  <tr><td><code>--resolution</code></td><td>1024</td><td>单视图分辨率 (px)</td></tr>
+  <tr><td><code>--output-dir</code></td><td>自动</td><td>输出目录 (默认: &lt;mesh_dir&gt;/views/)</td></tr>
+  <tr><td><code>--no-grid</code></td><td>关闭</td><td>不生成合并网格图</td></tr>
+  <tr><td><code>--no-individual</code></td><td>关闭</td><td>不生成单独视图文件</td></tr>
+</table>
+
+<div class="card">
+  <h4>输出文件</h4>
+  <p>
+    单个视图: <code>{name}_front.png</code> → <code>{name}_bottom.png</code><br>
+    合并网格: <code>{name}_views_grid.png</code> (3列×2行)<br>
+    布局: front | right | back / left | top | bottom
+  </p>
+</div>
+
+<!-- ═══════════ PIPELINE ═══════════ -->
+<h2 id="pipeline">🔄 Pipeline — 端到端流水线</h2>
+<p>一键完成：图片 → 3D 生成 → 网格修复 → 可打印 STL。<br>
+支持两个引擎，通过 <code>--engine</code> 切换。</p>
+
+<pre><code><span class="cm"># TripoSR 快速流水线 (默认, ~30s)</span>
+<span class="fn">python</span> scripts/pipeline.py photo.jpg \
+    <span class="opt">--resolution</span> <span class="val">256</span> \
+    <span class="opt">--scale</span> <span class="val">1.0</span>
+
+<span class="cm"># Hunyuan3D-2.1 高精度流水线</span>
+<span class="fn">python</span> scripts/pipeline.py photo.jpg \
+    <span class="opt">--engine</span> hunyuan \
+    <span class="opt">--steps</span> <span class="val">10</span> \
+    <span class="opt">--resolution</span> <span class="val">256</span>
+
+<span class="cm"># 仅修复已有网格 (跳过生成)</span>
+<span class="fn">python</span> scripts/pipeline.py existing.glb <span class="opt">--skip-generate</span>
+
+<span class="cm"># 生成 + 修复 + 六视图验证</span>
+<span class="fn">python</span> scripts/pipeline.py photo.jpg <span class="opt">--views</span>
+
+<span class="cm"># 仅生成不修复</span>
+<span class="fn">python</span> scripts/pipeline.py photo.jpg <span class="opt">--skip-repair</span></code></pre>
+
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>image</code></td><td>必填</td><td>输入图片（或已有网格配合 <code>--skip-generate</code>）</td></tr>
+  <tr><td><code>--engine</code></td><td>triposr</td><td>生成引擎: triposr (快速) / hunyuan (高精度)</td></tr>
+  <tr><td><code>--scale</code></td><td>1.0</td><td>统一缩放</td></tr>
+  <tr><td><code>--resolution</code></td><td>256</td><td>MC 分辨率</td></tr>
+  <tr><td><code>--no-bg-remove</code></td><td>关闭</td><td>跳过背景去除</td></tr>
+  <tr><td><code>--skip-generate</code></td><td>关闭</td><td>传入已有网格，仅修复</td></tr>
+  <tr><td><code>--skip-repair</code></td><td>关闭</td><td>仅生成，不修复</td></tr>
+  <tr><td><code>--views</code></td><td>关闭</td><td>生成六视图网格图</td></tr>
+  <tr><td><code>--steps</code></td><td>15</td><td>[Hunyuan] 扩散步数</td></tr>
+  <tr><td><code>--seed</code></td><td>42</td><td>[Hunyuan] 随机种子</td></tr>
+  <tr><td><code>--base-dir</code></td><td>自动检测</td><td>[Hunyuan] 整合包路径</td></tr>
+</table>
+
+<!-- ═══════════ RELIEF ═══════════ -->
+<h2 id="relief">🏔 浮雕生成 — 图像转浮雕</h2>
+<p>从图像直接生成3D可打印的浮雕，支持<strong>立体浮雕</strong>和<strong>透光浮雕（lithophane）</strong>两种模式，可选单色或四色打印。</p>
+
+<h3>普通浮雕（反射光）</h3>
+<pre><code><span class="cm"># 标准浮雕 (160×120mm, 3mm 起伏)</span>
+<span class="fn">python</span> scripts/image-to-relief.py photo.jpg \
+    <span class="opt">--width</span> <span class="val">160</span> \
+    <span class="opt">--height</span> <span class="val">120</span>
+
+<span class="cm"># 4色量化 + 顶点着色</span>
+<span class="fn">python</span> scripts/image-to-relief.py photo.jpg \
+    <span class="opt">--colors</span> <span class="val">4</span></code></pre>
+
+<h3 id="lithophane">透光浮雕（背光）</h3>
+<p>Light=薄=透光多, Dark=厚=透光少。使用厚度差在背光下呈现灰度图像。<br>
+<strong>推荐白色 PLA</strong>，100% 填充，平放打印即可。</p>
+<pre><code><span class="cm"># Lithophane 模式 (0.6mm 最薄, 2.6mm 最厚)</span>
+<span class="fn">python</span> scripts/image-to-relief.py photo.jpg <span class="opt">--lithophane</span>
+
+<span class="cm"># 自定义厚度范围</span>
+<span class="fn">python</span> scripts/image-to-relief.py photo.jpg \
+    <span class="opt">--lithophane</span> \
+    <span class="opt">--base-thickness</span> <span class="val">0.8</span> \
+    <span class="opt">--max-depth</span> <span class="val">2.5</span></code></pre>
+
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>image</code></td><td>必填</td><td>输入图片</td></tr>
+  <tr><td><code>--width</code></td><td>160</td><td>目标宽度 mm（等比缩放）</td></tr>
+  <tr><td><code>--height</code></td><td>120</td><td>目标高度 mm</td></tr>
+  <tr><td><code>--max-depth</code></td><td>3.0/2.0</td><td>起伏幅度 mm（lithophane 默认 2.0）</td></tr>
+  <tr><td><code>--base-thickness</code></td><td>0.5/0.6</td><td>底板厚度 mm（lithophane 默认 0.6）</td></tr>
+  <tr><td><code>--detail</code></td><td>0.25</td><td>细节保留强度 0-1</td></tr>
+  <tr><td><code>--lithophane</code></td><td>关闭</td><td>透光浮雕模式（亮区薄→透光）</td></tr>
+  <tr><td><code>--colors</code></td><td>0</td><td>颜色量化数 (0=单色, 2-4 多色)</td></tr>
+</table>
+
+<div class="card good">
+  <h4>两种模式对比</h4>
+  <table>
+    <tr><th></th><th>普通浮雕</th><th>透光浮雕</th></tr>
+    <tr><td>厚度</td><td>0.5 + 0~3 = 3.5mm</td><td>0.6~2.6mm</td></tr>
+    <tr><td>原理</td><td>亮=高（反射光）</td><td>亮=薄（透射光）</td></tr>
+    <tr><td>观察方式</td><td>正面光照</td><td>背面 LED 灯板</td></tr>
+    <tr><td>推荐耗材</td><td>任意 PLA</td><td>白色/象牙白 PLA</td></tr>
+    <tr><td>打印方向</td><td>平放</td><td>平放（背面朝下）</td></tr>
+    <tr><td>填充</td><td>15-20%</td><td>100% 实心</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h4>🖨 四色打印工作流 (Bambu AMS)</h4>
+  <p>
+    1. 运行 <code>--colors 4</code> 生成彩色 OBJ + 色块预览<br>
+    2. STL 导入 Bambu Studio<br>
+    3. 用 Height Range Modifier 按 Z 高度分配耗材颜色<br>
+    4. 使用 <code>output/relief/...colors.png</code> 作为配色参考
+  </p>
+</div>
+
+<!-- ═══════════ COMPARISON ═══════════ -->
+<h2 id="compare">📊 引擎对比</h2>
+<table>
+  <tr><th>特性</th><th>TripoSR</th><th>Hunyuan3D-2.1</th></tr>
+  <tr><td>速度</td><td>~2s 推理</td><td>~67-287s/步</td></tr>
+  <tr><td>VRAM</td><td>~3.5 GB</td><td>8GB 推荐 (6GB 会溢出)</td></tr>
+  <tr><td>纹理</td><td>顶点色 (内置)</td><td>geometry-only (纹理开发中)</td></tr>
+  <tr><td>几何精度</td><td>中 (背面糊)</td><td>高 (细节完整)</td></tr>
+  <tr><td>水密性</td><td>需后修复</td><td>直接水密 ✓</td></tr>
+  <tr><td>模型大小</td><td>~1.6GB</td><td>~4GB (DiT+VAE)</td></tr>
+  <tr><td>许可证</td><td>MIT (商用友好)</td><td>非商用 (腾讯)</td></tr>
+  <tr><td>适用场景</td><td>快速原型、简单形状</td><td>高精度打印、复杂几何</td></tr>
+</table>
+
+<!-- ═══════════ OUTPUT FORMATS ═══════════ -->
+<h2 id="formats">📦 输出格式选择</h2>
+<table>
+  <tr><th>格式</th><th>用途</th><th>纹理</th><th>打印就绪</th></tr>
+  <tr><td><code>.glb</code></td><td>预览 (Windows 3D Viewer, Blender 等)</td><td>✓</td><td>—</td></tr>
+  <tr><td><code>.obj</code></td><td>建模软件导入 (Blender, Maya, ZBrush)</td><td>✓ (mtl)</td><td>—</td></tr>
+  <tr><td><code>.stl</code></td><td>3D 打印切片 (Bambu Studio, Cura, PrusaSlicer)</td><td>✗</td><td>✓ (需修复)</td></tr>
+  <tr><td><code>.3mf</code></td><td>现代打印格式 (Bambu 推荐)</td><td>✓</td><td>✓ (需修复)</td></tr>
+</table>
+<div class="card">
+  <h4>推荐工作流</h4>
+  <p>
+    <span class="tag tag-purple">1</span> 生成 GLB 预览效果<br>
+    <span class="tag tag-purple">2</span> 满意后生成 STL + 运行 mesh-repair<br>
+    <span class="tag tag-purple">3</span> 修复后 STL 导入 Bambu Studio 切片打印
+  </p>
+</div>
+
+<!-- ═══════════ TIPS ═══════════ -->
+<h2 id="tips">⚠ 避坑指南</h2>
+
+<div class="card warn">
+  <h4>1. 输入图片质量最重要</h4>
+  <p>主体突出、背景干净、光照均匀的图片效果远好于杂乱背景。<br>
+  如果图片背景复杂，rembg 可能误删主体的一部分。</p>
+</div>
+
+<div class="card warn">
+  <h4>2. 单视图输入的固有限制</h4>
+  <p>单张照片只能看到物体的一面。背面、底面、遮挡区域的几何质量会明显下降。<br>
+  Hunyuan3D-2.1 比 TripoSR 更能推测背面形状，但仍有局限。</p>
+</div>
+
+<div class="card danger">
+  <h4>3. RTX 3060 6GB 不要同时开浏览器</h4>
+  <p>Chrome/Edge 等浏览器占用 1-2GB VRAM (硬件加速)。<br>
+  跑 Hunyuan3D-2.1 前关闭浏览器可避免额外的 VRAM 争抢。</p>
+</div>
+
+<div class="card warn">
+  <h4>4. 散热是 RTX 3060 Laptop 的死穴</h4>
+  <p>笔记本 GPU 热降频严重：运行时间越长越慢。<br>
+  首次运行建议 <code>--steps 5</code> 验证流程，确认无误后再挂机长跑。</p>
+</div>
+
+<div class="card">
+  <h4>5. STL 打印前必须修复</h4>
+  <p>AI 生成的原始网格通常不是水密的（有小洞、非流形边、重复面）。<br>
+  <code>mesh-repair.py</code> 会修复这些问题并验证水密性。</p>
+</div>
+
+<div class="card">
+  <h4>6. 编码问题 (Windows)</h4>
+  <p>中文路径和 UTF-8 打印偶尔出问题：</p>
+  <pre><code><span class="kw">set</span> <span class="val">PYTHONIOENCODING</span>=<span class="str">utf-8</span>     <span class="cm"># PowerShell</span>
+<span class="kw">$env:PYTHONIOENCODING</span>=<span class="str">"utf-8"</span>  <span class="cm"># CMD</span></code></pre>
+</div>
+
+<div class="card warn">
+  <h4>7. HF 镜像 (国内下载加速)</h4>
+  <pre><code><span class="kw">set</span> <span class="val">HF_ENDPOINT</span>=<span class="str">https://hf-mirror.com</span>
+<span class="kw">set</span> <span class="val">HF_HUB_DISABLE_SYMLINKS_WARNING</span>=<span class="val">1</span></code></pre>
+</div>
+
+<hr style="border-color:var(--border); margin: 48px 0 12px;">
+<p style="color:var(--text-muted); font-size:0.8rem; text-align:center;">
+  3D Print Pipeline &copy; 2026 — 基于 TripoSR (MIT) 和 Hunyuan3D-2.1 (腾讯非商用协议)<br>
+  文档更新: 2026-05-12
+</p>
+
+</main>
+</body>
+</html>

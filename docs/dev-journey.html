@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Print Pipeline — 从 0 到 1 开发历程</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card-bg: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --heading: #f0f6fc;
+    --accent: #7c3aed;
+    --accent2: #06d6a0;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --link: #a78bfa;
+    --code-bg: #0d1117;
+    --inline-code: #30363d;
+    --phase-0: #06d6a0;
+    --phase-1: #3fb950;
+    --phase-2: #f59e0b;
+    --phase-3: #58a6ff;
+    --phase-4: #7c3aed;
+    --phase-5: #f778ba;
+    --phase-6: #8b949e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+  }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 80px 48px 60px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #1a1030 0%, var(--bg) 100%);
+  }
+  .hero h1 { font-size: 2.4rem; color: var(--heading); margin-bottom: 12px; }
+  .hero .subtitle { font-size: 1.1rem; color: var(--text-muted); max-width: 680px; margin: 0 auto 24px; }
+  .hero .meta { font-size: 0.85rem; color: var(--text-muted); }
+  .hero .meta span { margin: 0 12px; }
+
+  /* ── Timeline container ── */
+  .timeline {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 48px 24px;
+  }
+
+  /* ── Phase section ── */
+  .phase {
+    margin-bottom: 48px;
+    position: relative;
+  }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .phase-num {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.1rem; color: #fff;
+    flex-shrink: 0;
+  }
+  .phase-0 .phase-num { background: var(--phase-0); }
+  .phase-1 .phase-num { background: var(--phase-1); }
+  .phase-2 .phase-num { background: var(--phase-2); }
+  .phase-3 .phase-num { background: var(--phase-3); }
+  .phase-4 .phase-num { background: var(--phase-4); }
+  .phase-5 .phase-num { background: var(--phase-5); }
+  .phase-6 .phase-num { background: var(--phase-6); }
+
+  .phase-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--heading);
+  }
+  .phase-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-left: auto;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin: 16px 0;
+  }
+  .card h3 {
+    font-size: 1.05rem;
+    color: var(--heading);
+    margin-bottom: 10px;
+  }
+  .card p { margin: 8px 0; }
+
+  /* milestone card */
+  .milestone {
+    border-left: 3px solid var(--accent);
+    background: #7c3aed08;
+  }
+
+  /* challenge card */
+  .challenge {
+    border-left: 3px solid var(--danger);
+    background: #ef444408;
+  }
+  .challenge h3 { color: var(--danger); }
+
+  /* insight card */
+  .insight {
+    border-left: 3px solid var(--accent2);
+    background: #06d6a008;
+  }
+  .insight h3 { color: var(--accent2); }
+
+  /* ── Tables ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.88rem;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--heading); font-weight: 600; background: #1c2333; }
+  td { vertical-align: top; }
+
+  /* ── Code / pre ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    margin: 10px 0;
+  }
+  code {
+    background: var(--inline-code);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+  }
+  pre code { background: none; padding: 0; }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .tag-green  { background: #06d6a022; color: var(--accent2); }
+  .tag-purple { background: #7c3aed22; color: var(--accent); }
+  .tag-yellow { background: #f59e0b22; color: var(--warn); }
+  .tag-blue   { background: #58a6ff22; color: #58a6ff; }
+  .tag-red    { background: #ef444422; color: var(--danger); }
+
+  /* ── File tree ── */
+  .file-tree {
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+  }
+  .file-tree .dir { color: #58a6ff; }
+  .file-tree .file { color: var(--text); }
+  .file-tree .cm { color: #8b949e; }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-card .num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--heading);
+  }
+  .stat-card .label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── Lessons grid ── */
+  .lessons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .lesson-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .lesson-card h4 {
+    color: var(--heading);
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+  }
+  .lesson-card p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+
+  /* ── Summary banner ── */
+  .summary-banner {
+    background: linear-gradient(135deg, #1a1030 0%, #0d1a2d 100%);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 36px;
+    margin: 32px 0;
+    text-align: center;
+  }
+  .summary-banner h2 { color: var(--heading); margin-bottom: 16px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .hero { padding: 48px 20px 36px; }
+    .hero h1 { font-size: 1.6rem; }
+    .timeline { padding: 32px 16px; }
+    .lessons-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<div class="hero">
+  <h1>3D Print Pipeline</h1>
+  <p class="subtitle">
+    从一行命令到完整 Web 工作流平台 —— 一个 AI 3D 打印管线项目的全栈开发实录。
+    从零开始，在 RTX 3060 6GB 笔记本上，用 Claude Code 作为唯一的 AI 编程助手，
+    5 天内完成了 CLI 工具链、双引擎集成、Web 管理平台、DAG 工作流系统的完整开发。
+  </p>
+  <p class="meta">
+    <span>📅 2026-05-08 ~ 2026-05-12</span>
+    <span>🖥 RTX 3060 Laptop 6GB</span>
+    <span>🐍 Python 3.12 + FastAPI</span>
+    <span>🤖 Claude Code 全程辅助</span>
+  </p>
+</div>
+
+<!-- ═══════════════ TIMELINE ═══════════════ -->
+<div class="timeline">
+
+<!-- ── Project Stats ── -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="num">25</div>
+    <div class="label">Python 源文件</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">8</div>
+    <div class="label">CLI 脚本</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">21</div>
+    <div class="label">前端模块文件</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">25+</div>
+    <div class="label">工作流节点类型</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">~6000</div>
+    <div class="label">总代码行数</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">中/英</div>
+    <div class="label">完整国际化</div>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 0 ═══════════ -->
+<div class="phase phase-0">
+  <div class="phase-header">
+    <div class="phase-num">0</div>
+    <div class="phase-title">基础验证 —— 让 AI 跑出第一个 3D 模型</div>
+    <div class="phase-date">05-08</div>
+  </div>
+
+  <div class="card">
+    <h3>目标</h3>
+    <p>
+      在 RTX 3060 Laptop (6GB VRAM) 上跑通 TripoSR 模型，从一张照片生成带顶点色的 3D 网格。
+      这是整个项目的可行性验证 —— 如果 AI 无法在消费级硬件上生成可用的 3D 模型，后续所有工作都没有意义。
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>关键里程碑</h3>
+    <table>
+      <tr><td>TripoSR 模型加载成功</td><td>VRAM 占用 ~3.5GB，6GB 显卡完全够用</td></tr>
+      <tr><td>首张图片推理通过</td><td>DINO ViT → Transformer → NeRF → Marching Cubes，~2s 出网格</td></tr>
+      <tr><td>rembg 背景去除集成</td><td>GPU 加速模式，前景裁切 + 居中，输出质量显著提升</td></tr>
+      <tr><td>torchmcubes → skimage 迁移</td><td>原库仅支持 Linux，替换为跨平台的 marching_cubes 实现</td></tr>
+      <tr><td>HuggingFace 模型下载</td><td>配置 hf-mirror.com 镜像加速国内下载</td></tr>
+    </table>
+  </div>
+
+  <div class="card challenge">
+    <h3>踩坑：torchmcubes Windows 不兼容</h3>
+    <p>
+      TripoSR 官方代码使用 <code>torchmcubes</code> 进行 Marching Cubes 提取，但该库的 CUDA kernel 只为 Linux 编译。
+      在 Windows 上直接 <code>ModuleNotFoundError</code>。
+      <strong>解决方案：</strong>用 <code>skimage.measure.marching_cubes</code> 替换，虽然走 CPU 但速度可接受（~0.5s），
+      且零依赖问题。
+    </p>
+  </div>
+
+  <div class="card insight">
+    <h3>经验：先跑通再优化</h3>
+    <p>
+      第一个版本的 <code>image-to-3d.py</code> 只有 50 行：加载模型 → 推理 → 导出。
+      不纠结参数抽象、不搞配置文件、不过早优化。跑通后才有资格谈架构。
+      这条原则贯穿了整个项目 —— 每个阶段都先用最简方式验证核心假设。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 1 ═══════════ -->
+<div class="phase phase-1">
+  <div class="phase-header">
+    <div class="phase-num">1</div>
+    <div class="phase-title">管线完善 —— 从网格到可打印 STL 的完整链路</div>
+    <div class="phase-date">05-09 ~ 05-10</div>
+  </div>
+
+  <div class="card">
+    <h3>目标</h3>
+    <p>
+      AI 生成的原始网格不能直接打印 —— 有破洞、非流形边、重复面。需要修复、缩放、落地。
+      同时补齐浮雕/夜灯生成、六视图渲染、端到端编排等能力，形成完整的 CLI 工具链。
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>新增脚本</h3>
+    <table>
+      <tr>
+        <td><code>mesh-repair.py</code></td>
+        <td>Watertight 修复管线：去重 → 去退化 → pymeshfix 填洞 → 缩放 → 落地 → 导出 STL</td>
+      </tr>
+      <tr>
+        <td><code>mesh-to-views.py</code></td>
+        <td>6 正交视图渲染（前/后/左/右/上/下），pyrender 离屏渲染，3×2 网格拼图</td>
+      </tr>
+      <tr>
+        <td><code>pipeline.py</code></td>
+        <td>端到端编排器：image → 3D → repair → STL。支持 <code>--engine</code>、<code>--views</code>、<code>--skip-generate</code></td>
+      </tr>
+      <tr>
+        <td><code>image-to-relief.py</code></td>
+        <td>浮雕/夜灯双模式，4 色量化（Bambu AMS），彩色 OBJ + STL 双输出</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>架构设计</h3>
+    <p>设计了 4 阶段管线架构，每个阶段独立可替换：</p>
+    <pre><code>Input Image ──→ [Stage 1: Image→3D] ──→ [Stage 2: Mesh Repair] ──→ [Stage 3: Slice] ──→ [Stage 4: Print]
+                  TripoSR / Hunyuan3D       trimesh + pymeshfix          OrcaSlicer CLI       Bambu Studio</code></pre>
+    <p>
+      每阶段通过 JSON 传递结构化结果，包含 <code>output</code>、<code>vertices</code>、<code>faces</code>、
+      <code>watertight</code>、<code>dimensions_mm</code> 等字段。这使得阶段之间解耦，可以单独替换引擎或后处理。
+    </p>
+  </div>
+
+  <div class="card insight">
+    <h3>经验：输出格式选择很重要</h3>
+    <p>
+      GLB 适合预览（带纹理），STL 适合打印（无纹理但所有切片软件都支持），OBJ 适合建模软件导入。
+      每种格式有明确的适用场景，不要在一种格式上妥协。
+      项目采用 <strong>生成 GLB → 修复后导出 STL</strong> 的双格式策略。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 2 ═══════════ -->
+<div class="phase phase-2">
+  <div class="phase-header">
+    <div class="phase-num">2</div>
+    <div class="phase-title">Hunyuan3D-2.1 集成 —— 在 6GB 显存上跑大模型</div>
+    <div class="phase-date">05-10</div>
+  </div>
+
+  <div class="card">
+    <h3>目标</h3>
+    <p>
+      引入腾讯混元 Hunyuan3D-2.1 作为第二个 AI 引擎，提供更高质量的几何生成。
+      该模型基于 ComfyUI 生态，需要处理便携版 Python 环境、模块路径兼容性、以及 6GB VRAM 的极限挑战。
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>模型分析</h3>
+    <table>
+      <tr><th>组件</th><th>参数量</th><th>VRAM (fp16)</th></tr>
+      <tr><td>DiT (Diffusion Transformer)</td><td>~3B</td><td>~6GB</td></tr>
+      <tr><td>Shape VAE</td><td>~328M</td><td>~0.66GB</td></tr>
+      <tr><td>Conditioner (DINO + CLIP)</td><td>~304M</td><td>~0.6GB</td></tr>
+      <tr><td><strong>Total</strong></td><td><strong>~3.6B</strong></td><td><strong>~6.86GB</strong></td></tr>
+    </table>
+  </div>
+
+  <div class="card challenge">
+    <h3>最大挑战：6GB VRAM 跑 6.86GB 模型</h3>
+    <p>
+      模型加载后占用 <strong>6.86GB</strong>，超出物理 VRAM 约 0.9GB。Windows 会将溢出部分分配到共享 GPU 内存（系统 RAM），
+      导致推理时 PCIe 带宽成为瓶颈。实测：首次推理 67s/步，热降频后恶化到 <strong>287s/步</strong>。
+    </p>
+    <p><strong>应对策略：</strong></p>
+    <ul style="margin-left:20px;color:var(--text-muted)">
+      <li>建议使用 <code>--steps 5~10</code> 快速预览，确认参数后再挂机长跑</li>
+      <li>关闭浏览器（Chrome/Edge 占用 1-2GB VRAM 硬件加速）</li>
+      <li>笔记本使用散热底座缓解 thermal throttling</li>
+      <li>使用 <code>--resolution 128</code> 降低 Marching Cubes 开销</li>
+    </ul>
+  </div>
+
+  <div class="card challenge">
+    <h3>踩坑：ComfyUI 自定义节点的 import 地狱</h3>
+    <p>
+      ComfyUI 自定义节点目录名为 <code>ComfyUI-Hunyuan3d-2-1</code>（含连字符），Python 无法直接 import。
+      需要 monkey-patch <code>importlib</code> 的模块查找逻辑，在 Hunyuan3D 相关 import 时动态重写模块路径。
+      此外便携版的内嵌 Python 需要正确的 <code>sys.path</code> 设置才能找到所有依赖。
+    </p>
+  </div>
+
+  <div class="card insight">
+    <h3>经验：对硬件约束诚实</h3>
+    <p>
+      6GB VRAM 是一个硬边界。不是"可能慢一点"的问题，而是从 30s/步 到 287s/步 的数量级差异。
+      在文档中诚实记录实测数据，比给用户虚假期望好得多。
+      <code>hunyuan3d/engine-report.md</code> 中记录了每个组件的精确 VRAM 占用，帮助用户判断是否适合他们的硬件。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 3 ═══════════ -->
+<div class="phase phase-3">
+  <div class="phase-header">
+    <div class="phase-num">3</div>
+    <div class="phase-title">Web 平台 —— 从命令行到浏览器</div>
+    <div class="phase-date">05-10 ~ 05-11</div>
+  </div>
+
+  <div class="card">
+    <h3>目标</h3>
+    <p>
+      CLI 工具功能完善但使用门槛高 —— 用户需要记住参数、手动管理文件、无法监控进度。
+      需要一个 Web 界面，让用户通过浏览器提交任务、实时查看日志、管理输出文件。
+      <strong>核心约束：不修改任何已有的 CLI 脚本。</strong>
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>架构决策</h3>
+    <table>
+      <tr>
+        <td><span class="tag tag-green">决策</span> FastAPI</td>
+        <td>异步原生支持（asyncio subprocess）、自动 OpenAPI 文档、类型安全</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">决策</span> SQLite (WAL)</td>
+        <td>零配置、并发安全、可按状态/日期查询。比 JSON 文件更适合任务管理</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">决策</span> SSE 非 WebSocket</td>
+        <td>进度推送是单向的，SSE 更简单：原生 EventSource、自动重连、无需额外依赖</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">决策</span> asyncio.Lock</td>
+        <td>GPU 任务串行（一次只能跑一个），CPU 任务（浮雕、修复）并发。简单而有效</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">决策</span> 子进程调用</td>
+        <td>Web 服务通过 <code>asyncio.create_subprocess_exec()</code> 调用 CLI 脚本，stdout 逐行推送 SSE</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-green">决策</span> Vanilla JS SPA</td>
+        <td>零构建工具、零 npm 依赖。Hash 路由 + 动态模板，一个 HTML 文件承载整个前端</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>初版 SPA</h3>
+    <p>第一版前端是一个约 800 行的 <code>templates/index.html</code>，包含：</p>
+    <ul style="margin-left:20px;color:var(--text-muted)">
+      <li>Hash-based 路由：Dashboard、New Task、Task Detail、Browse 四个页面</li>
+      <li>SSE 实时日志流：EventSource 接收进度，逐行渲染</li>
+      <li>暗色主题：CSS 变量体系，适配长时间使用的视觉舒适度</li>
+      <li>GPU 任务排队：asyncio.Lock 保证同一时间只有一个 GPU 任务运行</li>
+    </ul>
+  </div>
+
+  <div class="card insight">
+    <h3>经验：子进程优于进程内调用</h3>
+    <p>
+      最初考虑把 CLI 脚本重构为 Python 模块直接 import 调用。但子进程方案有不可替代的优势：
+      （1）<strong>零脚本改动</strong>，CLI 和 Web 共享完全相同的代码路径；
+      （2）<strong>进程隔离</strong>，AI 模型的内存泄漏不会影响 Web 服务；
+      （3）<strong>可独立测试</strong>，Web 挂了 CLI 照样用。
+      代价是多几百毫秒的进程启动时间 —— 相比 AI 推理的几十秒到几十分钟，可以忽略不计。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 4 ═══════════ -->
+<div class="phase phase-4">
+  <div class="phase-header">
+    <div class="phase-num">4</div>
+    <div class="phase-title">工作流系统 —— 从单任务到 DAG 编排</div>
+    <div class="phase-date">05-11 ~ 05-12</div>
+  </div>
+
+  <div class="card">
+    <h3>目标</h3>
+    <p>
+      单独的 6 个 Pipeline 类型无法满足复杂需求 —— 用户想要 "文字 → AI 生图 → 背景移除 → 3D 生成 → 修复" 这样的组合流程。
+      需要一个可视化工作流编辑器，让用户拖拽节点、连接端口、一键运行完整链路。
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>关键设计</h3>
+    <table>
+      <tr>
+        <td><span class="tag tag-purple">引擎</span> Workflow Engine</td>
+        <td>拓扑排序 → 依赖解析 → 按层并行执行。每个节点独立状态（queued/running/completed/failed），失败节点阻断下游</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-purple">节点</span> 25+ Node Types</td>
+        <td>4 大类：Input（文件/文本/参数）、Generate（TripoSR/Hunyuan3D/Text2Img/Relief）、Process（Crop/Scale/灰度/去背景/简化/平滑）、Output（STL导出/视图渲染）</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-purple">前端</span> LiteGraph.js</td>
+        <td>成熟的 DAG 可视化库：拖拽添加节点、连线定义数据流、画布缩放平移、节点参数面板</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-purple">传递</span> 参数级联</td>
+        <td>上游节点的输出端口自动映射为下游节点的输入参数。端口与参数分离：端口定义数据流，参数定义节点行为</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-purple">运行</span> SSE 实时驱动</td>
+        <td>Runner 页面：DAG 状态着色（绿/蓝/红/灰）+ 节点 Tab 切换查看输入输出 + 图片/STL 预览下载</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-purple">内联</span> Inline Nodes</td>
+        <td>纯 Python 处理节点（裁切、缩放、简化等）不经过子进程，直接在引擎中同步执行，避免进程启动开销</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>数据流示例</h3>
+    <pre><code>┌─────────────┐     text     ┌─────────────┐    image    ┌──────────────┐    image    ┌──────────────┐
+│  Text Input  │───────────→ │  Text2Image  │──────────→ │  Remove BG   │──────────→ │  TripoSR 3D  │
+└─────────────┘              └─────────────┘            └──────────────┘            └──────┬───────┘
+                                                                                           │ mesh
+                                                                                           ▼
+                                                                                  ┌──────────────┐
+                                                                                  │  Mesh Repair │
+                                                                                  └──────┬───────┘
+                                                                                         │ stl
+                                                                                         ▼
+                                                                                  ┌──────────────┐
+                                                                                  │  Print STL   │
+                                                                                  └──────────────┘</code></pre>
+  </div>
+
+  <div class="card insight">
+    <h3>经验：参数级联是工作流的灵魂</h3>
+    <p>
+      最初设计中，每个节点需要手动填写参数。但实际操作中，70% 的参数都是"取上游输出"。
+      引入<strong>参数级联</strong>后：上游输出自动出现在下游的可用参数中，用户只需确认或微调。
+      这大大降低了工作流的使用门槛 —— 从"配置 10 个参数"变成了"连 3 根线 + 点运行"。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 5 ═══════════ -->
+<div class="phase phase-5">
+  <div class="phase-header">
+    <div class="phase-num">5</div>
+    <div class="phase-title">前端重构 —— 3689 行单体拆分为模块化架构</div>
+    <div class="phase-date">05-12</div>
+  </div>
+
+  <div class="card">
+    <h3>问题</h3>
+    <p>
+      随着工作流编辑器、运行器、节点详情等功能不断加入，<code>templates/index.html</code> 膨胀到了 <strong>3689 行</strong>。
+      CSS、JS、HTML、i18n 全部内联在一起，修改一个按钮样式需要在这一个文件中定位。
+      更严重的是 i18n：翻译散落在 JS 三元表达式中（<code>lang==='zh'?'加载中':'Loading...'</code>），不可维护。
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>重构方案</h3>
+    <table>
+      <tr><td><span class="tag tag-blue">目标</span></td><td>保持所有 <code>#/</code> hash 路由和 <code>/api/*</code> 端点不变，零破坏性变更</td></tr>
+      <tr><td><span class="tag tag-blue">策略</span></td><td>增量替换：先建新 static/ 目录，文件全部就绪后切入口</td></tr>
+      <tr><td><span class="tag tag-blue">技术</span></td><td>ES modules (原生 <code>import</code>/<code>export</code>)，零构建工具，动态 <code>import()</code> 按需加载</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>新文件结构</h3>
+    <pre><code>web/static/
+├── <span class="dir">index.html</span>              <span class="cm">← 薄入口（~50行）</span>
+├── <span class="dir">css/</span>
+│   ├── main.css               <span class="cm">← 设计令牌 + reset + 布局（~100行）</span>
+│   ├── components.css         <span class="cm">← 按钮/卡片/表单/toast/modal（~280行）</span>
+│   ├── workflow.css           <span class="cm">← 工作流编辑器/运行器/节点详情（~150行）</span>
+│   └── pages.css              <span class="cm">← 页面级布局（~60行）</span>
+├── <span class="dir">js/</span>
+│   ├── app.js                 <span class="cm">← 入口：初始化 i18n → 注册路由 → boot</span>
+│   ├── i18n.js                <span class="cm">← locale 加载 / t() / setLang()</span>
+│   ├── api.js                 <span class="cm">← fetch 封装 / SSE / 文件缓存</span>
+│   ├── utils.js               <span class="cm">← escHtml / toast / formatTime / formatBytes / 右键菜单</span>
+│   ├── router.js              <span class="cm">← hash 路由表 + 导航守卫 + 动态 import()</span>
+│   ├── <span class="dir">pages/</span>
+│   │   ├── dashboard.js       <span class="cm">← 工作台：统计卡片 + 任务列表 + 5s 轮询</span>
+│   │   ├── new-task.js        <span class="cm">← 新建任务：类型选择 + 文件上传 + 文生图</span>
+│   │   ├── task-detail.js     <span class="cm">← 任务详情：SSE 日志 + 文件预览 + 操作区</span>
+│   │   ├── file-browse.js     <span class="cm">← 文件浏览：网格/列表 + 右键菜单</span>
+│   │   ├── docs.js            <span class="cm">← 文档中心：中英双语切换</span>
+│   │   ├── workflows.js       <span class="cm">← 工作流列表管理</span>
+│   │   ├── wf-editor.js       <span class="cm">← DAG 编辑器 + 模板库 + 保存/运行</span>
+│   │   └── wf-runner.js       <span class="cm">← 运行器：DAG 状态 + 节点 Tab + SSE</span>
+│   │   └── <span class="dir">components/</span>
+│   │       └── node-detail.js <span class="cm">← 共享：节点详情面板</span>
+│   └── <span class="dir">locales/</span>
+│       ├── zh.json            <span class="cm">← 中文翻译（~130 keys）</span>
+│       └── en.json            <span class="cm">← English（~130 keys）</span></code></pre>
+  </div>
+
+  <div class="card milestone">
+    <h3>UI 升级要点</h3>
+    <table>
+      <tr><td>设计令牌系统</td><td><code>--space-xs/sm/md/lg/xl</code> 间距变量，<code>--shadow-sm/md/lg</code> 阴影层级，<code>--transition</code> 统一过渡</td></tr>
+      <tr><td>微交互</td><td>卡片 hover 上浮 <code>translateY(-2px)</code>，按钮按下缩放 <code>scale(0.98)</code>，进度条 shimmer 动画</td></tr>
+      <tr><td>Toast 堆叠</td><td>多条通知纵向排列而非互相覆盖，每条 4s 后自动滑出消失</td></tr>
+      <tr><td>正式 i18n</td><td>JSON locale 文件按需 fetch，点号路径查找（<code>t('wf.runner.title')</code>），回退链：当前语言 → 中文 → key 本身</td></tr>
+      <tr><td>响应式</td><td>&lt;768px 侧边栏折叠为图标，&lt;480px 全宽纵向布局</td></tr>
+      <tr><td>暗色主题</td><td>深蓝基调（<code>#0d1117</code>），降低长时间监控任务的视觉疲劳</td></tr>
+    </table>
+  </div>
+
+  <div class="card insight">
+    <h3>经验：零构建工具的策略选择</h3>
+    <p>
+      使用原生 ES modules 而非 webpack/vite，是基于项目场景的刻意选择：
+      （1）<strong>受众</strong>：3D 打印爱好者，不是前端开发者，不需要 npm 生态；
+      （2）<strong>规模</strong>：~3000 行 JS，模块拆分的收益来自组织而非性能；
+      （3）<strong>维护</strong>：零依赖意味着没有 supply chain 风险，没有版本升级 breakage。
+      唯一的"依赖"是通过 CDN 加载的 LiteGraph.js —— 用于工作流 DAG 可视化。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ PHASE 6 ═══════════ -->
+<div class="phase phase-6">
+  <div class="phase-header">
+    <div class="phase-num">6</div>
+    <div class="phase-title">打磨与文档 —— 让项目可以被他人使用</div>
+    <div class="phase-date">05-12</div>
+  </div>
+
+  <div class="card">
+    <h3>目标</h3>
+    <p>
+      代码写完了不等于项目做完了。需要补齐启动脚本、完善文档、撰写开发历程，
+      让一个完全不认识这个项目的人也能在 5 分钟内跑起来。
+    </p>
+  </div>
+
+  <div class="card milestone">
+    <h3>交付物</h3>
+    <table>
+      <tr><td>启动脚本</td><td><code>launch.ps1</code> / <code>launch.sh</code> —— 自动检测 Python 环境，一行命令启动 Web 服务</td></tr>
+      <tr><td>README.md</td><td>功能矩阵、快速开始、目录结构、硬件要求、依赖安装</td></tr>
+      <tr><td>CLAUDE.md</td><td>完整脚本参考、架构说明、硬件约束、扩展点、常见坑</td></tr>
+      <tr><td>docs/index.html</td><td>622 行完整使用指南：双引擎详解、参数说明、避坑指南、格式选择建议</td></tr>
+      <tr><td>docs/dev-journey.html</td><td>本文档：项目从 0 到 1 的完整开发故事</td></tr>
+      <tr><td>web/docs/</td><td>内置文档（中英双语）：架构、管线类型、工作流系统、文生图集成</td></tr>
+      <tr><td>pipeline-architecture.md</td><td>4 阶段管线架构 + TripoSR 模型架构详解 + VRAM 估算</td></tr>
+      <tr><td>engine reports</td><td>TripoSR + Hunyuan3D-2.1 技术分析报告，含实测数据和瓶颈分析</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ KEY DECISIONS ═══════════ -->
+<h2 style="margin-top:56px">🔑 关键技术决策回顾</h2>
+
+<div class="card">
+<table>
+  <tr><th>决策</th><th>选择了</th><th>而非</th><th>原因</th></tr>
+  <tr>
+    <td>后端框架</td>
+    <td><span class="tag tag-green">FastAPI</span></td>
+    <td>Flask / Django</td>
+    <td>原生 async、自动 OpenAPI、类型安全、SSE 支持好</td>
+  </tr>
+  <tr>
+    <td>数据存储</td>
+    <td><span class="tag tag-green">SQLite (WAL)</span></td>
+    <td>PostgreSQL / JSON 文件</td>
+    <td>零配置部署、并发读安全、可按状态查询</td>
+  </tr>
+  <tr>
+    <td>实时通信</td>
+    <td><span class="tag tag-green">SSE</span></td>
+    <td>WebSocket</td>
+    <td>单向推送够用、原生 EventSource 自动重连、无额外依赖</td>
+  </tr>
+  <tr>
+    <td>GPU 调度</td>
+    <td><span class="tag tag-green">asyncio.Lock</span></td>
+    <td>Celery / RQ</td>
+    <td>单机单 GPU 不需要分布式队列，一把锁足够</td>
+  </tr>
+  <tr>
+    <td>前端框架</td>
+    <td><span class="tag tag-green">Vanilla JS (ES modules)</span></td>
+    <td>React / Vue</td>
+    <td>零构建、零 npm、项目规模不需要框架抽象</td>
+  </tr>
+  <tr>
+    <td>DAG 可视化</td>
+    <td><span class="tag tag-green">LiteGraph.js</span></td>
+    <td>自绘 Canvas / React Flow</td>
+    <td>成熟库、内置拖拽/连线/缩放、ComfyUI 同款</td>
+  </tr>
+  <tr>
+    <td>i18n 方案</td>
+    <td><span class="tag tag-green">JSON locale + 动态加载</span></td>
+    <td>gettext / 内联对象</td>
+    <td>无编译步骤、按需 fetch、点号路径直观</td>
+  </tr>
+  <tr>
+    <td>脚本集成</td>
+    <td><span class="tag tag-green">子进程 subprocess</span></td>
+    <td>重构为 Python 模块</td>
+    <td>零脚本改动、进程隔离、CLI/Web 共享代码路径</td>
+  </tr>
+</table>
+</div>
+
+<!-- ═══════════ LESSONS ═══════════ -->
+<h2 style="margin-top:56px">📖 经验与教训</h2>
+
+<div class="lessons-grid">
+  <div class="lesson-card">
+    <h4>🎯 先验证核心假设</h4>
+    <p>
+      整个项目建立在 "RTX 3060 6GB 能跑 AI 3D 生成" 这个假设上。
+      Phase 0 的唯���目标就是验证这一点。确认可行后才扩展到管线、Web、工作流。
+      如果核心假设不成立，后面的一切都是浪费。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>📐 阶段间通过数据接口解耦</h4>
+    <p>
+      Pipeline 的 4 个阶段通过 JSON 交换数据（output + vertices + faces + watertight + dimensions_mm），
+      而不是直接传递 Python 对象。这让每个阶段可以独立替换 —— TripoSR 换 Hunyuan3D 只改 Stage 1 的一个参数。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>🧩 子进程比进程内调用更好</h4>
+    <p>
+      虽然多了几百毫秒的启动开销，但获得了进程隔离、零脚本改动、独立可测试、崩溃不影响主服务等关键优势。
+      对于动辄几十秒到几十分钟的 AI 推理任务，启动开销完全可以忽略。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>🎨 零构建工具有它的位置</h4>
+    <p>
+      不是说 webpack/vite 不好，而是说在特定场景（非前端团队、中等规模、追求零维护）下，
+      Vanilla ES modules 是更好的选择。没有依赖就意味着没有 breaking change、没有 security advisory、没有升级 chore。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>📝 对硬件约束诚实</h4>
+    <p>
+      Hunyuan3D-2.1 在 6GB 显卡上的实测数据（6.86GB 加载、67-287s/步、热降频恶化）全部公开记录。
+      用户有权利知道在他们的硬件上会发生什么。诚实比美化更能建立信任。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>🔧 i18n 要从第一天就做对</h4>
+    <p>
+      初版中 <code>lang==='zh'?'加载中':'Loading...'</code> 的写法在只有几个字符串时无所谓，
+      但到 130 个 key 时就完全失控了。重构到 JSON locale 花了半天 —— 如果一开始就做对，只需要半小时。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>📦 单体文件的生命周期</h4>
+    <p>
+      3689 行的单文件 SPA 在项目初期是合理的 —— 快速迭代、没有模块间 import 的认知开销、一个文件看清所有逻辑。
+      但当它从 800 行增长到 3689 行时，拆分就是必要的。关键是在"太早拆分"和"太晚拆分"之间找到平衡点。
+    </p>
+  </div>
+  <div class="lesson-card">
+    <h4>🤖 AI 编程助手的正确用法</h4>
+    <p>
+      整个项目由 Claude Code 辅助完成。不是"AI 写代码我审查"，而是"我设计架构，AI 实现细节"。
+      AI 擅长：大量重复性代码（26 个路由处理函数）、模板化内容（8 个页面模块的结构）、文档生成（6 份技术文档）。
+      人擅长：架构决策、技术选型、边界条件的判断。各司其职。
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ SUMMARY ═══════════ -->
+<div class="summary-banner">
+  <h2>📊 项目总结</h2>
+  <table style="text-align:left;margin:0 auto;max-width:600px">
+    <tr><td style="color:var(--text-muted)">开发周期</td><td>5 天（2026-05-08 ~ 05-12）</td></tr>
+    <tr><td style="color:var(--text-muted)">代码规模</td><td>~6000 行（Python ~3500 + JS ~2000 + CSS ~500）</td></tr>
+    <tr><td style="color:var(--text-muted)">文件数量</td><td>46 个源文件（不含 vendor）</td></tr>
+    <tr><td style="color:var(--text-muted)">支持引擎</td><td>TripoSR (MIT) + Hunyuan3D-2.1 (Tencent)</td></tr>
+    <tr><td style="color:var(--text-muted)">管线类型</td><td>6 种 CLI Pipeline + 25+ 工作流节点</td></tr>
+    <tr><td style="color:var(--text-muted)">Web 路由</td><td>8 个 SPA 页面 + 15 个 REST API + 2 个 SSE 流</td></tr>
+    <tr><td style="color:var(--text-muted)">文档规模</td><td>10 份文档，中英双语，~4000 行</td></tr>
+    <tr><td style="color:var(--text-muted)">硬件平台</td><td>RTX 3060 Laptop 6GB / 64GB RAM / Windows 11</td></tr>
+  </table>
+</div>
+
+<p style="text-align:center;color:var(--text-muted);font-size:0.85rem;margin-top:32px">
+  3D Print Pipeline — 用 AI 让 3D 打印变得更简单<br>
+  项目地址：<code>D:/projects/3dprint</code> | 文档更新：2026-05-12
+</p>
+
+</div><!-- /timeline -->
+</body>
+</html>

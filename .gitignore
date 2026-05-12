@@ -1,0 +1,88 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.egg-info/
+dist/
+build/
+*.whl
+.tox/
+.pytest_cache/
+.hypothesis/
+
+# Virtual environment
+.venv/
+venv/
+.env
+env/
+.env.local
+
+# Model files (large, downloaded separately)
+models/*.ckpt
+models/*.pt
+models/*.pth
+models/*.safetensors
+
+# ComfyUI portable package (large, downloaded separately)
+混元3D2.1+comfyui便携版+*/
+ComfyUI_windows_portable/
+
+# ─── Output & Generated Files ───
+# All output subdirs - these contain generated meshes, images, logs
+output/tasks/
+output/lithophane/
+output/relief/
+output/views/
+output/text2img/
+output/layered_relief/
+output/*.log
+output/output/
+output/*.jpg
+output/*.png
+output/*.glb
+output/*.stl
+
+# Web server databases & uploads
+web/*.db
+web/*.db-journal
+web/*.db-wal
+web/*.db-shm
+web/uploads/
+web/uploads/*
+
+# Logs
+*.log
+logs/
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# Temp files
+*.tmp
+*.cache
+*.bak
+*.part
+
+# Claude session and hooks (local only)
+.claude/tasks/
+.claude/*.json
+
+# Iteration history (local only)
+docs/iterations/.last-save-hash
+docs/iterations/2026-05-*/
+
+# Build artifacts
+*.so
+*.dll
+*.dylib

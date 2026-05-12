@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Print Pipeline</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/workflow.css">
+<link rel="stylesheet" href="/static/css/pages.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litegraph.js@0.7.14/css/litegraph.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 16px">
+    <div class="logo" style="padding:0" data-i18n="app.title">3D Print Pipeline</div>
+    <div class="lang-switch">
+      <button class="lang-btn" data-lang="zh" title="中文">中</button>
+      <button class="lang-btn" data-lang="en" title="English">EN</button>
+    </div>
+  </div>
+  <div class="section-label" data-i18n="nav.sectionTasks">任务管理</div>
+  <a href="#/dashboard" data-route="dashboard" data-i18n="nav.dashboard">工作台</a>
+  <a href="#/new" data-route="new" data-i18n="nav.newTask">新建任务</a>
+  <hr>
+  <div class="section-label" data-i18n="nav.sectionFiles">文件管理</div>
+  <a href="#/browse" data-route="browse" data-i18n="nav.browse">文件浏览</a>
+  <hr>
+  <div class="section-label" data-i18n="nav.sectionWorkflow">工作流</div>
+  <a href="#/workflows" data-route="workflows" data-i18n="nav.workflows">工作流管理</a>
+  <a href="#/workflow/new" data-route="workflow-new" data-i18n="nav.workflowNew">工作流编辑器</a>
+  <hr>
+  <div class="section-label" data-i18n="nav.sectionDocs">文档中心</div>
+  <a href="#/docs" data-route="docs" data-i18n="nav.docs">设计文档</a>
+  <a href="/docs" target="_blank" data-i18n="nav.apiDocs">API 文档</a>
+  <hr>
+  <div class="section-label" data-i18n="nav.sectionDev">开发工具</div>
+</nav>
+
+<main id="main"></main>
+<div id="toast"></div>
+<div class="ctx-menu" id="ctx-menu"></div>
+<div class="modal-overlay" id="file-modal" style="display:none" onclick="if(event.target===this)document.getElementById('file-modal').style.display='none'"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/litegraph.js@0.7.14/build/litegraph.js"></script>
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

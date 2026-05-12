@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash D:/projects/3dprint/.claude/scripts/iteration/iteration-start.sh",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -ExecutionPolicy Bypass -File D:/projects/3dprint/.claude/hooks/save-iteration.ps1",
+            "async": true
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash D:/projects/3dprint/.claude/scripts/iteration/iteration-report.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

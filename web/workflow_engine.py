@@ -1,0 +1,668 @@
+"""workflow_engine.py - DAG execution engine for workflow instances.
+
+Runs workflow nodes in topological order, respecting dependencies.
+Port connections are fully data-driven from node_types.py port specs.
+Supports replay from any node, preserving upstream context.
+"""
+
+import asyncio
+import json
+import os
+import shutil
+import time
+import uuid
+import sys
+
+from collections import deque
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
+from web import workflow_models as wm
+from web import models
+from web import scheduler
+from web import node_types as nt
+from web import providers
+from web import inline_nodes
+
+# Extensions mapped to port types for output file matching
+PORT_TYPE_EXTENSIONS = {
+    "stl": [".stl"],
+    "mesh": [".stl", ".obj", ".glb", ".3mf"],
+    "image": [".png", ".jpg", ".jpeg", ".webp", ".bmp"],
+    "json": [".json"],
+    "file": [".stl", ".obj", ".glb", ".3mf", ".png", ".jpg", ".jpeg", ".json", ".txt"],
+    "dir": None,
+    "any": None,
+}
+
+
+class WorkflowEngine:
+    def __init__(self):
+        self.event_queues: dict[str, asyncio.Queue] = {}
+        self.cancel_flags: dict[str, bool] = {}
+        self.running_instances: dict[str, asyncio.Task] = {}
+
+    def get_event_queue(self, instance_id: str) -> asyncio.Queue:
+        if instance_id not in self.event_queues:
+            self.event_queues[instance_id] = asyncio.Queue()
+        return self.event_queues[instance_id]
+
+    async def _emit(self, instance_id: str, event: str, data: dict):
+        q = self.get_event_queue(instance_id)
+        await q.put({"event": event, "data": data})
+
+    async def run(self, workflow_id: str, instance_id: str):
+        inst_task = asyncio.create_task(self._execute(workflow_id, instance_id))
+        self.running_instances[instance_id] = inst_task
+        asyncio.create_task(self._monitor_instance(instance_id, inst_task))
+
+    async def cancel(self, instance_id: str):
+        inst = wm.get_workflow_instance(instance_id)
+        if not inst:
+            return False
+        if inst["status"] == "running":
+            self.cancel_flags[instance_id] = True
+            for nr in inst.get("node_runs", []):
+                if nr.get("task_id") and nr["status"] == "running":
+                    await scheduler.get_scheduler().cancel(nr["task_id"])
+        return True
+
+    async def replay(self, workflow_id: str, instance_id: str, from_node: str):
+        """Replay a workflow from a specific node, preserving upstream context."""
+        inst = wm.get_workflow_instance(instance_id)
+        if not inst:
+            raise ValueError("Instance not found")
+
+        ctx = inst.get("context", {})
+
+        # Determine which nodes are before the replay point
+        wf_def = wm.get_workflow_definition(workflow_id)
+        graph = wf_def["graph"]
+        nodes = graph.get("nodes", [])
+        edges = self._normalize_edges(graph)
+
+        node_map = {str(n["id"]): n for n in nodes}
+        adj, in_degree = self._build_dag(node_map, edges)
+
+        # Topological sort to find execution order
+        topsort = self._topsort(node_map, adj, in_degree)
+        if from_node not in topsort:
+            raise ValueError(f"Node {from_node} not found in workflow")
+
+        replay_idx = topsort.index(from_node)
+
+        # Nodes before the replay point — keep their context
+        # Nodes at and after — clear context and re-execute
+        preserved_ctx = {}
+        for nid in topsort[:replay_idx]:
+            if nid in ctx:
+                preserved_ctx[nid] = ctx[nid]
+
+        # Archive previous round outputs for nodes being replayed
+        round_num = (inst.get("round", 0) or 0) + 1
+
+        # Mark existing instance as being replayed
+        wm.update_workflow_instance(instance_id, status="running", current_node=None,
+                                     finished_at=None, round_num=round_num)
+
+        # Reset node runs for nodes at and after replay point
+        for nid in topsort[replay_idx:]:
+            node_runs = inst.get("node_runs", [])
+            for nr in node_runs:
+                if str(nr.get("node_id")) == nid:
+                    wm.update_node_run(nr["id"], status="pending", task_id=None,
+                                        error=None, finished_at=None)
+
+        # Execute from replay point
+        inst_task = asyncio.create_task(
+            self._execute(workflow_id, instance_id, start_node=from_node,
+                          preserved_ctx=preserved_ctx, round_num=round_num)
+        )
+        self.running_instances[instance_id] = inst_task
+        asyncio.create_task(self._monitor_instance(instance_id, inst_task))
+
+        return round_num
+
+    def _normalize_edges(self, graph: dict) -> list[dict]:
+        """Normalize edges from LiteGraph 'links' array format or legacy 'edges' format.
+
+        LiteGraph serializes: {"links": [[linkId, srcId, srcSlot, tgtId, tgtSlot, type], ...]}
+        Engine expects:       [{"source": srcId, "source_port": srcSlot, "target": tgtId, "target_port": tgtSlot}, ...]
+        """
+        edges = graph.get("edges", [])
+        if edges:
+            return edges
+
+        links = graph.get("links", [])
+        if not links:
+            return []
+
+        normalized = []
+        for link in links:
+            if not isinstance(link, (list, tuple)) or len(link) < 5:
+                continue
+            # link format: [linkId, srcNodeId, srcSlotIdx, tgtNodeId, tgtSlotIdx, linkType?]
+            normalized.append({
+                "source": str(link[1]),
+                "source_port": link[2],
+                "target": str(link[3]),
+                "target_port": link[4],
+            })
+        return normalized
+
+    def _build_dag(self, node_map, edges):
+        adj = {nid: [] for nid in node_map}
+        in_degree = {nid: 0 for nid in node_map}
+        for e in edges:
+            src = str(e.get("source") or e.get("source_node"))
+            tgt = str(e.get("target") or e.get("target_node"))
+            if src in adj and tgt in in_degree:
+                adj[src].append(tgt)
+                in_degree[tgt] += 1
+        return adj, in_degree
+
+    def _topsort(self, node_map, adj, in_degree):
+        queue = deque([nid for nid, deg in in_degree.items() if deg == 0])
+        topsort = []
+        while queue:
+            nid = queue.popleft()
+            topsort.append(nid)
+            for neighbor in adj.get(nid, []):
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+        return topsort if len(topsort) == len(node_map) else None
+
+    def _build_port_edge_map(self, node_map, edges):
+        """Build edge_map: (target_nid, target_port_name) → (source_nid, source_port_name).
+
+        Translates Litegraph.js numeric slot indices to port names using node_types.
+        """
+        edge_map = {}
+        for e in edges:
+            src_nid = str(e.get("source") or e.get("source_node"))
+            tgt_nid = str(e.get("target") or e.get("target_node"))
+            src_slot = e.get("source_port", 0)
+            tgt_slot = e.get("target_port", 0)
+
+            if src_nid not in node_map or tgt_nid not in node_map:
+                continue
+
+            src_type = node_map[src_nid].get("type", "")
+            tgt_type = node_map[tgt_nid].get("type", "")
+
+            src_nt = nt.get_node_type(src_type)
+            tgt_nt = nt.get_node_type(tgt_type)
+
+            src_port_name = None
+            if src_nt and isinstance(src_slot, int) and src_slot < len(src_nt.outputs):
+                src_port_name = src_nt.outputs[src_slot].name
+            elif isinstance(src_slot, str):
+                src_port_name = src_slot
+
+            tgt_port_name = None
+            if tgt_nt and isinstance(tgt_slot, int) and tgt_slot < len(tgt_nt.inputs):
+                tgt_port_name = tgt_nt.inputs[tgt_slot].name
+            elif isinstance(tgt_slot, str):
+                tgt_port_name = tgt_slot
+
+            if src_port_name is not None and tgt_port_name is not None:
+                edge_map[(tgt_nid, tgt_port_name)] = (src_nid, src_port_name)
+
+        return edge_map
+
+    def _build_upstream(self, nid, ctx, edge_map):
+        """Build a flat index of all upstream values available to a node.
+
+        Returns dict with qualified keys like:
+          "1.text"        — upstream node's direct output
+          "2.image"       — upstream node's direct output
+          "2._params.size" — upstream node's resolved param
+        """
+        cascade = {}
+        visited = set()
+
+        # BFS upstream through edge_map
+        queue = []
+        for (tgt_id, tgt_port), (src_id, src_port) in edge_map.items():
+            if tgt_id == str(nid) and src_id not in visited:
+                visited.add(src_id)
+                queue.append(str(src_id))
+
+        while queue:
+            src_id = queue.pop(0)
+            src_ctx = ctx.get(src_id, {})
+            if not isinstance(src_ctx, dict):
+                continue
+
+            # Index direct outputs (skip _internal keys for display, but include for machine use)
+            for key, val in src_ctx.items():
+                if not key.startswith("_"):
+                    cascade[f"{src_id}.{key}"] = val
+
+            # Index _params
+            params = src_ctx.get("_params", {})
+            if isinstance(params, dict):
+                for pk, pv in params.items():
+                    cascade[f"{src_id}._params.{pk}"] = pv
+
+            # Index _inputs
+            inputs = src_ctx.get("_inputs", {})
+            if isinstance(inputs, dict):
+                for ik, iv in inputs.items():
+                    cascade[f"{src_id}._inputs.{ik}"] = iv
+
+            # Continue BFS — find nodes upstream of src_id
+            for (tgt_id, tgt_port), (s_id, s_port) in edge_map.items():
+                if tgt_id == src_id and s_id not in visited:
+                    visited.add(s_id)
+                    queue.append(str(s_id))
+
+        return cascade
+
+    def _enrich_ctx(self, nid, resolved_inputs, resolved_params, ctx, edge_map):
+        """After node execution, write cascade metadata into ctx[nid]."""
+        if str(nid) not in ctx:
+            ctx[str(nid)] = {}
+
+        node_ctx = ctx[str(nid)]
+        node_ctx["_inputs"] = dict(resolved_inputs or {})
+        node_ctx["_params"] = dict(resolved_params or {})
+
+        # Build upstream: merge all direct upstream node contexts
+        upstream = {}
+        for (tgt_id, tgt_port), (src_id, src_port) in edge_map.items():
+            if tgt_id == str(nid):
+                src_ctx = ctx.get(str(src_id), {})
+                if isinstance(src_ctx, dict):
+                    upstream[str(src_id)] = dict(src_ctx)
+                # Also pull in that source's own _upstream
+                src_upstream = src_ctx.get("_upstream", {})
+                if isinstance(src_upstream, dict):
+                    for uk, uv in src_upstream.items():
+                        if uk not in upstream:
+                            upstream[uk] = dict(uv) if isinstance(uv, dict) else uv
+
+        node_ctx["_upstream"] = upstream
+
+    async def _execute(self, workflow_id, instance_id, start_node=None,
+                        preserved_ctx=None, round_num=0):
+        """Execute a workflow instance. If start_node is set, skip nodes before it."""
+        wf_def = wm.get_workflow_definition(workflow_id)
+        if not wf_def:
+            await self._emit(instance_id, "error", {"error": "Workflow not found"})
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+            await self._emit(instance_id, "done", {})
+            return
+
+        graph = wf_def["graph"]
+        nodes = graph.get("nodes", [])
+        edges = self._normalize_edges(graph)
+
+        if not nodes:
+            await self._emit(instance_id, "error", {"error": "Workflow has no nodes"})
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+            await self._emit(instance_id, "done", {})
+            return
+
+        node_map = {str(n["id"]): n for n in nodes}
+        adj, in_degree = self._build_dag(node_map, edges)
+        topsort = self._topsort(node_map, adj, in_degree)
+
+        if topsort is None:
+            await self._emit(instance_id, "error", {"error": "Workflow contains a cycle"})
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+            await self._emit(instance_id, "done", {})
+            return
+
+        # Build port edge map using node type definitions
+        edge_map = self._build_port_edge_map(node_map, edges)
+
+        # Runtime context: node_id → {port_name: file_path}
+        ctx = preserved_ctx or {}
+        # Merge persisted context (includes _inputs, _work_dir from server)
+        inst = wm.get_workflow_instance(instance_id)
+        if inst:
+            persisted = inst.get("context", {})
+            if persisted:
+                ctx.update(persisted)
+        if round_num:
+            ctx["_round"] = round_num
+
+        # Determine execution list
+        if start_node and start_node in topsort:
+            exec_list = topsort[topsort.index(start_node):]
+        else:
+            exec_list = topsort
+
+        total = len(topsort)
+        offset = topsort.index(exec_list[0]) if exec_list else 0
+
+        for idx, nid in enumerate(exec_list):
+            if self.cancel_flags.get(instance_id):
+                wm.update_workflow_instance(instance_id, status="cancelled", finished_at=time.time())
+                await self._emit(instance_id, "cancelled", {"message": "Workflow cancelled"})
+                return
+
+            node = node_map[nid]
+            node_type = node.get("type", "").replace("wf_", "", 1) if node.get("type", "").startswith("wf_") else node.get("type", "")
+            nt_def = nt.get_node_type(node_type)
+            # LiteGraph serializes configured values under "properties"
+            node_params = dict(node.get("params", {}))
+            if not node_params:
+                props = node.get("properties", {})
+                if isinstance(props, dict):
+                    node_params = dict(props)
+            node_label = node.get("title", node_type)
+
+            wm.update_workflow_instance(instance_id, current_node=nid)
+            nr = wm.create_node_run(instance_id, nid)
+
+            await self._emit(instance_id, "node_start", {
+                "node_id": nid,
+                "node_type": node_type,
+                "label": node_label,
+                "round": round_num,
+                "progress": {"current": offset + idx, "total": total},
+            })
+
+            try:
+                if node_type == "file_input":
+                    await self._run_file_input(nid, node, node_params, ctx, instance_id, nr["id"])
+                elif node_type == "text_input":
+                    await self._run_text_input(nid, node, node_params, ctx, instance_id, nr["id"])
+                elif node_type == "text_to_image":
+                    await self._run_text2img(nid, node, node_params, edge_map, ctx, instance_id, nr["id"])
+                elif node_type == "output_file":
+                    await self._run_output(nid, node, edge_map, ctx, instance_id, nr["id"])
+                elif node_type in nt.node_pipeline_map():
+                    await self._run_pipeline(nid, node, node_type, node_params, edge_map, ctx, instance_id, nr["id"], round_num)
+                elif nt_def and nt_def.inline and node_type in inline_nodes.INLINE_HANDLERS:
+                    await self._run_inline(nid, node, node_type, node_params, ctx, instance_id, nr["id"], node_map, edges)
+                else:
+                    raise ValueError(f"Unknown node type: {node_type}")
+
+                # Cascade: enrich context with inputs/params/upstream for downstream nodes
+                self._enrich_ctx(nid, {}, node_params, ctx, edge_map)
+
+                wm.update_node_run(nr["id"], status="completed", finished_at=time.time())
+                await self._emit(instance_id, "node_complete", {
+                    "node_id": nid,
+                    "node_type": node_type,
+                    "outputs": ctx.get(nid, {}),
+                    "round": round_num,
+                })
+            except Exception as e:
+                error_msg = str(e)
+                wm.update_node_run(nr["id"], status="failed", error=error_msg, finished_at=time.time())
+                await self._emit(instance_id, "node_error", {
+                    "node_id": nid,
+                    "node_type": node_type,
+                    "error": error_msg,
+                })
+                wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+                wm.update_workflow_context(instance_id, ctx)
+                await self._emit(instance_id, "done", {})
+                return
+
+        wm.update_workflow_instance(instance_id, status="completed", current_node=None, finished_at=time.time())
+        wm.update_workflow_context(instance_id, ctx)
+        await self._emit(instance_id, "workflow_complete", {"context": ctx, "round": round_num})
+        await self._emit(instance_id, "done", {})
+
+    async def _run_text2img(self, nid, node, node_params, edge_map, ctx, instance_id, node_run_id):
+        cascade = self._build_upstream(str(nid), ctx, edge_map)
+        runtime_params = (ctx.get("_node_params", {}) or {}).get(str(nid), {})
+        prompt = self._resolve_input(nid, "prompt", edge_map, ctx) or runtime_params.get("prompt") or node_params.get("prompt", "")
+        if not prompt:
+            raise ValueError("No prompt provided for text_to_image")
+
+        size = runtime_params.get("size") or node_params.get("size", "2048x2048")
+        provider_id = runtime_params.get("provider") or node_params.get("provider", "volcengine")
+
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "percent": 10, "message": f"Generating image with {provider_id}...",
+        })
+
+        prov = providers.get_provider(provider_id)
+        if not prov:
+            configs = providers.load_providers_config()
+            cfg = next((c for c in configs if c["id"] == provider_id), None)
+            if cfg and not cfg.get("enabled", True):
+                raise ValueError(f"Provider '{provider_id}' is disabled. Enable it in config/providers.yaml")
+            if cfg and not providers.is_key_configured(cfg.get("api_key", "")):
+                raise ValueError(f"Provider '{provider_id}' API key not configured. Set the environment variable in config/providers.yaml")
+            raise ValueError(f"Provider '{provider_id}' not available")
+
+        result = await prov.generate(prompt, size)
+        ctx[nid] = {"image": result.image_path, "_inputs": {"prompt": prompt}, "_params": {"size": size, "provider": provider_id}}
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "percent": 100, "message": "Image generated",
+        })
+
+    async def _run_inline(self, nid, node, node_type, node_params, ctx, instance_id, node_run_id, node_map, edges):
+        handler = inline_nodes.INLINE_HANDLERS[node_type]
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "percent": 10, "message": f"Running {node_type}...",
+        })
+        result = await handler(nid, node, node_params, ctx, instance_id, node_run_id, self, node_map, edges)
+        # Attach cascade metadata if not set by handler
+        node_data = ctx.get(str(nid), {})
+        if "_inputs" not in node_data:
+            node_data["_inputs"] = {}
+        if "_params" not in node_data:
+            node_data["_params"] = dict(node_params)
+        ctx[str(nid)] = node_data
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "percent": 100, "message": f"{node_type} complete",
+        })
+        return result
+
+    async def _run_file_input(self, nid, node, node_params, ctx, instance_id, node_run_id):
+        inputs = ctx.get("_inputs", {}).get(nid, {})
+        src_path = inputs.get("file")
+        if not src_path or not os.path.exists(str(src_path)):
+            raise ValueError(f"File input '{nid}': no file provided or file not found")
+        work_dir = ctx.get("_work_dir", "")
+        dest = os.path.join(work_dir, os.path.basename(str(src_path))) if work_dir else str(src_path)
+        if str(src_path) != dest and work_dir:
+            os.makedirs(work_dir, exist_ok=True)
+            shutil.copy2(str(src_path), dest)
+        ctx[nid] = {"file": dest, "_inputs": {"file": str(src_path)}}
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "percent": 100, "message": f"File loaded: {os.path.basename(dest)}",
+        })
+
+    async def _run_text_input(self, nid, node, node_params, ctx, instance_id, node_run_id):
+        inputs = ctx.get("_inputs", {}).get(nid, {})
+        text = inputs.get("text", "")
+        if not text:
+            raise ValueError(f"Text input '{nid}': no text provided")
+        ctx[nid] = {"text": text, "_inputs": {"text": text}}
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "percent": 100, "message": f"Text received ({len(text)} chars)",
+        })
+
+    async def _run_pipeline(self, nid, node, node_type, node_params, edge_map, ctx, instance_id, node_run_id, round_num=0):
+        # Use node type definition to determine input port requirements
+        nt_def = nt.get_node_type(node_type)
+        if not nt_def:
+            raise ValueError(f"No node type definition for: {node_type}")
+
+        # Find the primary input port (first required file-type input)
+        input_file = None
+        for port in nt_def.inputs:
+            if port.type in ("image", "stl", "mesh", "file", "any"):
+                val = self._resolve_input(nid, port.name, edge_map, ctx)
+                if val and os.path.exists(val):
+                    input_file = val
+                    break
+
+        if not input_file:
+            raise ValueError(f"No input file for node {node_type}:{nid}")
+
+        pipeline_type = nt.node_pipeline_map()[node_type]
+
+        import web.schemas as schemas
+        pt = schemas.PIPELINE_TYPES.get(pipeline_type, {})
+        # Priority: runtime overrides > editor properties > schema defaults
+        runtime_params = (ctx.get("_node_params", {}) or {}).get(str(nid), {})
+        merged_params = {}
+        for pdef in pt.get("params", []):
+            pname = pdef["name"]
+            if pname in runtime_params:
+                merged_params[pname] = runtime_params[pname]
+            elif pname in node_params:
+                merged_params[pname] = node_params[pname]
+            elif "default" in pdef:
+                merged_params[pname] = pdef["default"]
+
+        task_id = uuid.uuid4().hex[:12]
+        dir_name = models.make_task_dir_name(task_id, pipeline_type, os.path.basename(input_file))
+        task_dir = os.path.join(scheduler.TASKS_DIR, dir_name)
+        os.makedirs(task_dir, exist_ok=True)
+
+        ext = os.path.splitext(input_file)[1]
+        task_input = os.path.join(task_dir, f"input{ext}")
+        shutil.copy2(input_file, task_input)
+
+        display_name = models.generate_display_name(pipeline_type, merged_params, task_input)
+        models.create_task(task_id, pipeline_type, merged_params, task_input, display_name)
+        wm.update_node_run(node_run_id, task_id=task_id)
+
+        sched = scheduler.get_scheduler()
+        await sched.submit(task_id, pipeline_type, merged_params, task_input)
+
+        task_queue = sched.get_event_queue(task_id)
+        await self._emit(instance_id, "node_progress", {
+            "node_id": nid, "task_id": task_id, "percent": 0, "message": f"Started {pipeline_type}...",
+        })
+
+        while True:
+            if self.cancel_flags.get(instance_id):
+                await sched.cancel(task_id)
+                raise asyncio.CancelledError("Workflow cancelled")
+            try:
+                msg = await asyncio.wait_for(task_queue.get(), timeout=0.5)
+                if msg["event"] == "done":
+                    break
+                if msg["event"] in ("progress", "preview", "log"):
+                    data = dict(msg["data"])
+                    data["node_id"] = nid
+                    data["task_id"] = task_id
+                    await self._emit(instance_id, f"node_{msg['event']}", data)
+                elif msg["event"] == "error":
+                    task = models.get_task(task_id)
+                    raise RuntimeError(msg["data"].get("error", task.get("result", {}).get("error", "Task failed")))
+            except asyncio.TimeoutError:
+                continue
+
+        task = models.get_task(task_id)
+        if task["status"] == "failed":
+            error = task.get("result", {}).get("error", "Task failed")
+            raise RuntimeError(error)
+        if task["status"] == "cancelled":
+            raise asyncio.CancelledError("Task cancelled")
+
+        # Map output files to port names using node type output definitions
+        ctx[nid] = {}
+        result = task.get("result", {})
+        output_files = task.get("output_files", [])
+
+        # Build extension→port_name map from node type outputs
+        ext_port_map = {}
+        for port in nt_def.outputs:
+            exts = PORT_TYPE_EXTENSIONS.get(port.type, [])
+            if exts:
+                for file_ext in exts:
+                    ext_port_map.setdefault(file_ext, port.name)
+
+        for of in output_files:
+            path = of["path"]
+            if not os.path.exists(path):
+                continue
+            file_ext = os.path.splitext(path)[1].lower()
+            if file_ext in ext_port_map:
+                port_name = ext_port_map[file_ext]
+                if port_name not in ctx[nid]:
+                    ctx[nid][port_name] = path
+                    continue
+            # Fallback: assign by first unmatched port of matching type
+            for port in nt_def.outputs:
+                if port.name not in ctx[nid]:
+                    exts = PORT_TYPE_EXTENSIONS.get(port.type, [])
+                    if exts is None or file_ext in exts:
+                        ctx[nid][port.name] = path
+                        break
+
+        # Supplement from result dict using node type outputs
+        result_path_keys = {
+            "stl": ["output", "stl", "colored_obj"],
+            "3mf": ["output_3mf"],
+            "color_map": ["color_map"],
+            "grid": ["grid"],
+            "repaired_mesh": ["final_output"],
+            "mesh": ["output", "stl"],
+            "preview": ["preview"],
+            "views_dir": ["views_dir"],
+            "color_preview": ["color_preview"],
+        }
+        for port in nt_def.outputs:
+            if port.name not in ctx[nid]:
+                for rk in result_path_keys.get(port.name, []):
+                    val = result.get(rk)
+                    if val and isinstance(val, str):
+                        if port.type == "dir":
+                            if os.path.isdir(val):
+                                ctx[nid][port.name] = val
+                        elif os.path.exists(val):
+                            ctx[nid][port.name] = val
+                        break
+
+        # Attach resolved params for cascade
+        ctx[nid]["_params"] = merged_params
+        ctx[nid]["_inputs"] = {"file": input_file} if input_file else {}
+
+    async def _run_output(self, nid, node, edge_map, ctx, instance_id, node_run_id):
+        input_path = self._resolve_input(nid, "file", edge_map, ctx)
+        if input_path:
+            ctx[nid] = {"file": input_path, "_inputs": {"file": input_path}}
+        else:
+            ctx[nid] = {}
+
+    def _resolve_input(self, node_id, port_name, edge_map, ctx):
+        """Resolve an input port value from upstream nodes or external inputs."""
+        key = (node_id, port_name)
+        if key in edge_map:
+            src_node, src_port = edge_map[key]
+            src_ctx = ctx.get(src_node, {})
+            val = src_ctx.get(src_port)
+            if val is not None:
+                return val
+        # Fallback: check externally provided inputs
+        ext = ctx.get("_inputs", {}).get(node_id, {})
+        return ext.get(port_name)
+
+    async def _monitor_instance(self, instance_id: str, task: asyncio.Task):
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            await self._emit(instance_id, "error", {"error": str(e)})
+        finally:
+            try:
+                await self._emit(instance_id, "done", {})
+            except Exception:
+                pass
+
+
+_engine: WorkflowEngine = None
+
+
+def get_engine() -> WorkflowEngine:
+    global _engine
+    if _engine is None:
+        _engine = WorkflowEngine()
+    return _engine
