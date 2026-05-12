@@ -209,31 +209,28 @@
 <div class="card good">
 <h4>Windows (PowerShell)</h4>
 <pre><code><span class="cm"># 默认启动 (127.0.0.1:8080, 自动打开浏览器)</span>
-<span class="fn">.\launch.ps1</span>
+<span class="fn">python start-server.py</span>
 
 <span class="cm"># 指定端口</span>
-<span class="fn">.\launch.ps1</span> <span class="opt">-Port</span> <span class="val">9090</span>
+<span class="fn">python start-server.py</span> <span class="opt">--port</span> <span class="val">9090</span>
 
 <span class="cm"># LAN 局域网访问</span>
-<span class="fn">.\launch.ps1</span> <span class="opt">-Host</span> <span class="val">0.0.0.0</span> <span class="opt">-Port</span> <span class="val">8080</span>
+<span class="fn">python start-server.py</span> <span class="opt">--lan</span>
 
 <span class="cm"># 不自动打开浏览器</span>
-<span class="fn">.\launch.ps1</span> <span class="opt">-NoBrowser</span></code></pre>
+<span class="fn">python start-server.py</span> <span class="opt">--no-browser</span></code></pre>
 </div>
 
 <div class="card">
 <h4>Linux / macOS</h4>
 <pre><code><span class="cm"># 默认启动</span>
-<span class="fn">./launch.sh</span>
+<span class="fn">python start-server.py</span>
 
 <span class="cm"># 指定端口 + LAN 访问</span>
-<span class="fn">./launch.sh</span> <span class="opt">--host</span> <span class="val">0.0.0.0</span> <span class="opt">--port</span> <span class="val">8080</span>
+<span class="fn">python start-server.py</span> <span class="opt">--port</span> <span class="val">9090</span> <span class="opt">--lan</span>
 
 <span class="cm"># 不自动打开浏览器</span>
-<span class="fn">./launch.sh</span> <span class="opt">--no-browser</span>
-
-<span class="cm"># 查看帮助</span>
-<span class="fn">./launch.sh</span> <span class="opt">--help</span></code></pre>
+<span class="fn">python start-server.py</span> <span class="opt">--no-browser</span></code></pre>
 </div>
 
 <h3>功能概览</h3>

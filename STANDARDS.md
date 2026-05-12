@@ -301,7 +301,7 @@ python scripts/image-to-relief.py photo.jpg --lithophane --colors 4
 python scripts/mesh-repair.py model.glb --output stl --scale 0.5
 
 # Web
-.\launch.ps1 -Port 8080
+python start-server.py
 curl http://127.0.0.1:8080/api/tasks
 
 # 测试

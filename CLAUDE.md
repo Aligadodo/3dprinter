@@ -38,7 +38,7 @@ Hunyuan3D-2.1 on 6GB: model loads 6.86GB, exceeding GPU by ~0.9GB, spills to sha
 ├── models/                   # TripoSR weights (model.ckpt 1.6GB, config.yaml)
 ├── config/                   # Model configs
 ├── triposr/src/              # TripoSR inference code (tsr/ package)
-├── launch.ps1 / launch.sh  # Web server launcher (cross-platform)
+├── start-server.py      # Web server launcher (Python, cross-platform)
 ├── docs/
 │   ├── index.html            # Complete usage guide (dark theme, sidebar nav)
 │   ├── dev-journey.html      # 0-to-1 development story
@@ -254,18 +254,13 @@ python scripts/mesh-to-views.py model.stl --resolution 2048 --no-grid
 Web-based task management interface at `web/`.
 
 ```bash
-# Windows
-.\launch.ps1                        # default 127.0.0.1:8080
-.\launch.ps1 -Port 9090
-.\launch.ps1 -Host 0.0.0.0          # LAN access
-
-# Linux/macOS
-./launch.sh                         # default 127.0.0.1:8080
-./launch.sh --port 9090
-./launch.sh --host 0.0.0.0 --port 8080
+python start-server.py              # default 127.0.0.1:8080
+python start-server.py --port 9090   # custom port
+python start-server.py --lan        # LAN access
+python start-server.py --no-browser # skip browser auto-open
 ```
 
-The launcher auto-detects Python (project venv → system), passes arguments to `python -m web.server`, and opens the browser by default. Use `--no-browser` to skip.
+The launcher checks dependencies, auto-detects network, and opens the browser by default.
 
 Architecture: FastAPI + vanilla JS SPA (ES modules, zero build) + SSE + SQLite. The frontend is modular — 4 CSS files, 8 lazy-loaded page modules, JSON-based i18n (zh/en). Zero modifications to existing CLI scripts — web server calls them via subprocess.
 

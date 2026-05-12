@@ -6,19 +6,18 @@
 
 ### Web 管理平台（推荐）
 
-**Windows** — 双击 `launch.ps1` 或在终端运行：
+**Windows** — 双击 `start-server.py` 或在终端运行：
 ```powershell
-.\launch.ps1                     # 默认 127.0.0.1:8080
-.\launch.ps1 -Port 9090          # 指定端口
-.\launch.ps1 -Host 0.0.0.0       # LAN 访问
-.\launch.ps1 -NoBrowser          # 不自动打开浏览器
+python start-server.py              # 默认 127.0.0.1:8080
+python start-server.py --port 9090  # 指定端口
+python start-server.py --lan        # LAN 访问
 ```
 
 **Linux/macOS** —
 ```bash
-./launch.sh                      # 默认 127.0.0.1:8080
-./launch.sh --port 9090
-./launch.sh --host 0.0.0.0 --port 8080
+python start-server.py              # 默认 127.0.0.1:8080
+python start-server.py --port 9090
+python start-server.py --lan
 ```
 
 浏览器打开 [http://127.0.0.1:8080](http://127.0.0.1:8080)，通过 Web 界面提交任务、实时监控进度、管理输出文件、编辑工作流。
@@ -107,10 +106,8 @@ python scripts/mesh-to-views.py model.glb
 │   └── views/           # 六视图 PNG
 ├── docs/
 │   └── index.html       # 完整使用指南（暗色主题，侧栏导航）
-├── launch.ps1           # Web 平台启动器 (Windows)
-├── launch.sh            # Web 平台启动器 (Linux/macOS)
-├── start-server.py      # 旧启动器（保留兼容）
-├── start-server.bat     # 旧启动脚本（保留兼容）
+├── start-server.py      # Web 平台启动器
+├── start-server.bat
 ├── CLAUDE.md            # Claude Code 协作指南
 └── README.md            # 本文件
 ```
@@ -146,9 +143,12 @@ pip install fastapi uvicorn python-multipart
 
 - [完整使用指南](docs/index.html) — 所有脚本的详细参数和示例
 - [开发历程](docs/dev-journey.html) — 项目从 0 到 1 的完整开发故事
-- [Web 平台设计文档](web/DESIGN.md) — 架构、API、数据模型、设计决策
-- [管线架构文档](pipeline-architecture.md) — 4 阶段流水线详解
-- [CLAUDE.md](CLAUDE.md) — Claude Code 协作指南
+- [Web 平台设计文档](docs/web-design.md) — 架构、API、数据模型、设计决策
+- [管线架构文档](docs/pipeline-architecture.md) — 4 阶段流水线详解
+- [环境配置](docs/environment.md) — 硬件/软件/网络环境验证记录
+- [安装指南](docs/setup-guide.md) — 从零开始配置管线
+- [项目分析报告](docs/project-analysis-report.md) — Bug 分析 + 修复记录
+- [项目标准清单](STANDARDS.md) — 业务目标、技术规范、质量 Checklist
 
 ## 目标打印机
 

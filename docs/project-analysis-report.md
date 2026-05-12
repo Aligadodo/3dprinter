@@ -54,7 +54,7 @@
 ├── config/                           # 配置文件
 ├── output/                           # 生成输出
 ├── docs/                             # 文档
-└── launch.ps1/sh                     # 启动脚本
+└── start-server.py                  # 启动脚本
 ```
 
 ---
