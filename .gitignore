@@ -80,7 +80,7 @@ desktop.ini
 
 # Iteration history (local only)
 docs/iterations/.last-save-hash
-docs/iterations/2026-05-*/
+docs/iterations/2026-05-*
 
 # Build artifacts
 *.so
