@@ -288,6 +288,35 @@ INDEX.md 由系统自动更新。
 🛡️ 设计正确 — 误报或已知可接受风险
 ```
 
+### 7.4 Git 提交规范
+
+**禁止 `git push --force`**：force push 会覆盖远程历史，可能造成协作者丢失提交。应使用 `git pull --rebase` 合并远程更新，或与协作者协调后 merge。
+
+```
+# 正确：先拉取再推送
+git pull --rebase
+git push
+
+# 错误：强制覆盖远程
+git push --force
+```
+
+**提交信息规范：**
+- 首行：不超 72 字，简述本次变更内容
+- 使用中文描述，动词用现在时
+- 结尾需附 Co-Authored-By
+
+**Commit message 格式：**
+```
+<类型>: <简短描述>
+
+<详细说明（可选）>
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
+```
+
+类型：`feat` / `fix` / `docs` / `refactor` / `test` / `chore`
+
 ---
 
 ## 八、快捷参考
