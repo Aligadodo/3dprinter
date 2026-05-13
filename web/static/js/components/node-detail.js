@@ -14,35 +14,43 @@
  *   └──────────────────────────────────┘
  */
 
-import { escHtml } from '../utils.js';
+import { escHtml, cacheFile, getFile, showFileModal, showCtxMenu } from '../utils.js';
 import { t } from '../i18n.js';
 
 // ── URL construction ──
 function fileToUrl(filePath) {
   if (!filePath) return '';
-  if (filePath.startsWith('/api/') || filePath.startsWith('http')) return filePath;
+  if (filePath.startsWith('/api/') || filePath.startsWith('http') || filePath.startsWith('blob:')) return filePath;
   const n = filePath.replace(/\\/g, '/');
-  const idx = n.indexOf('/output/');
-  if (idx >= 0) return '/api/files/' + n.slice(idx + 1);
-  // Try: find a task-id segment and build from there
-  const parts = n.split('/').filter(Boolean);
-  for (let i = 0; i < parts.length; i++) {
-    if (/^[a-f0-9]{12,}$/.test(parts[i])) {
-      return '/api/files/' + parts.slice(Math.max(0, i - 1)).join('/');
-    }
+  // Find output/tasks or tasks segment — all pipeline/workflow files live under PROJECT_ROOT/...
+  const markers = ['/output/tasks/', '/tasks/', '/output/'];
+  for (const m of markers) {
+    const idx = n.indexOf(m);
+    if (idx >= 0) return '/api/files/' + n.slice(idx + 1);
   }
-  // Last resort: filename only
-  return '/api/files/' + parts[parts.length - 1];
+  // Fallback: last two segments
+  const parts = n.split('/');
+  if (parts.length > 1) return '/api/files/' + parts.slice(-2).join('/');
+  return '/api/files/' + parts[0];
 }
 
 function fileMeta(filePath) {
-  if (!filePath || typeof filePath !== 'string') return { filename: '', ext: '', isImage: false, isMesh: false, url: '' };
+  if (!filePath || typeof filePath !== 'string') return { filename: '', ext: '', isImage: false, isMesh: false, url: '', path: '', file_type: '' };
+  // Detect plain text values (not file paths) — create a blob URL for download
+  const looksLikePath = /[\/\\]/.test(filePath) || /^[A-Za-z]:/.test(filePath) || filePath.startsWith('/api/');
+  if (!looksLikePath) {
+    const blob = new Blob([filePath], {type: 'text/plain;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    return { filename: 'text.txt', ext: 'txt', isImage: false, isMesh: false, url, path: '', file_type: '.txt', isText: true };
+  }
   const filename = filePath.replace(/\\/g, '/').split('/').pop() || '';
   const ext = (filename.split('.').pop() || '').toLowerCase();
+  const file_type = ext ? '.' + ext : '';
   const isImage = ['png','jpg','jpeg','gif','webp','bmp'].includes(ext);
   const isMesh = ['stl','obj','glb','gltf','3mf','ply'].includes(ext);
   const url = fileToUrl(filePath);
-  return { filename, ext, isImage, isMesh, url };
+  const path = filePath;
+  return { filename, ext, isImage, isMesh, url, path, file_type };
 }
 
 // ── Main render ──
@@ -65,10 +73,10 @@ export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, task
 
   // Dedup: remove task files already represented in outputs
   const outputUrls = new Set(Object.values(outputMap).map(f => (f && f.url) || ''));
-  const filteredTaskFiles = taskFileList.filter(tf => {
-    const meta = fileMeta(tf.path || tf.url || '');
-    return !outputUrls.has(meta.url) && meta.url;
-  });
+  const enrichedTaskFiles = taskFileList.map(tf => {
+    if (tf.url && tf.filename) return { ...fileMeta(tf.path || ''), url: tf.url, filename: tf.filename, path: tf.path || '' };
+    return fileMeta(tf.path || tf.url || '');
+  }).filter(meta => !outputUrls.has(meta.url) && meta.url);
 
   let html = '';
 
@@ -101,14 +109,13 @@ export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, task
 
   // Right: Outputs
   html += `<div class="nd-io-col nd-outputs"><div class="nd-section-title">📤 ${t('node.outputs')}</div>`;
-  const hasOutputs = Object.keys(outputMap).length > 0 || filteredTaskFiles.length > 0;
+  const hasOutputs = Object.keys(outputMap).length > 0 || enrichedTaskFiles.length > 0;
   if (hasOutputs) {
     Object.entries(outputMap).forEach(([portName, file]) => {
       html += renderPortEntry(portName, file);
     });
-    filteredTaskFiles.forEach(tf => {
-      const meta = fileMeta(tf.path || tf.url || '');
-      html += renderPortEntry(tf.category || tf.file_type || 'file', meta);
+    enrichedTaskFiles.forEach(meta => {
+      html += renderPortEntry(meta.file_type || 'file', meta);
     });
   } else {
     html += `<div class="nd-empty-hint">${t('node.noOutputs')}</div>`;
@@ -129,18 +136,44 @@ export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, task
   return `<div class="nd-panel">${html}</div>`;
 }
 
-// ── Port entry: thumbnail + filename + download ──
+// Escape a value for embedding in a JS string literal inside an HTML attribute.
+// Must run AFTER escHtml — backslashes first, then quotes.
+function escJS(v) {
+  return v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+const UTILS = '/static/js/utils.js';
+
+// ── Port entry: thumbnail + filename + file actions ──
 function renderPortEntry(portName, file) {
   if (!file) return '';
   const f = typeof file === 'string' ? fileMeta(file) : file;
   if (!f.url && !f.path) return '';
 
+  // Cache file for context menu and file modal
+  const fileObj = {
+    filename: f.filename || '',
+    path: f.path || '',
+    url: f.url || '',
+    file_type: f.file_type || '',
+    ext: f.ext || '',
+    isImage: f.isImage,
+    isMesh: f.isMesh,
+    isText: f.isText,
+  };
+  const fid = cacheFile(fileObj);
+  const fileUrl = escJS(f.url || '');
+  const fileName = escJS(f.filename || '');
+  const filePath = escJS(f.path || '');
+  const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost' || location.hostname === '::1';
+
   let inner = '';
 
   if (f.isImage && f.url) {
     inner += `<img src="${f.url}" alt="${escHtml(f.filename)}" class="nd-thumb" loading="lazy"
-      onclick="import('../utils.js').then(m=>m.showImageModal('${f.url.replace(/'/g, "\\\'")}'))"
+      onclick="event.stopPropagation();import('${UTILS}').then(m=>m.showImageModal('${fileUrl}'))"
       title="${escHtml(f.filename)}">`;
+  } else if (f.isText) {
+    inner += `<div class="nd-file-icon nd-icon-file">📝</div>`;
   } else if (f.isMesh) {
     inner += `<div class="nd-file-icon nd-icon-mesh">📦</div>`;
   } else {
@@ -150,14 +183,18 @@ function renderPortEntry(portName, file) {
   inner += `<div class="nd-port-label">${escHtml(portName)}</div>`;
   inner += `<div class="nd-filename" title="${escHtml(f.filename)}">${escHtml(f.filename)}</div>`;
 
-  if (f.url) {
-    inner += `<div class="nd-actions">
-      ${f.isImage ? `<button class="btn btn-xs" onclick="event.stopPropagation();import('../utils.js').then(m=>m.showImageModal('${f.url.replace(/'/g, "\\\'")}'))">🔍</button>` : ''}
-      <a href="${f.url}" download class="btn btn-xs" onclick="event.stopPropagation()">⬇ ${t('node.download')}</a>
-    </div>`;
-  }
+  // Action buttons
+  const toastCopied = escJS(t('ctx.copied'));
+  inner += `<div class="nd-actions">
+    <button class="btn btn-xs nd-act-btn" title="${escHtml(t('ctx.open'))}" onclick="event.stopPropagation();import('${UTILS}').then(m=>m.showFileModal('${fid}'))">📄</button>
+    ${f.url ? `<a href="${f.url}" download="${escHtml(f.filename||'file')}" class="btn btn-xs nd-act-btn" onclick="event.stopPropagation()" title="${escHtml(t('ctx.download'))}">⬇</a>` : ''}
+    ${filePath ? `<button class="btn btn-xs nd-act-btn" title="${escHtml(t('ctx.copyPath'))}" onclick="event.stopPropagation();navigator.clipboard.writeText('${filePath}').then(()=>import('${UTILS}').then(m=>m.toast('${toastCopied}','success')))">📋</button>` : ''}
+    ${isLocal && filePath ? `<button class="btn btn-xs nd-act-btn" title="${escHtml(t('ctx.openFolder'))}" onclick="event.stopPropagation();fetch('/api/open-path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:'${filePath}',action:'folder'})}).catch(e=>import('${UTILS}').then(m=>m.toast(e.message,'error')))">📂</button>` : ''}
+  </div>`;
 
-  return `<div class="nd-port-entry">${inner}</div>`;
+  return `<div class="nd-port-entry" data-fid="${fid}"
+    onclick="import('${UTILS}').then(m=>m.showFileModal('${fid}'))"
+    oncontextmenu="event.preventDefault();event.stopPropagation();import('${UTILS}').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">${inner}</div>`;
 }
 
 // ── Parameters table ──
@@ -239,13 +276,15 @@ function normalizePortMap(raw) {
     if (typeof val === 'string') {
       map[port] = fileMeta(val);
     } else if (typeof val === 'object') {
+      const ext = val.ext || ((val.filename || '').split('.').pop() || '').toLowerCase();
       map[port] = {
         path: val.path || '',
         filename: val.filename || '',
+        file_type: val.file_type || (ext ? '.' + ext : ''),
         url: val.url || fileToUrl(val.path || ''),
         isImage: !!val.isImage,
         isMesh: !!val.isMesh,
-        ext: val.ext || '',
+        ext: ext,
       };
     }
   });

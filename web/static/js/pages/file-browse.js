@@ -36,7 +36,7 @@ export default async function renderBrowse(main) {
       const fileUrl = f.url || '#';
       const fileName = f.filename || f.path.split(/[\\/]/).pop();
       const fid = cacheFile(f);
-      return `<div class="browse-card file-card" data-fid="${fid}" onclick="import('../utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('../utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">
+      return `<div class="browse-card file-card" data-fid="${fid}" onclick="import('/static/js/utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('/static/js/utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">
           ${isImg ? `<img src="${fileUrl}" alt="${fileName}" loading="lazy">`
             : `<div style="height:140px;display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--fg2)">&#128736;</div>`}
           <div class="file-info">

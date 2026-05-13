@@ -36,6 +36,33 @@ PORT_TYPE_EXTENSIONS = {
     "any": None,
 }
 
+# File extension sets for input validation against port types
+_PORT_EXTENSIONS = {
+    "image": {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"},
+    "stl": {".stl"},
+    "mesh": {".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply"},
+    "file": {".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply",
+             ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".json", ".txt"},
+}
+
+
+def _validate_file_for_port(file_path: str, port_type: str):
+    """Check if a file's extension matches the expected port type.
+    Returns a warning string if mismatched, or None if compatible."""
+    if not file_path or not port_type:
+        return None
+    if port_type in ("*", "any", "string", "dir"):
+        return None
+    ext = os.path.splitext(file_path)[1].lower()
+    expected = _PORT_EXTENSIONS.get(port_type)
+    if expected is None:
+        return None  # Unknown port type — allow
+    if ext not in expected:
+        expected_list = sorted(expected)
+        return (f"File '{os.path.basename(file_path)}' (extension {ext}) may not be "
+                f"compatible with port type '{port_type}'. Expected: {expected_list}")
+    return None
+
 
 class WorkflowEngine:
     def __init__(self):
@@ -479,6 +506,13 @@ class WorkflowEngine:
         text = inputs.get("text", "")
         if not text:
             raise ValueError(f"Text input '{nid}': no text provided")
+        # Persist text as a downloadable .txt file
+        work_dir = ctx.get("_work_dir", "")
+        if work_dir:
+            text_path = os.path.join(work_dir, f"prompt_{nid}.txt")
+            os.makedirs(work_dir, exist_ok=True)
+            with open(text_path, "w", encoding="utf-8") as f:
+                f.write(text)
         ctx[nid] = {"text": text, "_inputs": {"text": text}}
         await self._emit(instance_id, "node_progress", {
             "node_id": nid, "percent": 100, "message": f"Text received ({len(text)} chars)",
@@ -492,15 +526,24 @@ class WorkflowEngine:
 
         # Find the primary input port (first required file-type input)
         input_file = None
+        resolved_port_type = None
         for port in nt_def.inputs:
             if port.type in ("image", "stl", "mesh", "file", "any"):
                 val = self._resolve_input(nid, port.name, edge_map, ctx)
                 if val and os.path.exists(val):
                     input_file = val
+                    resolved_port_type = port.type
                     break
 
         if not input_file:
             raise ValueError(f"No input file for node {node_type}:{nid}")
+
+        # Validate file extension against expected port type (warn only, don't block)
+        warning = _validate_file_for_port(input_file, resolved_port_type)
+        if warning:
+            await self._emit(instance_id, "node_progress", {
+                "node_id": nid, "message": f"⚠ {warning}",
+            })
 
         pipeline_type = nt.node_pipeline_map()[node_type]
 
@@ -632,16 +675,35 @@ class WorkflowEngine:
             ctx[nid] = {}
 
     def _resolve_input(self, node_id, port_name, edge_map, ctx):
-        """Resolve an input port value from upstream nodes or external inputs."""
-        key = (node_id, port_name)
+        """Resolve an input port value from upstream nodes or external inputs.
+
+        Priority: runtime node_inputs > saved edges > external inputs.
+        """
+        nid = str(node_id)
+
+        # 1. Runtime edge overrides (from run dialog dropdowns)
+        node_inputs = ctx.get("_node_inputs", {})
+        if nid in node_inputs and port_name in node_inputs[nid]:
+            override = node_inputs[nid][port_name]
+            src_node = str(override.get("source_node", ""))
+            src_port = override.get("source_port", "")
+            if src_node and src_port:
+                src_ctx = ctx.get(src_node, {})
+                val = src_ctx.get(src_port)
+                if val is not None:
+                    return val
+
+        # 2. Saved graph edges
+        key = (nid, port_name)
         if key in edge_map:
             src_node, src_port = edge_map[key]
             src_ctx = ctx.get(src_node, {})
             val = src_ctx.get(src_port)
             if val is not None:
                 return val
-        # Fallback: check externally provided inputs
-        ext = ctx.get("_inputs", {}).get(node_id, {})
+
+        # 3. External inputs (uploaded files, text inputs)
+        ext = ctx.get("_inputs", {}).get(nid, {})
         return ext.get(port_name)
 
     async def _monitor_instance(self, instance_id: str, task: asyncio.Task):

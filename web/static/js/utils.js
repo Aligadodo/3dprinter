@@ -10,6 +10,11 @@ export function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Escape for embedding in a JS string literal inside an HTML attribute (backslashes first)
+function escJS(v) {
+  return String(v||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 // ── Formatting ──
 export function formatTime(ts) {
   if (!ts) return '';
@@ -132,18 +137,25 @@ export async function handleCtxAction(action, file) {
       }
       break;
     case 'folder':
-      await fetch('/api/open-path', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: absPath, action: 'folder' })
-      }).catch(e => toast(e.message, 'error'));
-      break;
     case 'terminal':
-      await fetch('/api/open-path', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: absPath, action: 'terminal' })
-      }).catch(e => toast(e.message, 'error'));
+      if (!absPath) {
+        toast(t('ctx.copyPath') + ': path is empty', 'error');
+        return;
+      }
+      try {
+        const r = await fetch('/api/open-path', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: absPath, action: action })
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({ detail: r.statusText }));
+          throw new Error(err.detail || `HTTP ${r.status}`);
+        }
+        toast(action === 'folder' ? t('ctx.openFolder') : t('ctx.openTerminal'), 'success');
+      } catch (e) {
+        toast((action === 'folder' ? t('ctx.openFolder') : t('ctx.openTerminal')) + ': ' + e.message, 'error');
+      }
       break;
   }
 }
@@ -156,7 +168,7 @@ export function showFileModal(fileOrId) {
 
   const isImg = ['.png','.jpg','.jpeg','.webp','.bmp'].includes((file.file_type||'').toLowerCase());
   const fileUrl = file.url || '#';
-  const fileName = file.filename || '';
+  const fileName = escHtml(file.filename || '');
   const absPath = file.path || '';
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost' || location.hostname === '::1';
 
@@ -172,17 +184,17 @@ export function showFileModal(fileOrId) {
         <table class="file-meta">
           <tr><td>${t('ctx.colFileType')}</td><td>${file.file_type || '-'}</td></tr>
           <tr><td>${t('ctx.colFileName')}</td><td style="word-break:break-all">${fileName}</td></tr>
-          <tr><td>${t('ctx.colFilePath')}</td><td style="word-break:break-all;font:11px monospace">${absPath}</td></tr>
+          <tr><td>${t('ctx.colFilePath')}</td><td style="word-break:break-all;font:11px monospace">${escHtml(absPath)}</td></tr>
           ${file.category ? `<tr><td>${t('ctx.colCategory')}</td><td>${file.category}</td></tr>` : ''}
         </table>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-primary" onclick="import('./utils.js').then(m=>{m.handleCtxAction('open',m.modalFile());document.getElementById('file-modal').style.display='none'})">${t('ctx.open')}</button>
-        <button class="btn" onclick="import('./utils.js').then(m=>{m.handleCtxAction('download',m.modalFile());document.getElementById('file-modal').style.display='none'})">${t('ctx.download')}</button>
-        <button class="btn" onclick="import('./utils.js').then(m=>{m.handleCtxAction('copypath',m.modalFile());document.getElementById('file-modal').style.display='none'})">${t('ctx.copyPath')}</button>
+        <button class="btn btn-primary" onclick="event.stopPropagation();var s=this;fetch('/api/open-path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:'${escJS(absPath)}',action:'open'})}).then(r=>{if(!r.ok)return r.json().then(e=>Promise.reject(new Error(e.detail||r.statusText)));s.closest('.modal-overlay').style.display='none'}).catch(e=>import('/static/js/utils.js').then(m=>m.toast(e.message,'error')))">${t('ctx.open')}</button>
+        <button class="btn" onclick="event.stopPropagation();var a=document.createElement('a');a.href='${escJS(fileUrl)}';a.download='${escJS(file.filename||'file')}';a.click();this.closest('.modal-overlay').style.display='none'">${t('ctx.download')}</button>
+        <button class="btn" onclick="event.stopPropagation();var p='${escJS(absPath)}';navigator.clipboard.writeText(p).then(()=>{this.closest('.modal-overlay').style.display='none';return import('/static/js/utils.js')}).then(m=>m.toast(m.t('ctx.copied'),'success')).catch(()=>{prompt('${escJS(t('ctx.copyPath'))}',p);this.closest('.modal-overlay').style.display='none'})">${t('ctx.copyPath')}</button>
         ${isLocal ? `
-          <button class="btn" onclick="import('./utils.js').then(m=>{m.handleCtxAction('folder',m.modalFile());document.getElementById('file-modal').style.display='none'})">${t('ctx.openFolder')}</button>
-          <button class="btn" onclick="import('./utils.js').then(m=>{m.handleCtxAction('terminal',m.modalFile());document.getElementById('file-modal').style.display='none'})">${t('ctx.openTerminal')}</button>
+          <button class="btn" onclick="event.stopPropagation();var s=this;var p='${escJS(absPath)}';fetch('/api/open-path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p,action:'folder'})}).then(r=>{if(!r.ok)return r.json().then(e=>Promise.reject(new Error(e.detail||r.statusText)));s.closest('.modal-overlay').style.display='none';return import('/static/js/utils.js')}).then(m=>m.toast(m.t('ctx.openFolder'),'success')).catch(e=>import('/static/js/utils.js').then(m=>m.toast(m.t('ctx.openFolder')+': '+e.message,'error')))">${t('ctx.openFolder')}</button>
+          <button class="btn" onclick="event.stopPropagation();var s=this;var p='${escJS(absPath)}';fetch('/api/open-path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:p,action:'terminal'})}).then(r=>{if(!r.ok)return r.json().then(e=>Promise.reject(new Error(e.detail||r.statusText)));s.closest('.modal-overlay').style.display='none';return import('/static/js/utils.js')}).then(m=>m.toast(m.t('ctx.openTerminal'),'success')).catch(e=>import('/static/js/utils.js').then(m=>m.toast(m.t('ctx.openTerminal')+': '+e.message,'error')))">${t('ctx.openTerminal')}</button>
         ` : ''}
       </div>
     </div>

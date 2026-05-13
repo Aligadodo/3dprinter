@@ -494,6 +494,108 @@ async def test_provider_config(client):
                   str(list(p.keys())))
 
 
+async def test_file_actions(client):
+    log("\n── File Actions (open / download / folder / terminal) ──", "hdr")
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # ── /api/files/ endpoint ──
+    # Use a known static file
+    test_file_rel = "web/static/js/utils.js"
+    test_file_abs = os.path.join(project_root, test_file_rel)
+
+    r = await client.get(f"{API}/files/{test_file_rel.replace(os.sep, '/')}")
+    check("GET /api/files/ known file returns 200", r.status_code == 200,
+          f"got {r.status_code}")
+    if r.status_code == 200:
+        check("Returns expected content-type",
+              "javascript" in r.headers.get("content-type", "").lower() or
+              "text/" in r.headers.get("content-type", "").lower(),
+              r.headers.get("content-type", ""))
+
+    # Path traversal (httpx normalizes .. segments, so URL-encode them)
+    r = await client.get(f"{API}/files/..%2F..%2F..%2FWindows/System32/notepad.exe")
+    check("GET /api/files/ path traversal returns 403", r.status_code == 403,
+          f"got {r.status_code}")
+
+    # Non-existent file
+    r = await client.get(f"{API}/files/nonexistent_file_12345.xyz")
+    check("GET /api/files/ missing file returns 404", r.status_code == 404,
+          f"got {r.status_code}")
+
+    # ── /api/open-path endpoint ──
+    # Valid path — open action
+    r = await client.post(f"{API}/open-path", json={
+        "path": test_file_abs, "action": "open"
+    })
+    check("POST /api/open-path open valid file returns 200", r.status_code == 200,
+          f"got {r.status_code}: {r.text[:100]}")
+    if r.status_code == 200:
+        check("Returns ok", r.json().get("ok") == True, r.text)
+
+    # Valid path — folder action
+    r = await client.post(f"{API}/open-path", json={
+        "path": test_file_abs, "action": "folder"
+    })
+    check("POST /api/open-path folder action returns 200", r.status_code == 200,
+          f"got {r.status_code}: {r.text[:100]}")
+    if r.status_code == 200:
+        check("Returns ok on folder", r.json().get("ok") == True, r.text)
+
+    # Valid path — terminal action
+    r = await client.post(f"{API}/open-path", json={
+        "path": test_file_abs, "action": "terminal"
+    })
+    check("POST /api/open-path terminal action returns 200", r.status_code == 200,
+          f"got {r.status_code}: {r.text[:100]}")
+    if r.status_code == 200:
+        check("Returns ok on terminal", r.json().get("ok") == True, r.text)
+
+    # Folder action on a directory
+    test_dir = os.path.join(project_root, "web", "static")
+    r = await client.post(f"{API}/open-path", json={
+        "path": test_dir, "action": "folder"
+    })
+    check("POST /api/open-path folder on directory returns 200", r.status_code == 200,
+          f"got {r.status_code}: {r.text[:100]}")
+
+    # Relative path (relative to project root)
+    r = await client.post(f"{API}/open-path", json={
+        "path": "web/server.py", "action": "open"
+    })
+    check("POST /api/open-path relative path returns 200", r.status_code == 200,
+          f"got {r.status_code}: {r.text[:100]}")
+
+    # Empty path
+    r = await client.post(f"{API}/open-path", json={
+        "path": "", "action": "folder"
+    })
+    check("POST /api/open-path empty path returns 400", r.status_code == 400,
+          f"got {r.status_code}")
+
+    # Path traversal attempt
+    r = await client.post(f"{API}/open-path", json={
+        "path": "C:/Windows/System32/notepad.exe", "action": "open"
+    })
+    check("POST /api/open-path outside project returns 403", r.status_code == 403,
+          f"got {r.status_code}")
+
+    # Non-existent file
+    r = await client.post(f"{API}/open-path", json={
+        "path": os.path.join(project_root, "nonexistent_file.xyz"),
+        "action": "open"
+    })
+    check("POST /api/open-path non-existent file returns 404", r.status_code == 404,
+          f"got {r.status_code}")
+
+    # Unknown action
+    r = await client.post(f"{API}/open-path", json={
+        "path": test_file_abs, "action": "invalid_action"
+    })
+    check("POST /api/open-path unknown action returns 400", r.status_code == 400,
+          f"got {r.status_code}")
+
+
 async def test_error_handling(client):
     log("\n── Error Handling ──", "hdr")
 
@@ -541,6 +643,9 @@ async def run_all_tests():
 
         # Text2Image (needs API key)
         await test_text2img(client)
+
+        # File actions (open / folder / terminal)
+        await test_file_actions(client)
 
         # Error handling
         await test_error_handling(client)

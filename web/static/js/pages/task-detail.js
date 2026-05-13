@@ -31,105 +31,203 @@ export default async function renderTaskDetail(main, hash) {
     catch (_) {}
   }
 
-  function render() {
+  async function render() {
     const ofiles = task.output_files || [];
     const statusLabel = badgeLabels[task.status] || task.status;
 
-    // ── Workflow sub-task ──
+    // ── Workflow sub-task: per-node breakdown ──
     if (wfCtx) {
-      const backHref = wfCtx.instance_id ? `#/workflow/instance/${wfCtx.instance_id}` : '#/dashboard';
-      const nodeLabel = wfCtx.node_label || wfCtx.node_type || wfCtx.node_id || '';
+      // Fetch full instance + node types for per-node context
+      let inst = null, nodeTypes = null;
+      try {
+        [inst, nodeTypes] = await Promise.all([
+          api('GET', `/workflows/instances/${wfCtx.instance_id}`),
+          api('GET', '/node-types'),
+        ]);
+      } catch (_) {}
 
-      // Build separated inputs / outputs / params for node detail panel
-      const inputs = {};
-      if (task.input_file) inputs['input'] = task.input_file;
-
-      const outputs = {};
-      ofiles.forEach(of => {
-        const key = of.file_type || of.category || 'file';
-        const fp = of.path || of.url || '';
-        if (!outputs[key]) outputs[key] = fp;
-      });
-      if (task.result) {
-        Object.entries(task.result).forEach(([k, v]) => {
-          if (typeof v === 'string' && v.length < 500 && !outputs[k]) outputs[k] = v;
-        });
+      const ntMap = {};
+      if (nodeTypes && nodeTypes.types) {
+        nodeTypes.types.forEach(nt => { ntMap[nt.id] = nt; });
       }
 
-      const params = {};
-      const mergedProps = { ...(task.params || {}), ...(wfCtx.params || {}) };
-      Object.entries(mergedProps).forEach(([k, v]) => {
-        params[k] = { value: v, source: wfCtx.params && k in wfCtx.params ? 'editor' : 'runtime' };
+      const nrMap = {};
+      if (inst && inst.node_runs) {
+        inst.node_runs.forEach(nr => { nrMap[String(nr.node_id)] = nr; });
+      }
+
+      // Build graph node lookup + upstream edges
+      const graphData = (inst && inst.workflow_graph) || {};
+      const graphNodes = graphData.nodes || [];
+      const rawEdges = graphData.links
+        ? graphData.links.map(link => {
+            if (Array.isArray(link) && link.length >= 5) {
+              return { source: String(link[1]), sourcePort: link[2], target: String(link[3]), targetPort: link[4] };
+            }
+            return null;
+          }).filter(Boolean)
+        : (graphData.edges || []);
+
+      const graphNodeMap = {};
+      graphNodes.forEach(n => { graphNodeMap[String(n.id)] = n; });
+
+      const upstreamEdges = {};
+      rawEdges.forEach(e => {
+        const tgtId = String(e.target);
+        if (!upstreamEdges[tgtId]) upstreamEdges[tgtId] = [];
+        upstreamEdges[tgtId].push({ sourceId: String(e.source), sourcePort: e.sourcePort, targetPort: e.targetPort });
       });
 
-      content.innerHTML = `
-        <a href="${backHref}" class="wf-breadcrumb">← ${t('detail.backToWorkflow')}: ${escHtml(wfCtx.workflow_name || 'workflow')} / ${escHtml(nodeLabel)}</a>
+      const backHref = wfCtx.instance_id ? `#/workflow/instance/${wfCtx.instance_id}` : '#/dashboard';
+      const currentNodeId = String(wfCtx.node_id || '');
+
+      let html = `<a href="${backHref}" class="wf-breadcrumb">← ${t('detail.backToWorkflow')}: ${escHtml(wfCtx.workflow_name || 'workflow')}</a>
         <div class="detail-header">
           <span class="badge badge-${task.status}">${statusLabel}</span>
           <span class="badge badge-workflow">🔄 ${t('dash.workflow')}</span>
           <span style="font-size:14px;font-weight:600;flex:1">${task.display_name || (task.pipeline_type + ' — ' + task.id)}</span>
-        </div>
-        ${renderNodeDetailPanel({
-          nid: wfCtx.node_id || taskId,
-          node: { type: wfCtx.node_type || task.pipeline_type, title: nodeLabel, properties: wfCtx.params || task.params || {} },
-          nr: { status: task.status, task_id: taskId, error: task.result?.error, task, output_files: ofiles },
-          nt: { label: wfCtx.node_type || task.pipeline_type },
-          inputs, outputs, taskFiles: ofiles, params,
-          showTaskLink: false,
-        })}
-        <div class="btn-group" style="margin-top:12px">
-          ${task.status === 'running' ? `<button class="btn btn-danger" id="cancel-btn">${t('detail.cancel')}</button>` : ''}
-          ${task.status === 'failed' || task.status === 'cancelled' ? `<button class="btn btn-primary" id="retry-btn">${t('detail.retry')}</button>` : ''}
-          <button class="btn btn-danger btn-sm" id="delete-btn">${t('detail.delete')}</button>
-        </div>
-      `;
+        </div>`;
+
+      // Workflow Context — per-node cards
+      // (Task result/output-files are shown inside the "current node" card already)
+      const nodeRuns = inst ? (inst.node_runs || []) : [];
+      if (nodeRuns.length > 0) {
+        html += `<div class="wf-ctx-section">
+          <div class="wf-ctx-section-header">
+            <h3>📊 ${t('detail.workflowContext')} <span style="font-weight:400;color:var(--fg2);font-size:12px">(${t('detail.allNodes').replace('{n}', nodeRuns.length)})</span></h3>
+            <div class="wf-ctx-section-actions">
+              <button class="btn btn-xs" onclick="this.closest('.wf-ctx-section').querySelectorAll('.wf-ctx-card-body').forEach(b=>b.style.display='block')">${t('detail.expandAll')}</button>
+              <button class="btn btn-xs" onclick="this.closest('.wf-ctx-section').querySelectorAll('.wf-ctx-card-body').forEach(b=>b.style.display='none')">${t('detail.collapseAll')}</button>
+            </div>
+          </div>`;
+
+        nodeRuns.forEach((nr, i) => {
+          const nid = String(nr.node_id);
+          const node = graphNodeMap[nid] || {};
+          const nt = ntMap[(node.type || '').replace(/^wf_/, '')] || {};
+          const isCurrentNode = nid === currentNodeId;
+          const nodeLabel = node.title || nt.label || nr.node_id || 'Node';
+          const statusEmoji = nr.status === 'completed' ? '✅' : nr.status === 'running' ? '⚡' : nr.status === 'failed' ? '❌' : '⏳';
+          const nodeColor = (nt && nt.color) || '#888';
+
+          // Per-node inputs from upstream edges (translate slot indices to port names)
+          const inputs = {};
+          const edgesIn = upstreamEdges[nid] || [];
+          edgesIn.forEach(e => {
+            const srcNr = nrMap[e.sourceId];
+            const srcNode = graphNodeMap[e.sourceId] || {};
+            const srcTypeId = (srcNode.type || '').replace(/^wf_/, '');
+            const srcNT = ntMap[srcTypeId] || {};
+            // Translate numeric slot index → port name using node type def
+            const srcPortName = (srcNT.outputs && srcNT.outputs[e.sourcePort]) ? srcNT.outputs[e.sourcePort].name : e.sourcePort;
+            // Translate target slot index → port name
+            const tgtPortName = (nt.inputs && nt.inputs[e.targetPort]) ? nt.inputs[e.targetPort].name : String(e.targetPort);
+            const srcOutputs = (inst && inst.context && inst.context[String(e.sourceId)]) || {};
+            const portVal = srcOutputs[srcPortName];
+            if (portVal) {
+              inputs[tgtPortName] = portVal;
+            }
+          });
+
+          // Per-node outputs (from context only; node_runs don't have an outputs column)
+          const ctxOutputs = (inst && inst.context && inst.context[nid]) || {};
+          const outputs = {};
+          if (ctxOutputs && typeof ctxOutputs === 'object') {
+            Object.entries(ctxOutputs).forEach(([k, v]) => {
+              if (!k.startsWith('_') && typeof v === 'string') outputs[k] = v;
+            });
+          }
+
+          // Per-node params from node properties
+          const params = {};
+          if (node.properties && typeof node.properties === 'object') {
+            Object.entries(node.properties).forEach(([k, v]) => {
+              params[k] = { value: v, source: 'editor' };
+            });
+          }
+
+          html += `<div class="wf-ctx-card${isCurrentNode ? ' current' : ''}">
+            <div class="wf-ctx-card-header" onclick="
+              const body=this.nextElementSibling;
+              const toggle=this.querySelector('.wf-ctx-toggle');
+              if(body.style.display==='none'){body.style.display='block';toggle.textContent='▾'}
+              else{body.style.display='none';toggle.textContent='▸'}
+            ">
+              <span class="wf-ctx-dot" style="background:${nodeColor}"></span>
+              <span class="wf-ctx-node-index">#${i + 1}</span>
+              <span class="wf-ctx-node-title">${statusEmoji} ${escHtml(nodeLabel)}</span>
+              <span class="badge badge-${nr.status || 'queued'}" style="font-size:10px">${nr.status || 'queued'}</span>
+              ${isCurrentNode ? `<span class="badge wf-ctx-current-badge">${t('detail.currentNode')}</span>` : ''}
+              ${nr.task_id ? `<a href="#/task/${nr.task_id}" class="btn btn-xs wf-ctx-task-link" onclick="event.stopPropagation()">🔗 ${t('node.viewTask')}</a>` : ''}
+              <span class="wf-ctx-toggle">${isCurrentNode ? '▾' : '▸'}</span>
+            </div>
+            <div class="wf-ctx-card-body" style="display:${isCurrentNode ? 'block' : 'none'}">
+              ${renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles: nr.output_files || [], params, showTaskLink: false })}
+            </div>
+          </div>`;
+        });
+
+        html += `</div>`; // close wf-ctx-section
+      }
+
+      // Action buttons
+      html += `<div class="btn-group" style="margin-top:12px">
+        ${task.status === 'running' ? `<button class="btn btn-danger" id="cancel-btn">${t('detail.cancel')}</button>` : ''}
+        ${task.status === 'failed' || task.status === 'cancelled' ? `<button class="btn btn-primary" id="retry-btn">${t('detail.retry')}</button>` : ''}
+        <button class="btn btn-danger btn-sm" id="delete-btn">${t('detail.delete')}</button>
+      </div>`;
+
+      content.innerHTML = html;
       bindTaskActions(taskId, task, render);
       return;
     }
 
-    // ── Standalone task ──
-    content.innerHTML = `
-      <div class="help-tip">${t('detail.help')}</div>
-      <div class="detail-header">
-        <a href="#/dashboard" class="back-btn">←</a>
-        <span class="badge badge-${task.status}">${statusLabel}</span>
-        <span style="font-size:14px;font-weight:600;flex:1">${task.display_name || (task.pipeline_type + ' — ' + task.id)}</span>
-      </div>
+    // ── Standalone task (rendered as single-node "workflow") ──
+    let html = `<div class="help-tip">${t('detail.help')}</div>
+      <a href="#/dashboard" class="back-btn" style="margin-bottom:12px;display:inline-flex">← Dashboard</a>`;
 
-      <div class="stats" style="margin-bottom:16px">
-        <div class="stat"><div class="num">${task.pipeline_type}</div><div class="label">${t('detail.pipeline')}</div></div>
-        <div class="stat"><div class="num">${Object.keys(task.params||{}).length}</div><div class="label">${t('detail.params')}</div></div>
-        <div class="stat"><div class="num">${ofiles.length}</div><div class="label">${t('detail.outputFiles')}</div></div>
-        <div class="stat"><div class="num">${formatTime(task.created_at)}</div><div class="label">${t('detail.created')}</div></div>
-      </div>
-
-      ${(task.status === 'running' || task.status === 'queued') ? `
-        <div class="progress-bar"><div class="fill" id="progress-fill" style="width:5%"></div></div>
+    // Progress bar for running/queued
+    if (task.status === 'running' || task.status === 'queued') {
+      html += `<div class="progress-bar"><div class="fill" id="progress-fill" style="width:5%"></div></div>
         <div class="progress-text" id="progress-text">${t('detail.waiting')}</div>
-        <div id="preview-zone"></div>
-        <h4>${t('detail.logTitle')}</h4>
-        <div class="log-viewer" id="log-container"></div>
-      ` : ''}
+        <div id="preview-zone"></div>`;
+    }
 
-      ${task.status === 'completed' ? buildCompletedResult(task, ofiles) : ''}
-      ${task.status === 'failed' ? buildFailedResult(task) : ''}
-      ${buildOutputFiles(ofiles)}
-      <h4>${t('detail.paramsTitle')}</h4>
-      <div class="log-viewer" style="max-height:120px">${JSON.stringify(task.params||{}, null, 2)}</div>
-      ${task.result?.log ? `<h4>${t('detail.logTitle')}</h4><div class="log-viewer" style="max-height:200px">${(task.result.log||[]).map(l => `<div class="line">${l}</div>`).join('')}</div>` : ''}
+    // Build node-detail-panel arguments from task data
+    const displayNode = { title: task.display_name || task.pipeline_type, type: task.pipeline_type, properties: {} };
+    const displayNr = { status: task.status, task_id: task.id, error: task.result?.error || null, output_files: ofiles, task: task };
+    const displayNt = { id: task.pipeline_type, label: task.pipeline_type, color: '#58a6ff', inputs: [], outputs: [], params: {} };
+    const displayInputs = task.input_file ? { file: task.input_file } : {};
+    const displayParams = {};
+    Object.entries(task.params || {}).forEach(([k, v]) => { displayParams[k] = { value: v, source: 'runtime' }; });
 
-      <div class="btn-group">
-        ${task.status === 'running' ? `<button class="btn btn-danger" id="cancel-btn">${t('detail.cancel')}</button>` : ''}
-        ${task.status === 'failed' || task.status === 'cancelled' ? `<button class="btn btn-primary" id="retry-btn">${t('detail.retry')}</button>` : ''}
-        ${task.status === 'completed' ? `<button class="btn btn-primary btn-sm" id="send-wf-btn">🔗 ${t('detail.sendToWorkflow')}</button>` : ''}
-        <button class="btn btn-danger btn-sm" id="delete-btn">${t('detail.delete')}</button>
-      </div>
-    `;
+    html += renderNodeDetailPanel({
+      nid: task.id, node: displayNode, nr: displayNr, nt: displayNt,
+      inputs: displayInputs, outputs: {}, taskFiles: ofiles, params: displayParams, showTaskLink: false,
+    });
 
+    // Log for running/queued
+    if (task.status === 'running' || task.status === 'queued') {
+      html += `<h4 style="margin-top:16px">${t('detail.logTitle')}</h4><div class="log-viewer" id="log-container"></div>`;
+    }
+    // Log for completed tasks
+    if (task.result?.log) {
+      html += `<h4 style="margin-top:16px">${t('detail.logTitle')}</h4><div class="log-viewer" style="max-height:200px">${(task.result.log||[]).map(l => `<div class="line">${l}</div>`).join('')}</div>`;
+    }
+
+    // Actions
+    html += `<div class="btn-group" style="margin-top:16px">
+      ${task.status === 'running' ? `<button class="btn btn-danger" id="cancel-btn">${t('detail.cancel')}</button>` : ''}
+      ${task.status === 'failed' || task.status === 'cancelled' ? `<button class="btn btn-primary" id="retry-btn">${t('detail.retry')}</button>` : ''}
+      ${task.status === 'completed' ? `<button class="btn btn-primary btn-sm" id="send-wf-btn">🔗 ${t('detail.sendToWorkflow')}</button>` : ''}
+      <button class="btn btn-danger btn-sm" id="delete-btn">${t('detail.delete')}</button>
+    </div>`;
+
+    content.innerHTML = html;
     bindTaskActions(taskId, task, render);
   }
 
-  render();
+  await render();
 
   // SSE for live updates
   if (task.status === 'running' || task.status === 'queued') {
@@ -187,7 +285,7 @@ function buildOutputFiles(ofiles) {
         const fileUrl = f.url || '#';
         const fileName = f.filename || f.path.split(/[\\/]/).pop();
         const fid = cacheFile(f);
-        html += `<div class="preview-card file-card" data-fid="${fid}" onclick="import('../utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('../utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">
+        html += `<div class="preview-card file-card" data-fid="${fid}" onclick="import('/static/js/utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('/static/js/utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">
           ${isImg ? `<img src="${fileUrl}" alt="${fileName}" loading="lazy">` : `<div style="height:160px;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--fg2)">&#128736;</div>`}
           <div class="caption">${f.file_type} — ${fileName}</div></div>`;
       });

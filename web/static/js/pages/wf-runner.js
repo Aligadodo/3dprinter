@@ -53,7 +53,7 @@ export default async function renderWorkflowRunner(main, hash) {
       <span style="flex:1"></span>
       ${isRunning ? `<button class="btn btn-sm btn-danger" id="wf-cancel-btn">${t('wf.runner.cancel')}</button>` : ''}
       <button class="btn btn-sm" onclick="location.reload()">🔄</button>
-      <button class="btn btn-sm" onclick="import('../pages/wf-runner.js').then(m=>m._downloadOutputs('${instId}'))">📥</button>
+      <button class="btn btn-sm" onclick="import('/static/js/pages/wf-runner.js').then(m=>m._downloadOutputs('${instId}'))">📥</button>
       <a href="#/workflow/${inst.workflow_id}" class="btn btn-sm">🔧 Edit</a>
     </div>
     <div class="progress-bar"><div class="fill" style="width:${totalNodes?(doneNodes/totalNodes*100):0}%"></div></div>
@@ -294,9 +294,8 @@ function buildNodeTabs(inst, nrMap, ntMap) {
     const edgesIn = upstreamEdges[String(nr.node_id)] || [];
     const inputCount = edgesIn.length;
     const ctxOutputsForCount = (inst.context && inst.context[String(nr.node_id)]) || {};
-    const nrOutputKeys = Object.keys(nr.outputs || {});
     const ctxOutputKeys = Object.keys(ctxOutputsForCount).filter(k => !k.startsWith('_') && typeof ctxOutputsForCount[k] === 'string');
-    const outputCount = Math.max(nrOutputKeys.length, ctxOutputKeys.length) + (nr.output_files || []).length;
+    const outputCount = ctxOutputKeys.length + (nr.output_files || []).length;
 
     overviewHTML += `<div class="wf-overview-card" data-node="${nr.node_id}" onclick="document.querySelector('.wf-results-tabs button[data-tab=\\'${nr.node_id}\\']').click()">
       <div class="ovc-header">
@@ -320,29 +319,30 @@ function buildNodeTabs(inst, nrMap, ntMap) {
     const node = graphNodeMap[nid] || {};
     const nt = ntMap[(node.type||'').replace(/^wf_/, '')] || {};
 
-    // Compute inputs: upstream node outputs connected to this node's input ports
+    // Compute inputs: translate numeric slot indices to port names via ntMap
     const inputs = {};
     const edgesIn = upstreamEdges[nid] || [];
     edgesIn.forEach(e => {
-      const srcNr = nrMap[e.sourceId];
-      // Try node_run outputs first, then fallback to workflow context
-      const srcOutputs = (srcNr && srcNr.outputs) || (inst.context && inst.context[String(e.sourceId)]) || {};
-      if (srcOutputs[e.sourcePort]) {
-        inputs[e.targetPort || e.sourcePort] = srcOutputs[e.sourcePort];
+      const srcNode = graphNodeMap[e.sourceId] || {};
+      const srcTypeId = (srcNode.type || '').replace(/^wf_/, '');
+      const srcNT = ntMap[srcTypeId] || {};
+      // Translate numeric slot index → port name
+      const srcPortName = (srcNT.outputs && srcNT.outputs[e.sourcePort]) ? srcNT.outputs[e.sourcePort].name : e.sourcePort;
+      const tgtPortName = (nt.inputs && nt.inputs[e.targetPort]) ? nt.inputs[e.targetPort].name : String(e.targetPort);
+      const srcOutputs = (inst.context && inst.context[String(e.sourceId)]) || {};
+      if (srcOutputs[srcPortName]) {
+        inputs[tgtPortName] = srcOutputs[srcPortName];
       }
     });
 
-    // Compute outputs: node_run outputs > context > empty
+    // Compute outputs from context (node_runs don't have an outputs column)
     const ctxOutputs = (inst.context && inst.context[nid]) || {};
-    // Filter out internal keys (_inputs, _params, _upstream)
-    const cleanCtxOutputs = {};
+    const outputs = {};
     if (ctxOutputs && typeof ctxOutputs === 'object') {
       Object.entries(ctxOutputs).forEach(([k, v]) => {
-        if (!k.startsWith('_') && typeof v === 'string') cleanCtxOutputs[k] = v;
+        if (!k.startsWith('_') && typeof v === 'string') outputs[k] = v;
       });
     }
-    const outputs = (nr.outputs && Object.keys(nr.outputs).length) ? { ...nr.outputs }
-      : (Object.keys(cleanCtxOutputs).length ? cleanCtxOutputs : {});
 
     // Compute params from node properties
     const params = {};
@@ -355,7 +355,7 @@ function buildNodeTabs(inst, nrMap, ntMap) {
     const detailHTML = `<div id="wf-tab-${nr.node_id}" style="display:none">
       ${renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles: nr.output_files || (nr.task && nr.task.output_files) || [], params, showTaskLink: true })}
       ${nr.status === 'completed' && nr.node_id ? `<div class="nd-replay-bar">
-        <button class="btn btn-sm btn-primary" onclick="import('../pages/wf-runner.js').then(m=>m._replayFrom('${instId}','${nr.node_id}'))">↻ ${t('wf.runner.replay')}</button>
+        <button class="btn btn-sm btn-primary" onclick="import('/static/js/pages/wf-runner.js').then(m=>m._replayFrom('${instId}','${nr.node_id}'))">↻ ${t('wf.runner.replay')}</button>
       </div>` : ''}
     </div>`;
     content.insertAdjacentHTML('beforeend', detailHTML);

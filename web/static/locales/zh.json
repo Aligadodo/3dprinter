@@ -61,7 +61,18 @@
     "runWorkflow": "运行工作流",
     "nodeParamsOverride": "节点参数 (运行时覆盖默认值)",
     "portNotConnected": "⚠ 未连接",
-    "multi": "MULTI"
+    "multi": "MULTI",
+    "searchPlaceholder": "搜索流水线...",
+    "filterAll": "全部",
+    "pipelineTasks": "流水线任务",
+    "workflowsSection": "工作流",
+    "noMatch": "没有匹配的流水线类型",
+    "noWorkflows": "还没有工作流，去工作流编辑器创建一个吧！",
+    "noExternalInput": "此工作流无需外部输入，可直接运行",
+    "dropHint": "点击或拖拽上传文件",
+    "loadFailed": "加载失败",
+    "fileChosen": "已选择文件",
+    "nodesCount": "个节点"
   },
   "detail": {
     "title": "任务详情",
@@ -98,7 +109,12 @@
     "catInput": "输入文件",
     "catIntermediate": "中间文件",
     "catOther": "其他",
-    "help": "任务运行中可通过日志区域实时查看进度。完成后可预览输出文件，支持图片在线查看和 STL 文件下载。"
+    "help": "任务运行中可通过日志区域实时查看进度。完成后可预览输出文件，支持图片在线查看和 STL 文件下载。",
+    "workflowContext": "工作流上下文",
+    "currentNode": "当前节点",
+    "allNodes": "全部节点 ({n})",
+    "expandAll": "展开全部",
+    "collapseAll": "折叠全部"
   },
   "badge": {
     "queued": "排队",
@@ -211,6 +227,16 @@
     "error": "生成失败",
     "useAsInput": "用作输入",
     "unavailableSuffix": " (不可用)"
+  },
+  "inspector": {
+    "title": "节点属性",
+    "noSelection": "点击节点查看属性",
+    "inputs": "输入端口",
+    "outputs": "输出端口",
+    "notConnected": "-- 未连接 --",
+    "connectedTo": "连接到",
+    "deleteNode": "删除节点",
+    "portFrom": "#{n}: {title} → {port} [{type}]"
   },
   "docs": {
     "title": "设计文档",

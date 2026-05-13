@@ -61,7 +61,18 @@
     "runWorkflow": "Run Workflow",
     "nodeParamsOverride": "Node Parameters (override defaults at runtime)",
     "portNotConnected": "⚠ Not connected",
-    "multi": "MULTI"
+    "multi": "MULTI",
+    "searchPlaceholder": "Search pipelines...",
+    "filterAll": "All",
+    "pipelineTasks": "Pipeline Tasks",
+    "workflowsSection": "Workflows",
+    "noMatch": "No matching pipeline types",
+    "noWorkflows": "No workflows yet — create one in the editor!",
+    "noExternalInput": "This workflow needs no external input",
+    "dropHint": "Click or drag to upload file",
+    "loadFailed": "Load failed",
+    "fileChosen": "File",
+    "nodesCount": "nodes"
   },
   "detail": {
     "title": "Task Detail",
@@ -98,7 +109,12 @@
     "catInput": "Input Files",
     "catIntermediate": "Intermediate",
     "catOther": "Other",
-    "help": "Watch real-time progress in the log area. Completed files can be previewed online (images) or downloaded (STL)."
+    "help": "Watch real-time progress in the log area. Completed files can be previewed online (images) or downloaded (STL).",
+    "workflowContext": "Workflow Context",
+    "currentNode": "Current Node",
+    "allNodes": "All Nodes ({n})",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All"
   },
   "badge": {
     "queued": "Queued",
@@ -211,6 +227,16 @@
     "error": "Generation failed",
     "useAsInput": "Use as input",
     "unavailableSuffix": " (unavailable)"
+  },
+  "inspector": {
+    "title": "Node Properties",
+    "noSelection": "Click a node to inspect",
+    "inputs": "Input Ports",
+    "outputs": "Output Ports",
+    "notConnected": "-- Not connected --",
+    "connectedTo": "Connected to",
+    "deleteNode": "Delete Node",
+    "portFrom": "#{n}: {title} → {port} [{type}]"
   },
   "docs": {
     "title": "Design Docs",

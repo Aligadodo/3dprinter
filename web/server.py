@@ -268,7 +268,8 @@ async def open_path(request: Request):
         system = platform.system()
         if action == "open":
             if system == "Windows":
-                os.startfile(full_path)
+                # os.startfile can block; use cmd /c start which is truly async
+                subprocess.Popen(["cmd", "/c", "start", "", full_path], shell=False)
             elif system == "Darwin":
                 subprocess.Popen(["open", full_path])
             else:
@@ -276,15 +277,24 @@ async def open_path(request: Request):
         elif action == "folder":
             folder = full_path if os.path.isdir(full_path) else os.path.dirname(full_path)
             if system == "Windows":
-                subprocess.Popen(["explorer", "/select,", full_path] if not os.path.isdir(full_path) else ["explorer", folder])
+                if not os.path.isdir(full_path):
+                    subprocess.Popen(["explorer", "/select,", full_path])
+                else:
+                    subprocess.Popen(["explorer", folder])
             elif system == "Darwin":
-                subprocess.Popen(["open", "-R", full_path] if not os.path.isdir(full_path) else ["open", folder])
+                if not os.path.isdir(full_path):
+                    subprocess.Popen(["open", "-R", full_path])
+                else:
+                    subprocess.Popen(["open", folder])
             else:
                 subprocess.Popen(["xdg-open", folder])
         elif action == "terminal":
             folder = full_path if os.path.isdir(full_path) else os.path.dirname(full_path)
             if system == "Windows":
-                subprocess.Popen(["wt", "-d", folder] if shutil.which("wt") else ["cmd", "/c", "start", "cmd", "/c", f"cd /d {folder} && cmd"])
+                if shutil.which("wt"):
+                    subprocess.Popen(["wt", "-d", folder])
+                else:
+                    subprocess.Popen(["cmd", "/c", "start", "cmd", "/c", f"cd /d {folder} && cmd"])
             elif system == "Darwin":
                 subprocess.Popen(["open", "-a", "Terminal", folder])
             else:
@@ -295,6 +305,8 @@ async def open_path(request: Request):
                     subprocess.Popen(["xdg-terminal", f"--working-directory={folder}"])
         else:
             raise HTTPException(400, f"Unknown action: {action}")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(500, f"Failed to open: {e}")
 
@@ -579,12 +591,14 @@ async def run_workflow(
     file: UploadFile = File(None),
     inputs: str = Form("{}"),
     node_params: str = Form("{}"),
+    node_inputs: str = Form("{}"),
 ):
     """Execute a workflow with optional file upload, text inputs, and node parameter overrides.
 
     - file: uploaded file (assigned to the first file_input node if not explicitly mapped)
     - inputs: JSON string of {node_id: {port_name: value}}
     - node_params: JSON string of {node_id: {param_name: value}} — runtime overrides for pipeline node params
+    - node_inputs: JSON string of {target_node_id: {target_port: {source_node, source_port}}} — runtime edge overrides
     """
     wf = workflow_models.get_workflow_definition(wf_id)
     if not wf:
@@ -593,6 +607,7 @@ async def run_workflow(
     graph = wf.get("graph", {})
     inputs_dict = json.loads(inputs) if isinstance(inputs, str) else (inputs or {})
     node_params_dict = json.loads(node_params) if isinstance(node_params, str) else (node_params or {})
+    node_inputs_dict = json.loads(node_inputs) if isinstance(node_inputs, str) else (node_inputs or {})
 
     # Generate instance ID and work directory
     inst_id = uuid.uuid4().hex[:12]
@@ -623,6 +638,14 @@ async def run_workflow(
         if inst_ctx:
             ctx_data = inst_ctx.get("context", {})
             ctx_data["_node_params"] = node_params_dict
+            workflow_models.update_workflow_context(inst_id, ctx_data)
+
+    # Store node_inputs (runtime edge overrides) in context for _resolve_input
+    if node_inputs_dict:
+        inst_ctx = workflow_models.get_workflow_instance(inst_id)
+        if inst_ctx:
+            ctx_data = inst_ctx.get("context", {})
+            ctx_data["_node_inputs"] = node_inputs_dict
             workflow_models.update_workflow_context(inst_id, ctx_data)
 
     engine = workflow_engine.get_engine()
