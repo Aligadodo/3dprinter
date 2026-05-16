@@ -82,6 +82,9 @@ desktop.ini
 docs/iterations/.last-save-hash
 docs/iterations/2026-05-*
 
+# Node
+node_modules/
+
 # Build artifacts
 *.so
 *.dll

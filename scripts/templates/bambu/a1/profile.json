@@ -1,0 +1,21 @@
+{
+    "printer_model": "Bambu Lab A1",
+    "printer_settings_id": "Bambu Lab A1 0.4 nozzle",
+    "printer_technology": "FFF",
+    "printer_structure": "i3",
+    "printer_variant": "0.4",
+    "nozzle_diameter": "0.4",
+    "bed_size_x": 256,
+    "bed_size_y": 256,
+    "bed_size_z": 256,
+    "default_print_profile": "0.20mm Standard @BBL A1",
+    "default_filament_profile": "Bambu PLA Basic @BBL A1",
+    "nozzle_type": "stainless_steel",
+    "nozzle_volume": "92",
+    "extruder_clearance_max_radius": "73",
+    "extruder_clearance_height_to_rod": "25",
+    "extruder_clearance_height_to_lid": "256",
+    "compatible_printers": [
+        "Bambu Lab A1 0.4 nozzle"
+    ]
+}

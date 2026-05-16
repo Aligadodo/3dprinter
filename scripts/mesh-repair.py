@@ -12,6 +12,11 @@ def repair_mesh(input_path: str, output_format: str = "stl", scale: float = 1.0,
     if not os.path.exists(input_path):
         return {"error": f"File not found: {input_path}"}
 
+    # Guard against non-mesh inputs (images, text, etc.)
+    ext = os.path.splitext(input_path)[1].lower()
+    if ext not in (".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply"):
+        return {"error": f"Unsupported file type '{ext}' for mesh repair. Expected: .stl/.obj/.glb/.gltf/.3mf/.ply"}
+
     log = []
 
     # Load

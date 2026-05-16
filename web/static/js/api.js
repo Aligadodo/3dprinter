@@ -29,18 +29,64 @@ export async function api(method, path, body) {
   return r.json();
 }
 
-export function apiStream(taskId, onEvent) {
+export function apiStream(taskId, onEvent, onStatusChange) {
   const url = `${API}/tasks/${taskId}/stream`;
-  const es = new EventSource(url);
   const events = ['status', 'log', 'progress', 'preview', 'complete', 'error', 'cancelled', 'ping'];
-  events.forEach(evt => {
-    es.addEventListener(evt, (e) => {
-      try { onEvent(evt, JSON.parse(e.data)); }
-      catch (_) { onEvent(evt, e.data); }
+
+  let es = null;
+  let connected = false;
+  let reconnectAttempts = 0;
+  let reconnectTimer = null;
+  let closed = false;
+
+  function bindEvents() {
+    es.addEventListener('open', () => {
+      connected = true;
+      reconnectAttempts = 0;
+      if (onStatusChange) onStatusChange('connected');
     });
-  });
-  es.onerror = () => {};
-  return es;
+
+    events.forEach(evt => {
+      es.addEventListener(evt, (e) => {
+        try { onEvent(evt, JSON.parse(e.data)); }
+        catch (_) { onEvent(evt, e.data); }
+      });
+    });
+
+    es.onerror = () => {
+      if (connected) {
+        connected = false;
+        if (onStatusChange) onStatusChange('disconnected');
+        scheduleReconnect();
+      }
+      // If never connected (e.g. server down), onerror fires without open first.
+      // Don't schedule reconnect here — the initial connect attempt is still pending.
+      // Only schedule reconnect when we had a connection and lost it.
+    };
+  }
+
+  function scheduleReconnect() {
+    if (closed) return;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+    reconnectAttempts++;
+    if (onStatusChange) onStatusChange('reconnecting', { attempt: reconnectAttempts, delay: delay });
+    reconnectTimer = setTimeout(connect, delay);
+  }
+
+  function connect() {
+    es = new EventSource(url);
+    bindEvents();
+  }
+
+  function close() {
+    closed = true;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    if (es) { es.close(); es = null; }
+  }
+
+  if (onStatusChange) onStatusChange('connecting');
+  connect();
+  return { close, get es() { return es; } };
 }
 
 // ── Provider status cache ──

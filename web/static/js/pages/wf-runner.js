@@ -46,10 +46,16 @@ export default async function renderWorkflowRunner(main, hash) {
 
   const roundNum = inst.round || 0;
   body.innerHTML = `
+    <div class="breadcrumb">
+      <a href="#/workflows">${t('nav.workflows')}</a><span class="breadcrumb-sep">/</span>
+      <a href="#/workflow/${inst.workflow_id}">${escHtml(inst.workflow_name||'')}</a><span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">${t('wf.runner.title')}</span>
+    </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
       <span style="font-size:14px;font-weight:700">${statusEmoji} ${escHtml(inst.workflow_name||'')}</span>
       <span class="badge badge-${inst.status==='completed'?'completed':inst.status==='failed'?'failed':'running'}">${inst.status}</span>
       ${roundNum > 0 ? `<span class="badge badge-workflow" title="${t('wf.runner.round')} ${roundNum}">↻ R${roundNum}</span>` : ''}
+      ${isRunning ? `<span class="sse-indicator sse-connecting" id="sse-indicator"><span class="sse-dot"></span> Live</span>` : ''}
       <span style="flex:1"></span>
       ${isRunning ? `<button class="btn btn-sm btn-danger" id="wf-cancel-btn">${t('wf.runner.cancel')}</button>` : ''}
       <button class="btn btn-sm" onclick="location.reload()">🔄</button>
@@ -72,7 +78,7 @@ export default async function renderWorkflowRunner(main, hash) {
   try { buildRunnerDAG(inst, wfDef, ntMap, nrMap, instId); }
   catch (e) { console.error('buildRunnerDAG error:', e); body.innerHTML += `<div class="error-box"><p>DAG render error: ${e.message}</p></div>`; }
   // Build tabs
-  try { buildNodeTabs(inst, nrMap, ntMap); }
+  try { buildNodeTabs(inst, nrMap, ntMap, instId); }
   catch (e) { console.error('buildNodeTabs error:', e); body.innerHTML += `<div class="error-box"><p>Tab render error: ${e.message}</p></div>`; }
   // Wire events
   wireRunnerEvents(inst, nrMap, ntMap, instId);
@@ -80,6 +86,16 @@ export default async function renderWorkflowRunner(main, hash) {
   // SSE for live updates — engine emits: node_start, node_complete, node_error, node_progress, done, cancelled, workflow_complete
   if (isRunning) {
     wfSSE = new EventSource(`/api/workflows/instances/${instId}/stream`);
+
+    const sseIndicator = document.getElementById('sse-indicator');
+    const setSSEState = (s) => { if (sseIndicator) sseIndicator.className = 'sse-indicator sse-' + s; };
+    wfSSE.addEventListener('open', () => setSSEState('connected'));
+    let wfSSEConnected = false;
+    wfSSE.onerror = () => {
+      if (wfSSEConnected) { wfSSEConnected = false; setSSEState('disconnected'); }
+    };
+    wfSSE.addEventListener('open', () => { wfSSEConnected = true; });
+
     wfSSE.addEventListener('node_start', e => {
       try {
         const data = JSON.parse(e.data);
@@ -119,14 +135,45 @@ export default async function renderWorkflowRunner(main, hash) {
     });
     wfSSE.addEventListener('workflow_complete', () => {
       toast(t('wf.runner.completed'), 'success');
-      setTimeout(() => location.reload(), 1000);
+      const body = document.getElementById('wf-runner-body');
+      const badge = body && body.querySelector('.badge');
+      if (badge) { badge.className = 'badge badge-completed'; badge.textContent = 'completed'; }
+      const fill = body && body.querySelector('.progress-bar .fill');
+      if (fill) fill.style.width = '100%';
+      const ptext = body && body.querySelector('.progress-text');
+      const totalNodes = (inst.node_runs || []).length;
+      if (ptext) ptext.textContent = `${totalNodes}/${totalNodes} ${t('wf.runner.progress')}`;
+      const ind = document.getElementById('sse-indicator');
+      if (ind) ind.style.display = 'none';
+      const cancelBtn = document.getElementById('wf-cancel-btn');
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      // Mark any remaining nodes as completed in DAG
+      Object.keys(nrMap).forEach(nid => {
+        if (!nrMap[nid].status || nrMap[nid].status === 'running' || nrMap[nid].status === 'queued') {
+          nrMap[nid].status = 'completed';
+        }
+        updateRunnerNode(nid, { status: 'completed' });
+      });
+      wfSSE.close();
     });
     wfSSE.addEventListener('done', () => { wfSSE.close(); });
     wfSSE.addEventListener('cancelled', () => {
       toast(t('wf.runner.cancelled'), 'success');
-      setTimeout(() => location.reload(), 500);
+      const body = document.getElementById('wf-runner-body');
+      const badge = body && body.querySelector('.badge');
+      if (badge) { badge.className = 'badge badge-cancelled'; badge.textContent = 'cancelled'; }
+      const ind = document.getElementById('sse-indicator');
+      if (ind) ind.style.display = 'none';
+      const cancelBtn = document.getElementById('wf-cancel-btn');
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      Object.keys(nrMap).forEach(nid => {
+        if (!nrMap[nid].status || nrMap[nid].status === 'running' || nrMap[nid].status === 'queued') {
+          nrMap[nid].status = 'cancelled';
+        }
+        updateRunnerNode(nid, { status: nrMap[nid].status === 'completed' ? 'completed' : 'cancelled' });
+      });
+      wfSSE.close();
     });
-    wfSSE.onerror = () => {};
   }
 }
 
@@ -159,24 +206,13 @@ function buildRunnerDAG(inst, wfDef, ntMap, nrMap, instId) {
   wfRunnerGraph = new LiteGraph.LGraph();
   wfRunnerCanvas = new LiteGraph.LGraphCanvas(canvas, wfRunnerGraph);
 
-  // Read-only DAG viewer — disable drag/pan but keep clicks for tab navigation
+  // Read-only DAG viewer — allow pan/zoom but keep nodes locked
   if (wfRunnerCanvas) {
-    wfRunnerCanvas.allow_dragcanvas = false;
+    wfRunnerCanvas.allow_dragcanvas = true;
     wfRunnerCanvas.allow_dragnodes = false;
     wfRunnerCanvas.allow_searchbox = false;
+    wfRunnerCanvas.allow_interaction = true;
   }
-
-  // Lock viewport at default zoom — guard against uninitialized ds.offset
-  try {
-    if (wfRunnerCanvas && wfRunnerCanvas.ds) {
-      wfRunnerCanvas.ds.scale = 1.0;
-      if (!wfRunnerCanvas.ds.offset) {
-        wfRunnerCanvas.ds.offset = [0, 0];
-      }
-      wfRunnerCanvas.ds.offset[0] = 0;
-      wfRunnerCanvas.ds.offset[1] = 0;
-    }
-  } catch (_) { /* ds not initialized yet, skip */ }
 
   const nodeLookup = {};
   graphData.nodes.forEach(n => {
@@ -214,7 +250,9 @@ function buildRunnerDAG(inst, wfDef, ntMap, nrMap, instId) {
     if (srcNode && tgtNode) {
       const srcOut = e.sourcePort != null ? (typeof e.sourcePort==='number'?e.sourcePort:srcNode.findOutputSlot(e.sourcePort)) : 0;
       const tgtIn = e.targetPort != null ? (typeof e.targetPort==='number'?e.targetPort:tgtNode.findInputSlot(e.targetPort)) : 0;
-      if (srcOut >= 0 && tgtIn >= 0) wfRunnerGraph.add({source:srcNode, target:tgtNode, sourcePort:srcOut, targetPort:tgtIn});
+      if (srcOut >= 0 && tgtIn >= 0) {
+        try { srcNode.connect(srcOut, tgtNode, tgtIn); } catch(_) {}
+      }
     }
   });
 
@@ -233,18 +271,17 @@ function buildRunnerDAG(inst, wfDef, ntMap, nrMap, instId) {
   };
 
   // Single draw (no animation loop needed for static DAG viewer)
-  wfRunnerGraph.arrange();
+  try { wfRunnerGraph.arrange(); } catch(_) {}
   try {
     wfRunnerCanvas.setDirty(true, true);
     wfRunnerCanvas.draw(true, true);
   } catch (e) {
     console.error('DAG draw error:', e);
-    body.innerHTML += `<div class="error-box"><p>DAG draw error: ${e.message}</p></div>`;
   }
 }
 
 // ── Node Tabs ──
-function buildNodeTabs(inst, nrMap, ntMap) {
+function buildNodeTabs(inst, nrMap, ntMap, instId) {
   const tabs = document.getElementById('wf-results-tabs');
   const content = document.getElementById('wf-results-content');
   const graphData = inst.workflow_graph || inst.workflow || {};
@@ -381,7 +418,7 @@ function wireRunnerEvents(inst, nrMap, ntMap, instId) {
     try { await api('POST', `/workflows/instances/${instId}/cancel`); }
     catch (e) { toast(e.message, 'error'); }
     toast(t('wf.runner.cancelled'), 'success');
-    setTimeout(() => location.reload(), 500);
+    // UI will update via SSE 'cancelled' event — no page reload needed
   });
 }
 

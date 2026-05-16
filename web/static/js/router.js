@@ -54,7 +54,12 @@ export async function route() {
 
   // Update sidebar active state
   const links = document.querySelectorAll('nav a[data-route]');
-  links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === hash));
+  links.forEach(a => {
+    const isActive = a.getAttribute('href') === hash;
+    a.classList.toggle('active', isActive);
+    if (isActive) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
 
   // Cleanup previous page resources
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }

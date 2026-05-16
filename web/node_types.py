@@ -24,9 +24,10 @@ class NodeType:
     def __init__(self, id_: str, label: str, category: str,
                  inputs: list[PortSpec] = None, outputs: list[PortSpec] = None,
                  params: dict = None, color: str = "#444", gpu: bool = False,
-                 inline: bool = False):
+                 inline: bool = False, label_zh: str = ""):
         self.id = id_
         self.label = label
+        self.label_zh = label_zh
         self.category = category
         self.inputs = inputs or []
         self.outputs = outputs or []
@@ -45,7 +46,7 @@ class NodeType:
             entry["desc"] = meta.get("desc", "")
             entry["desc_zh"] = meta.get("desc_zh", "")
             params_out[key] = entry
-        return {
+        d = {
             "id": self.id,
             "label": self.label,
             "category": self.category,
@@ -54,6 +55,9 @@ class NodeType:
             "params": params_out,
             "color": self.color,
         }
+        if self.label_zh:
+            d["label_zh"] = self.label_zh
+        return d
 
 
 # ---------------------------------------------------------------------------
@@ -150,6 +154,7 @@ _register(NodeType(
         "edge_smooth": {"type": "float", "default": 0.5},
         "pixel_spacing": {"type": "float", "default": 0.08},
         "format": {"type": "choice", "default": "stl", "choices": ["stl", "3mf"]},
+        "printer": {"type": "choice", "default": "P1S", "choices": ["P1S", "A1"]},
     },
     color="#9b59b6",
 ))
@@ -169,6 +174,7 @@ _register(NodeType(
         "format": {"type": "choice", "default": "glb", "choices": ["glb", "obj"]},
         "resolution": {"type": "int", "default": 256},
         "foreground_ratio": {"type": "float", "default": 0.85},
+        "auto_prep": {"type": "bool", "default": True},
     },
     color="#e74c3c",
     gpu=True,
@@ -191,6 +197,7 @@ _register(NodeType(
         "resolution": {"type": "int", "default": 256},
         "seed": {"type": "int", "default": 42},
         "format": {"type": "choice", "default": "glb", "choices": ["glb", "obj", "stl"]},
+        "auto_prep": {"type": "bool", "default": True},
     },
     color="#c0392b",
     gpu=True,
@@ -229,6 +236,28 @@ _register(NodeType(
         "scale": {"type": "float", "default": 1.0},
     },
     color="#f39c12",
+))
+
+_register(NodeType(
+    "model_prep",
+    label="打印准备 Model Prep",
+    category="process",
+    inputs=[
+        PortSpec("mesh", "stl", required=True),
+    ],
+    outputs=[
+        PortSpec("mesh", "stl", required=True),
+        PortSpec("preview", "image", required=False),
+    ],
+    params={
+        "output_format": {"type": "choice", "default": "stl", "choices": ["stl", "3mf", "obj"]},
+        "simplify": {"type": "int", "default": 50000, "min": 0, "max": 1000000},
+        "repair": {"type": "bool", "default": True},
+        "fill_holes": {"type": "bool", "default": True},
+        "target_size_mm": {"type": "float", "default": 100.0, "min": 0.0, "max": 500.0},
+        "ground": {"type": "bool", "default": True},
+    },
+    color="#e67e22",
 ))
 
 _register(NodeType(
@@ -474,6 +503,11 @@ PARAM_META: dict[str, dict] = {
         "desc": "Expected ratio of foreground object in input image (0-1)",
         "desc_zh": "输入图片中前景物体占比(0-1)，用于裁剪优化",
     },
+    "auto_prep": {
+        "label": "Auto Prep", "label_zh": "自动打印准备",
+        "desc": "Automatically repair, simplify, and convert to STL after generation",
+        "desc_zh": "生成后自动进行水密修复、减面和格式转换",
+    },
 
     # ── Hunyuan3D ──
     "mode": {
@@ -550,6 +584,38 @@ PARAM_META: dict[str, dict] = {
         "label": "Uniform", "label_zh": "等比缩放",
         "desc": "Scale all axes uniformly (keep proportions)",
         "desc_zh": "三轴等比缩放(保持比例)",
+    },
+
+    # ── model_prep ──
+    "output_format": {
+        "label": "Output Format", "label_zh": "输出格式",
+        "desc": "Output file format for the prepared mesh",
+        "desc_zh": "导出文件的格式。STL=通用打印格式，3MF=现代格式(含元数据)",
+    },
+    "simplify": {
+        "label": "Target Faces", "label_zh": "目标面数",
+        "desc": "Target face count after decimation. 0=skip. 50000 is good for printing",
+        "desc_zh": "简化后的目标面数。0=跳过。打印建议 50000",
+    },
+    "repair": {
+        "label": "Repair", "label_zh": "水密修复",
+        "desc": "Make mesh watertight via PyMeshFix (recommended for printing)",
+        "desc_zh": "使用 PyMeshFix 进行水密修复，推荐用于打印",
+    },
+    "fill_holes": {
+        "label": "Fill Holes", "label_zh": "填充孔洞",
+        "desc": "Fill small holes in the mesh surface",
+        "desc_zh": "填充网格表面的小孔洞",
+    },
+    "target_size_mm": {
+        "label": "Target Size (mm)", "label_zh": "目标尺寸 (mm)",
+        "desc": "Scale mesh to this maximum dimension in mm. 0=keep original size",
+        "desc_zh": "将模型缩放至该最大尺寸(毫米)。0=保持原始大小",
+    },
+    "ground": {
+        "label": "Ground to Base", "label_zh": "落地",
+        "desc": "Center and set z-min to 0 so the model sits flat on the print bed",
+        "desc_zh": "居中并将模型底部放置在打印平台上(z=0)",
     },
 
     # ── image_resize ──
@@ -647,6 +713,7 @@ CATEGORIES = {
 _register(NodeType(
     "file_input",
     label="File Input",
+    label_zh="文件输入",
     category="input",
     inputs=[],
     outputs=[PortSpec("file", "file", required=True)],
@@ -657,6 +724,7 @@ _register(NodeType(
 _register(NodeType(
     "text_input",
     label="Text Input",
+    label_zh="文本输入",
     category="input",
     inputs=[],
     outputs=[PortSpec("text", "string", required=True)],
@@ -684,6 +752,7 @@ def node_pipeline_map() -> dict[str, str]:
         "hunyuan": "hunyuan",
         "views": "views",
         "repair": "repair",
+        "model_prep": "model_prep",
         "mesh_simplify": "mesh_simplify",
         "mesh_smooth": "mesh_smooth",
         "mesh_scale": "mesh_scale",
@@ -701,6 +770,7 @@ def node_input_port_map() -> dict[str, str]:
         "hunyuan": "image",
         "views": "mesh",
         "repair": "mesh",
+        "model_prep": "mesh",
         "mesh_simplify": "mesh",
         "mesh_smooth": "mesh",
         "mesh_scale": "mesh",
@@ -710,8 +780,19 @@ def node_input_port_map() -> dict[str, str]:
 def get_input_node_ids(graph: dict) -> list[str]:
     """Scan a workflow graph for nodes whose type is in the 'input' category."""
     input_ids = []
+    title_to_type = {
+        "file_input": "file_input", "File Input": "file_input", "File": "file_input",
+        "text_input": "text_input", "Text Input": "text_input",
+    }
     for n in graph.get("nodes", []):
         nt_def = get_node_type(n.get("type", ""))
         if nt_def and nt_def.category == "input":
             input_ids.append(str(n.get("id")))
+        elif not nt_def and not n.get("type"):
+            # Backward compat: try to infer type from title for corrupted workflows
+            inferred = title_to_type.get(n.get("title", ""))
+            if inferred:
+                nt_def = get_node_type(inferred)
+                if nt_def and nt_def.category == "input":
+                    input_ids.append(str(n.get("id")))
     return input_ids

@@ -13,6 +13,11 @@ def simplify_mesh(input_path: str, target_faces: int = 50000, method: str = "qua
     if not os.path.exists(input_path):
         return {"error": f"File not found: {input_path}"}
 
+    # Guard against non-mesh inputs
+    ext = os.path.splitext(input_path)[1].lower()
+    if ext not in (".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply"):
+        return {"error": f"Unsupported file type '{ext}' for mesh simplification. Expected: .stl/.obj/.glb/.gltf/.3mf/.ply"}
+
     log = []
     mesh = trimesh.load(input_path, force="mesh")
 

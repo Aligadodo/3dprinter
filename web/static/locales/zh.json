@@ -64,6 +64,12 @@
     "multi": "MULTI",
     "searchPlaceholder": "搜索流水线...",
     "filterAll": "全部",
+    "filterCategory": {
+      "input": "输入",
+      "generate": "生成",
+      "process": "处理",
+      "output": "输出"
+    },
     "pipelineTasks": "流水线任务",
     "workflowsSection": "工作流",
     "noMatch": "没有匹配的流水线类型",
@@ -186,7 +192,8 @@
       "basic": "基础流程: 文件输入→浮雕",
       "text2img": "文生图流程: 文本→文生图→浮雕",
       "advanced": "进阶流程: 文件输入→套色浮雕→修复",
-      "full": "完整流程: 文件输入→3D→六视图"
+      "full": "完整流程: 文件输入→3D→打印准备→六视图",
+      "printReady": "打印就绪: 文件输入→3D→打印准备"
     },
     "runner": {
       "title": "工作流运行",

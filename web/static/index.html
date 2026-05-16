@@ -12,7 +12,7 @@
 </head>
 <body>
 
-<nav class="sidebar">
+<nav class="sidebar" aria-label="主导航">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 16px">
     <div class="logo" style="padding:0" data-i18n="app.title">3D Print Pipeline</div>
     <div class="lang-switch">
@@ -36,10 +36,12 @@
   <a href="/docs" target="_blank" data-i18n="nav.apiDocs">API 文档</a>
   <hr>
   <div class="section-label" data-i18n="nav.sectionDev">开发工具</div>
+  <div class="sidebar-spacer"></div>
+  <button class="theme-toggle" id="theme-toggle" title="切换主题 / Toggle Theme" aria-label="切换深浅色主题">☀</button>
 </nav>
 
 <main id="main"></main>
-<div id="toast"></div>
+<div id="toast" aria-live="polite" aria-atomic="true"></div>
 <div class="ctx-menu" id="ctx-menu"></div>
 <div class="modal-overlay" id="file-modal" style="display:none" onclick="if(event.target===this)document.getElementById('file-modal').style.display='none'"></div>
 

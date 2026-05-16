@@ -1,6 +1,7 @@
 /* docs.js — Documentation list and viewer */
 import { api } from '../api.js';
 import { t, getLang } from '../i18n.js';
+import { escHtml } from '../utils.js';
 
 export default async function renderDocs(main, hash) {
   if (hash === '#/docs') {
@@ -65,8 +66,11 @@ async function renderDocViewer(main, docId) {
   const content = document.getElementById('doc-viewer-content');
   content.innerHTML = `
     <div class="doc-viewer">
+      <div class="breadcrumb">
+        <a href="#/docs">${t('nav.docs')}</a><span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">${escHtml(data.title || docId)}</span>
+      </div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <a href="#/docs" class="btn btn-sm">← ${t('docs.back')}</a>
         <div style="display:flex;gap:2px;margin-left:auto">
           <button class="lang-btn ${docLang==='zh'?'lang-active':''}" data-doc-lang="zh">中</button>
           <button class="lang-btn ${docLang==='en'?'lang-active':''}" data-doc-lang="en">EN</button>

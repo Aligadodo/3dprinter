@@ -62,6 +62,11 @@ def render_views(mesh_path, output_dir=None, resolution=1024,
     except ImportError:
         return {"error": "pyrender not installed. Run: pip install pyrender pyglet"}
 
+    # Guard against non-mesh inputs
+    ext = os.path.splitext(mesh_path)[1].lower()
+    if ext not in (".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply"):
+        return {"error": f"Unsupported file type '{ext}' for view rendering. Expected: .stl/.obj/.glb/.gltf/.3mf/.ply"}
+
     log = []
 
     # Load and normalize

@@ -15,7 +15,9 @@ export default async function renderNewTask(main) {
 
   const isZh = getLang() === 'zh';
   const typeEntries = Object.entries(types);
-  const categories = [...new Set(typeEntries.map(([,pt]) => pt.category || 'other'))];
+  const rawCats = [...new Set(typeEntries.map(([,pt]) => pt.category || 'other'))];
+  const catLabel = (c) => (t('filterCategory.' + c) || c);
+  const categories = rawCats; // used in template below
 
   main.innerHTML = `
     <h2>${t('new.title')}</h2>
@@ -34,7 +36,7 @@ export default async function renderNewTask(main) {
           <input class="nt-search" id="nt-search" type="text" placeholder="${t('new.searchPlaceholder')}">
           <div class="nt-filter-pills" id="nt-filters">
             <button class="nt-pill active" data-cat="all">${t('new.filterAll')}</button>
-            ${categories.map(c => `<button class="nt-pill" data-cat="${c}">${c}</button>`).join('')}
+            ${categories.map(c => `<button class="nt-pill" data-cat="${c}">${catLabel(c)}</button>`).join('')}
           </div>
         </div>
         <div class="type-grid" id="type-selector">
@@ -112,11 +114,20 @@ export default async function renderNewTask(main) {
       const fields = document.getElementById('param-fields');
       fields.innerHTML = (pt.params||[]).map(p => {
         const plabel = isZh ? (p.label_zh || p.label) : p.label;
-        const pdesc = isZh ? (p.description_zh || p.description) : (p.description || '');
-        if (p.type === 'bool') return `<div class="form-group"><label><input type="checkbox" name="${p.name}" ${p.default ? 'checked' : ''}> ${plabel}</label><div class="hint">${pdesc}</div></div>`;
-        if (p.type === 'choice') return `<div class="form-group"><label>${plabel}</label><select name="${p.name}">${(p.choices||[]).map(c => `<option value="${c}" ${c===p.default?'selected':''}>${c.toUpperCase()}</option>`).join('')}</select><div class="hint">${pdesc}</div></div>`;
-        return `<div class="form-group"><label>${plabel}</label><input type="${p.type==='int'?'number':p.type}" name="${p.name}" value="${p.default||''}" ${p.min!=null?`min="${p.min}"`:''} ${p.max!=null?`max="${p.max}"`:''} step="${p.type==='float'?'any':'1'}"><div class="hint">${pdesc}</div></div>`;
+        const pdesc = (isZh ? (p.description_zh || p.description || '') : (p.description || '')).replace(/"/g, '&quot;');
+        const reqStar = p.required ? '<span class="required">*</span>' : '';
+        const titleAttr = pdesc ? ` title="${pdesc}"` : '';
+        if (p.type === 'bool') return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><input type="checkbox" name="${p.name}" ${p.default ? 'checked' : ''}></span><div class="field-error"></div></div>`;
+        if (p.type === 'choice') return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><select name="${p.name}">${(p.choices||[]).map(c => `<option value="${c}" ${c===p.default?'selected':''}>${c.toUpperCase()}</option>`).join('')}</select></span><div class="field-error"></div></div>`;
+        const min = p.min != null ? `min="${p.min}"` : '';
+        const max = p.max != null ? `max="${p.max}"` : '';
+        return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><input type="${p.type==='int'?'number':p.type}" name="${p.name}" value="${p.default||''}" ${min} ${max} step="${p.type==='float'?'any':'1'}"></span><div class="field-error" id="err-${p.name}"></div></div>`;
       }).join('');
+      // Wire real-time validation
+      fields.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', () => validateField(el));
+        el.addEventListener('change', () => validateField(el));
+      });
       updateSubmit();
       // Scroll to form
       document.getElementById('task-params').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -172,6 +183,45 @@ export default async function renderNewTask(main) {
     document.getElementById('submit-btn').disabled = !(selectedType && selectedFile);
   }
 
+  function validateField(el) {
+    const group = el.closest('.form-group');
+    if (!group) return true;
+    const p = (types[selectedType]?.params||[]).find(p => p.name === el.name);
+    const errEl = group.querySelector('.field-error');
+    group.classList.remove('invalid');
+    if (errEl) errEl.textContent = '';
+
+    // Required check
+    if (p && p.required && !el.value && el.type !== 'checkbox') {
+      group.classList.add('invalid');
+      if (errEl) errEl.textContent = (getLang()==='zh'?'此项为必填':'This field is required');
+      return false;
+    }
+    // Number range
+    if (el.type === 'number' && el.value) {
+      const v = parseFloat(el.value);
+      if (p && p.min != null && v < p.min) {
+        group.classList.add('invalid');
+        if (errEl) errEl.textContent = (getLang()==='zh'?`最小值为 ${p.min}`:`Minimum is ${p.min}`);
+        return false;
+      }
+      if (p && p.max != null && v > p.max) {
+        group.classList.add('invalid');
+        if (errEl) errEl.textContent = (getLang()==='zh'?`最大值为 ${p.max}`:`Maximum is ${p.max}`);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function validateAll() {
+    let ok = true;
+    document.querySelectorAll('#param-fields input, #param-fields select').forEach(el => {
+      if (!validateField(el)) ok = false;
+    });
+    return ok;
+  }
+
   document.getElementById('back-btn').addEventListener('click', () => {
     document.getElementById('task-params').style.display = 'none';
     main.querySelectorAll('#type-selector .type-card').forEach(c => c.classList.remove('selected'));
@@ -184,6 +234,7 @@ export default async function renderNewTask(main) {
 
   // ── Submit pipeline task ──
   document.getElementById('submit-btn').addEventListener('click', async () => {
+    if (!validateAll()) { toast(getLang()==='zh'?'请修正表单错误':'Please fix form errors', 'error'); return; }
     const params = {};
     document.querySelectorAll('#param-fields input, #param-fields select').forEach(el => {
       if (el.type === 'checkbox') { if (el.checked) params[el.name] = true; }
@@ -252,7 +303,7 @@ export default async function renderNewTask(main) {
       const tgtNodeId = String(sel.dataset.node);
       const tgtPort = sel.dataset.port;
       if (!nodeInputs[tgtNodeId]) nodeInputs[tgtNodeId] = {};
-      nodeInputs[tgtNodeId][tgtPort] = { source_node: srcId, source_port: srcSlot };
+      nodeInputs[tgtNodeId][tgtPort] = { source_node: srcId, source_port: srcPort };
     });
 
     const formData = new FormData();
@@ -430,9 +481,14 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
   rawEdges.forEach(e => {
     const srcNode = nodeMap[e.source];
     const srcNT = ntMap[(srcNode && srcNode.type || '').replace(/^wf_/, '')];
-    const srcPort = (srcNT && srcNT.outputs && srcNT.outputs[e.sourcePort]) || { label: e.sourcePort };
+    const srcPort = (srcNT && srcNT.outputs && srcNT.outputs[e.sourcePort]) || { name: String(e.sourcePort) };
+    const srcPortLabel = srcPort.name || String(e.sourcePort);
     portEdgeMap[e.target] = portEdgeMap[e.target] || {};
-    portEdgeMap[e.target][e.targetPort] = { sourceNodeId: e.source, sourceLabel: srcNode ? (srcNode.title || (srcNT && srcNT.label) || srcNode.type) : '', portLabel: srcPort.label || e.sourcePort };
+    portEdgeMap[e.target][e.targetPort] = { sourceNodeId: e.source, sourceLabel: srcNode ? (srcNode.title || (srcNT && srcNT.label) || srcNode.type) : '', portLabel: srcPortLabel };
+    // Also index by port name for dropdown lookups
+    if (srcPortLabel) {
+      portEdgeMap[e.target][srcPortLabel] = portEdgeMap[e.target][e.targetPort];
+    }
   });
 
   const processNodes = (wfGraph.nodes || []).filter(n => {
@@ -446,7 +502,7 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
     const typeId = (n.type || '').replace(/^wf_/, '');
     const nt = ntMap[typeId];
     const props = n.properties || {};
-    const label = n.title || (nt && nt.label) || typeId;
+    const label = n.title || (nt && (isZh ? (nt.label_zh || nt.label) : nt.label)) || typeId;
     const colorDot = nt && nt.color ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${nt.color};flex-shrink:0;vertical-align:middle"></span>` : '';
 
     html += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin-bottom:10px">`;
@@ -476,7 +532,7 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
               const srcPortLabel = isZh ? (op.label_zh || op.label || op.name) : (op.label || op.name);
               const optVal = `${other.id}:${opIdx}:${escHtml(op.name)}`;
               const edgeInfo = portEdgeMap[n.id] || {};
-              const curSrc = edgeInfo[p.name];
+              const curSrc = edgeInfo[pi] || edgeInfo[p.name] || edgeInfo[op.name];
               let sel = '';
               if (curSrc && String(curSrc.sourceNodeId) === String(other.id) && String(curSrc.portLabel) === String(op.name)) {
                 sel = ' selected';
@@ -494,14 +550,16 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
       const val = props[key] !== undefined ? props[key] : (spec.default !== undefined ? spec.default : '');
       const fieldId = `wf-param-${n.id}-${key}`;
       const paramLabel = isZh ? (spec.label_zh || spec.label || key) : (spec.label || key);
-      html += `<div class="form-group" style="margin-bottom:6px"><label style="font-size:11px">${paramLabel}</label>`;
-      if (spec.type === 'bool') html += `<div><input type="checkbox" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="bool" ${val ? 'checked' : ''}></div>`;
+      const paramDesc = (isZh ? (spec.desc_zh || spec.desc || '') : (spec.desc || '')).replace(/"/g, '&quot;');
+      const titleAttr = paramDesc ? ` title="${paramDesc}"` : '';
+      html += `<div class="form-row"><label class="form-label"${titleAttr}>${paramLabel}</label><span class="form-value">`;
+      if (spec.type === 'bool') html += `<input type="checkbox" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="bool" ${val ? 'checked' : ''}>`;
       else if (spec.type === 'choice') {
-        html += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">${(spec.choices||[]).map(c => { const display = key==='provider'?providerChoiceLabel(c):c; return `<option value="${c}" ${String(c)===String(val)?'selected':''}>${display}</option>`; }).join('')}</select>`;
-      } else if (spec.type === 'int') html += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="int" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="1" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
-      else if (spec.type === 'float') html += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="float" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="any" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
-      else html += `<input type="text" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="text" value="${String(val||'')}" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
-      html += `</div>`;
+        html += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice">${(spec.choices||[]).map(c => { const display = key==='provider'?providerChoiceLabel(c):c; return `<option value="${c}" ${String(c)===String(val)?'selected':''}>${display}</option>`; }).join('')}</select>`;
+      } else if (spec.type === 'int') html += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="int" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="1">`;
+      else if (spec.type === 'float') html += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="float" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="any">`;
+      else html += `<input type="text" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="text" value="${String(val||'')}">`;
+      html += `</span></div>`;
     });
     html += `</div>`;
   });
@@ -578,9 +636,13 @@ function setupText2Img(isZh, handleFile) {
     try {
       const result = await api('POST', '/text2img', { prompt, provider, size });
       statusEl.textContent = t('text2img.done'); statusEl.style.color = 'var(--green)';
+      // Build correct relative URL (preserves output/ prefix for file server)
+      const t2iParts = result.image_path.replace(/\\/g, '/').split('/');
+      const t2iIdx = t2iParts.indexOf('output');
+      const t2iRelUrl = t2iIdx >= 0 ? t2iParts.slice(t2iIdx).join('/') : t2iParts.slice(-2).join('/');
       document.getElementById('text2img-result').innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;padding:8px;background:var(--bg);border-radius:var(--radius-sm);margin-top:8px">
-          <img src="/api/files/${result.image_path.replace(/\\\\/g,'/').split('/').slice(-2).join('/')}" style="max-height:80px;border-radius:var(--radius-sm)" onerror="this.style.display='none'">
+          <img src="/api/files/${t2iRelUrl}" style="max-height:80px;border-radius:var(--radius-sm)" onerror="this.style.display='none'">
           <div>
             <div style="font-size:12px;font-weight:600;color:var(--green)">✅ ${t('text2img.done')}</div>
             <div style="font-size:11px;color:var(--fg2);margin-top:2px">${result.width}×${result.height} — ${result.provider}</div>
@@ -588,9 +650,7 @@ function setupText2Img(isZh, handleFile) {
           </div></div>`;
 
       document.getElementById('t2i-use-btn').addEventListener('click', async () => {
-        const parts = result.image_path.replace(/\\/g, '/').split('/');
-        const idx = parts.indexOf('output');
-        const relUrl = idx >= 0 ? '/api/files/' + parts.slice(idx).join('/') : '/api/files/' + parts.slice(-2).join('/');
+        const relUrl = '/api/files/' + t2iRelUrl;
         const resp = await fetch(relUrl);
         const blob = await resp.blob();
         const fname = result.image_path.replace(/\\/g, '/').split('/').pop() || 'generated.png';

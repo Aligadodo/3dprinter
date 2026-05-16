@@ -7,27 +7,43 @@
 
 /* ── Design Tokens ── */
 :root{
+  /* ── Dark theme (default) ── */
   /* Background */
   --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--border:#30363d;
   /* Foreground */
-  --fg:#c9d1d9;--fg2:#8b949e;--fg3:#6e7681;
+  --fg:#c9d1d9;--fg2:#9ca3af;--fg3:#7d8590;
   /* Accent */
   --accent:#58a6ff;--accent-hover:#79b8ff;--accent-dim:rgba(88,166,255,0.1);
   --green:#3fb950;--green-dim:rgba(63,185,80,0.1);
   --red:#f85149;--red-dim:rgba(248,81,73,0.1);
   --orange:#d2991d;--orange-dim:rgba(210,153,29,0.1);
   --purple:#a371f7;--purple-dim:rgba(163,113,247,0.1);
-  /* Radius & Font */
-  --radius:6px;--radius-sm:4px;--radius-lg:8px;
-  --font:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
-  /* Shadows */
+  /* Shadows (dark) */
   --shadow-sm:0 1px 2px rgba(0,0,0,0.3);
   --shadow-md:0 4px 12px rgba(0,0,0,0.4);
   --shadow-lg:0 8px 24px rgba(0,0,0,0.5);
-  /* Spacing */
+  /* Modal backdrop */
+  --modal-backdrop:rgba(0,0,0,0.6);
+  /* Shared tokens */
+  --radius:6px;--radius-sm:4px;--radius-lg:8px;
+  --font:system-ui,-apple-system,"Microsoft YaHei","PingFang SC",sans-serif;
   --space-xs:4px;--space-sm:8px;--space-md:12px;--space-lg:16px;--space-xl:24px;--space-2xl:32px;
-  /* Transitions */
   --transition:0.15s ease;--transition-slow:0.3s ease;
+}
+
+/* ── Light theme ── */
+[data-theme="light"]{
+  --bg:#ffffff;--bg2:#f6f8fa;--bg3:#e7eaef;--border:#d0d7de;
+  --fg:#1f2328;--fg2:#656d76;--fg3:#8b949e;
+  --accent:#0969da;--accent-hover:#0550ae;--accent-dim:rgba(9,105,218,0.08);
+  --green:#1a7f37;--green-dim:rgba(26,127,55,0.08);
+  --red:#cf222e;--red-dim:rgba(207,34,46,0.08);
+  --orange:#9a6700;--orange-dim:rgba(154,103,0,0.08);
+  --purple:#8250df;--purple-dim:rgba(130,80,223,0.08);
+  --shadow-sm:0 1px 2px rgba(0,0,0,0.08);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.12);
+  --shadow-lg:0 8px 24px rgba(0,0,0,0.18);
+  --modal-backdrop:rgba(0,0,0,0.3);
 }
 
 html,body{height:100%}
@@ -35,6 +51,10 @@ body{
   font-family:var(--font);background:var(--bg);color:var(--fg);
   display:flex;line-height:1.5;
 }
+
+/* ── Focus ── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:focus:not(:focus-visible){outline:none}
 
 /* ── Layout ── */
 main{flex:1;overflow-y:auto;padding:var(--space-xl) var(--space-2xl)}
@@ -66,7 +86,19 @@ nav.sidebar a{
 nav.sidebar a:hover,nav.sidebar a.active{
   color:var(--fg);background:var(--bg3);
 }
+nav.sidebar .sidebar-spacer{flex:1}
 nav.sidebar hr{border:none;border-top:1px solid var(--border);margin:12px 0 4px}
+
+/* Theme toggle */
+.theme-toggle{
+  display:flex;align-items:center;justify-content:center;
+  width:36px;height:36px;margin:0 auto 8px;
+  border:1px solid var(--border);border-radius:50%;
+  background:var(--bg);color:var(--fg);
+  font-size:16px;cursor:pointer;
+  transition:all var(--transition);
+}
+.theme-toggle:hover{background:var(--bg3);transform:rotate(15deg)}
 
 /* Language switch */
 .lang-switch{display:flex;gap:2px}
@@ -89,6 +121,7 @@ nav.sidebar hr{border:none;border-top:1px solid var(--border);margin:12px 0 4px}
   nav.sidebar a{justify-content:center;padding:10px;margin:1px 4px;border-radius:var(--radius)}
   nav.sidebar .lang-switch{justify-content:center}
   nav.sidebar .lang-btn{font-size:10px;padding:3px 6px}
+  nav.sidebar .theme-toggle{width:28px;height:28px;font-size:13px}
   main{padding:var(--space-lg)}
 }
 @media (max-width:480px){
@@ -97,7 +130,8 @@ nav.sidebar hr{border:none;border-top:1px solid var(--border);margin:12px 0 4px}
     width:100%;min-width:100%;flex-direction:row;overflow-x:auto;
     padding:var(--space-sm) var(--space-md);gap:2px;flex-shrink:0;
   }
-  nav.sidebar hr,nav.sidebar .section-label{display:none}
+  nav.sidebar hr,nav.sidebar .section-label,nav.sidebar .sidebar-spacer{display:none}
   nav.sidebar a{font-size:11px;padding:6px 10px;white-space:nowrap;flex-shrink:0}
+  nav.sidebar .theme-toggle{display:none}
   main{padding:var(--space-md)}
 }

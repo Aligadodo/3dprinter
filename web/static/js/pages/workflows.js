@@ -1,9 +1,14 @@
 /* workflows.js — Workflow list page */
 import { api } from '../api.js';
 import { t } from '../i18n.js';
+import { showConfirm } from '../components/confirm.js';
 
 export default async function renderWorkflowList(main) {
-  main.innerHTML = `<h2>${t('wf.title')}</h2><div id="wf-list-content">${t('dash.loading')}</div>`;
+  main.innerHTML = `<h2>${t('wf.title')}</h2><div id="wf-list-content">
+    <div class="skeleton skeleton-text"></div>
+    <div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div>
+    <div class="skeleton skeleton-card"></div>
+  </div>`;
 
   let data;
   try { data = await api('GET', '/workflows'); }
@@ -37,7 +42,7 @@ export default async function renderWorkflowList(main) {
 
   // Delete handler
   window.deleteWF = async (id, name) => {
-    if (!confirm(t('wf.deleteConfirm') + '\n\n' + name)) return;
+    if (!await showConfirm(t('wf.delete'), t('wf.deleteConfirm') + '\n\n' + name, t('wf.delete'), t('wf.runner.cancel'))) return;
     try {
       await api('DELETE', `/workflows/${id}`);
       location.reload();

@@ -60,6 +60,13 @@ def init_workflow_db():
     except sqlite3.OperationalError:
         pass  # column already exists
 
+    # Migration: add error_message column
+    try:
+        conn.execute("ALTER TABLE workflow_instances ADD COLUMN error_message TEXT DEFAULT ''")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # column already exists
+
     conn.close()
 
 
@@ -147,7 +154,11 @@ def create_workflow_instance(wf_id: str, inputs: dict = None, instance_id: str =
     conn = get_db()
     inst_id = instance_id or uuid.uuid4().hex[:12]
     now = time.time()
-    ctx = {"_inputs": inputs or {}}
+    inputs = dict(inputs or {})
+    work_dir = inputs.pop("_work_dir", None)
+    ctx = {"_inputs": inputs}
+    if work_dir:
+        ctx["_work_dir"] = work_dir
     conn.execute(
         "INSERT INTO workflow_instances (id, workflow_id, status, context_json, started_at) VALUES (?, ?, 'running', ?, ?)",
         (inst_id, wf_id, json.dumps(ctx), now)
@@ -172,7 +183,8 @@ def get_workflow_instance(inst_id: str) -> dict | None:
 
 
 def update_workflow_instance(inst_id: str, status: str = None, current_node: str = None,
-                              finished_at: float = None, round_num: int = None) -> dict | None:
+                              finished_at: float = None, round_num: int = None,
+                              error_message: str = None) -> dict | None:
     conn = get_db()
     row = conn.execute("SELECT * FROM workflow_instances WHERE id = ?", (inst_id,)).fetchone()
     if not row:
@@ -193,6 +205,9 @@ def update_workflow_instance(inst_id: str, status: str = None, current_node: str
     if round_num is not None:
         updates.append("round_num = ?")
         params.append(round_num)
+    if error_message is not None:
+        updates.append("error_message = ?")
+        params.append(error_message)
     if not updates:
         conn.close()
         return _format_instance(dict(row))
@@ -307,7 +322,7 @@ def _get_task_output_files(conn, task_id: str) -> list[dict]:
         fp = f.get("path", "")
         # Derive URL from path
         if "output" in fp.replace("\\", "/"):
-            f["url"] = "/api/files/" + fp.replace("\\", "/").split("output/", 1)[-1]
+            f["url"] = "/api/files/output/" + fp.replace("\\", "/").split("output/", 1)[1]
         else:
             f["url"] = ""
         # Derive filename from path

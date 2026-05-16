@@ -319,7 +319,8 @@ class WorkflowEngine:
         wf_def = wm.get_workflow_definition(workflow_id)
         if not wf_def:
             await self._emit(instance_id, "error", {"error": "Workflow not found"})
-            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time(),
+                                        error_message="Workflow not found")
             await self._emit(instance_id, "done", {})
             return
 
@@ -329,7 +330,8 @@ class WorkflowEngine:
 
         if not nodes:
             await self._emit(instance_id, "error", {"error": "Workflow has no nodes"})
-            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time(),
+                                        error_message="Workflow has no nodes")
             await self._emit(instance_id, "done", {})
             return
 
@@ -339,7 +341,8 @@ class WorkflowEngine:
 
         if topsort is None:
             await self._emit(instance_id, "error", {"error": "Workflow contains a cycle"})
-            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time(),
+                                        error_message="Workflow contains a cycle")
             await self._emit(instance_id, "done", {})
             return
 
@@ -354,6 +357,13 @@ class WorkflowEngine:
             persisted = inst.get("context", {})
             if persisted:
                 ctx.update(persisted)
+        # Backward compat: older instances stored _work_dir inside _inputs
+        if not ctx.get("_work_dir"):
+            inputs = ctx.get("_inputs", {})
+            if isinstance(inputs, dict):
+                wd = inputs.get("_work_dir")
+                if wd:
+                    ctx["_work_dir"] = wd
         if round_num:
             ctx["_round"] = round_num
 
@@ -366,8 +376,20 @@ class WorkflowEngine:
         total = len(topsort)
         offset = topsort.index(exec_list[0]) if exec_list else 0
 
+        # Pre-create node run records for ALL nodes so they exist even if execution fails early.
+        # This ensures every node in the workflow has a record regardless of early termination.
+        exec_node_runs = {}  # nid -> node_run dict
+        for nid in exec_list:
+            nr = wm.create_node_run(instance_id, nid)
+            exec_node_runs[nid] = nr
+
         for idx, nid in enumerate(exec_list):
             if self.cancel_flags.get(instance_id):
+                # Mark remaining unstarted nodes as cancelled
+                for later_nid in exec_list[idx + 1:]:
+                    if later_nid in exec_node_runs:
+                        wm.update_node_run(exec_node_runs[later_nid]["id"], status="cancelled",
+                                            finished_at=time.time())
                 wm.update_workflow_instance(instance_id, status="cancelled", finished_at=time.time())
                 await self._emit(instance_id, "cancelled", {"message": "Workflow cancelled"})
                 return
@@ -383,8 +405,8 @@ class WorkflowEngine:
                     node_params = dict(props)
             node_label = node.get("title", node_type)
 
+            nr = exec_node_runs[nid]
             wm.update_workflow_instance(instance_id, current_node=nid)
-            nr = wm.create_node_run(instance_id, nid)
 
             await self._emit(instance_id, "node_start", {
                 "node_id": nid,
@@ -413,7 +435,10 @@ class WorkflowEngine:
                 # Cascade: enrich context with inputs/params/upstream for downstream nodes
                 self._enrich_ctx(nid, {}, node_params, ctx, edge_map)
 
+                # Persist context immediately so task detail page can display
+                # intermediate outputs even while workflow is still running
                 wm.update_node_run(nr["id"], status="completed", finished_at=time.time())
+                wm.update_workflow_context(instance_id, ctx)
                 await self._emit(instance_id, "node_complete", {
                     "node_id": nid,
                     "node_type": node_type,
@@ -423,12 +448,18 @@ class WorkflowEngine:
             except Exception as e:
                 error_msg = str(e)
                 wm.update_node_run(nr["id"], status="failed", error=error_msg, finished_at=time.time())
+                # Mark remaining unstarted nodes as skipped
+                for later_nid in exec_list[idx + 1:]:
+                    if later_nid in exec_node_runs:
+                        wm.update_node_run(exec_node_runs[later_nid]["id"], status="skipped",
+                                            error="Skipped due to upstream failure", finished_at=time.time())
                 await self._emit(instance_id, "node_error", {
                     "node_id": nid,
                     "node_type": node_type,
                     "error": error_msg,
                 })
-                wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time())
+                wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time(),
+                                              error_message=error_msg)
                 wm.update_workflow_context(instance_id, ctx)
                 await self._emit(instance_id, "done", {})
                 return
@@ -712,7 +743,13 @@ class WorkflowEngine:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            await self._emit(instance_id, "error", {"error": str(e)})
+            error_msg = str(e)
+            await self._emit(instance_id, "error", {"error": error_msg})
+            try:
+                wm.update_workflow_instance(instance_id, status="failed",
+                                            error_message=error_msg, finished_at=time.time())
+            except Exception:
+                pass
         finally:
             try:
                 await self._emit(instance_id, "done", {})

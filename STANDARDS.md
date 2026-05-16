@@ -167,6 +167,29 @@ gpu_lock = asyncio.Lock()  # 全局单一锁
 
 ### 4.3 测试覆盖
 
+**测试金字塔：**
+
+```
+           ┌──────────┐
+           │ E2E      │  Playwright 浏览器测试
+           │ ~6 tests │  验证完整用户交互流程
+           ├──────────┤
+           │ 集成     │  vitest + LiteGraph mock
+           │ ~64 tests│  验证 WFNode ↔ LiteGraph API 兼容
+           ├──────────┤
+           │ 单元     │  vitest 纯函数测试
+           │ ~44 tests│  验证独立 JS 函数逻辑
+           ├──────────┤
+           │ Schema   │  Python 一致性检查
+           │ ~232 tests│  验证前后端数据结构一致
+           ├──────────┤
+           │ 后端     │  Python 脚本/API/引擎测试
+           │ ~X tests │  已有: test_scripts/api/workflow_engine
+           └──────────┘
+```
+
+**后端测试：**
+
 | 测试类型 | 覆盖目标 | 测试文件 |
 |----------|---------|---------|
 | 输出格式测试 | 验证 JSON 结构完整性 | `tests/test_scripts.py` |
@@ -175,25 +198,52 @@ gpu_lock = asyncio.Lock()  # 全局单一锁
 | API 集成测试 | REST + SSE + 工作流 CRUD/执行 | `tests/test_api.py` |
 | 工作流引擎测试 | 拓扑排序、边标准化、端口映射 | `tests/test_workflow_engine.py` |
 | 错误处理测试 | 404/400 边界、参数验证 | `tests/test_api.py` |
+| Schema 一致性测试 | 前后端节点类型/端口名一致 | `tests/test_schema_consistency.py` |
+
+**前端测试：**
+
+| 测试类型 | 覆盖目标 | 测试文件 |
+|----------|---------|---------|
+| LiteGraph mock 测试 | 验证测试环境正常 | `tests/frontend/smoke.test.js` |
+| 核心函数测试 | `_findSlot`、`_isTypeCompatible`、`createLiteGraphNodeClass`、`WFNode.connect` | `tests/frontend/wf-core.test.js` |
+| 适配层测试 | 所有 litegraph-adapter.js 导出函数的正确性和降级行为 | `tests/frontend/litegraph-adapter.test.js` |
+| E2E 测试 | 工作流编辑器模板加载、拖拽、inspector、fit 按钮 | `e2e/workflow-editor.spec.js` |
 
 **运行方式：**
 ```bash
-# 脚本单元测试（无需启动服务器）
+# 后端单元测试（无需启动服务器）
 python tests/test_scripts.py
-
-# 工作流引擎单元测试（无需启动服务器）
 python tests/test_workflow_engine.py
+python tests/test_schema_consistency.py
 
-# API 集成测试（需要服务器运行）
+# 后端集成测试（需要服务器运行）
 python tests/test_api.py --start-server
+
+# 前端单元测试（无需启动服务器）
+npm test                    # vitest run tests/frontend/
+npm run test:frontend:watch # vitest (watch mode)
+
+# E2E 测试（需要服务器运行）
+npm run test:e2e            # playwright test
+npm run test:e2e:ui         # playwright test --ui
+
+# 一键运行全部测试
+run-tests.bat               # Windows
+./run-tests.sh              # Unix
 ```
 
-**新增脚本时必须补充的测试用例：**
+**新增脚本时必须补充的测试用例（后端）：**
 1. 基本 JSON 输出格式（含必要字段：`output`、`log`）
 2. 错误输入时的 error JSON 契约
 3. 路径嵌套检测（输入在 `output/` 时输出不新建 `output/output/`）
 4. 参数边界值测试（如 max_depth=0、colors 超限）
 5. 可选：进度事件流（`{"event":"progress",...}` 行）
+
+**新增前端组件/函数时必须补充的测试用例：**
+1. 纯函数的输入-输出正确性（正确/边界/错误三类输入）
+2. 涉及 LiteGraph API 的代码必须通过适配层调用，适配层函数必须有测试
+3. 新工作流模板的类型名和端口名必须在 `test_schema_consistency.py` 的 TEMPLATES 字典中有对应条目
+4. E2E：新增关键用户交互路径必须补充 Playwright 测试场景
 
 ### 4.4 文档更新触发
 

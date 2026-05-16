@@ -72,10 +72,10 @@ export default async function renderWorkflowEditor(main, hash) {
   // Template function
   window._wfTemplate = (name) => {
     const templates = {
-      basic: { nodes: [{id:1,type:'wf_file_input',title:'File',pos:[100,100]},{id:2,type:'wf_generate_relief',title:'Relief',pos:[400,100]}], edges: [{source:1,target:2,sourcePort:'file',targetPort:'image'}] },
-      text2img: { nodes: [{id:1,type:'wf_text_input',title:'Text',pos:[100,100]},{id:2,type:'wf_text2img',title:'Text→Image',pos:[400,100]},{id:3,type:'wf_generate_relief',title:'Relief',pos:[700,100]}], edges: [{source:1,target:2,sourcePort:'text',targetPort:'prompt'},{source:2,target:3,sourcePort:'image',targetPort:'image'}] },
+      basic: { nodes: [{id:1,type:'wf_file_input',title:'File',pos:[100,100]},{id:2,type:'wf_relief',title:'Relief',pos:[400,100]}], edges: [{source:1,target:2,sourcePort:'file',targetPort:'image'}] },
+      text2img: { nodes: [{id:1,type:'wf_text_input',title:'Text',pos:[100,100]},{id:2,type:'wf_text_to_image',title:'Text→Image',pos:[400,100]},{id:3,type:'wf_relief',title:'Relief',pos:[700,100]}], edges: [{source:1,target:2,sourcePort:'text',targetPort:'prompt'},{source:2,target:3,sourcePort:'image',targetPort:'image'}] },
       advanced: { nodes: [{id:1,type:'wf_file_input',title:'File',pos:[100,100]},{id:2,type:'wf_layered_relief',title:'Layered',pos:[400,100]},{id:3,type:'wf_repair',title:'Repair',pos:[700,100]}], edges: [{source:1,target:2,sourcePort:'file',targetPort:'image'},{source:2,target:3,sourcePort:'stl',targetPort:'mesh'}] },
-      full: { nodes: [{id:1,type:'wf_file_input',title:'File',pos:[100,100]},{id:2,type:'wf_3dgenerate',title:'3D Gen',pos:[400,100]},{id:3,type:'wf_views',title:'Views',pos:[700,100]}], edges: [{source:1,target:2,sourcePort:'file',targetPort:'image'},{source:2,target:3,sourcePort:'mesh',targetPort:'mesh'}] },
+      full: { nodes: [{id:1,type:'wf_file_input',title:'File',pos:[100,100]},{id:2,type:'wf_triposr',title:'3D Gen',pos:[400,100]},{id:3,type:'wf_views',title:'Views',pos:[700,100]}], edges: [{source:1,target:2,sourcePort:'file',targetPort:'image'},{source:2,target:3,sourcePort:'mesh',targetPort:'mesh'}] },
     };
     const tpl = templates[name];
     if (!tpl) return;
@@ -90,15 +90,18 @@ export default async function renderWorkflowEditor(main, hash) {
       }
     });
     tpl.edges.forEach(e => {
+      if (!wfGraph._nodes) return;
       const srcNode = wfGraph._nodes.find(n => String(n.id) === String(e.source));
       const tgtNode = wfGraph._nodes.find(n => String(n.id) === String(e.target));
       if (srcNode && tgtNode) {
-        const srcOut = srcNode.findOutputSlot(e.sourcePort);
-        const tgtIn = tgtNode.findInputSlot(e.targetPort);
-        if (srcOut >= 0 && tgtIn >= 0) wfGraph.add({source: srcNode, target: tgtNode, sourcePort: srcOut, targetPort: tgtIn});
+        const srcOut = srcNode.findOutputSlot ? srcNode.findOutputSlot(e.sourcePort) : -1;
+        const tgtIn = tgtNode.findInputSlot ? tgtNode.findInputSlot(e.targetPort) : -1;
+        if (srcOut >= 0 && tgtIn >= 0) {
+          try { srcNode.connect(srcOut, tgtNode, tgtIn); } catch(_) {}
+        }
       }
     });
-    wfGraph.arrange();
+    try { if (wfGraph.arrange) wfGraph.arrange(); } catch(_) {}
     wfCanvas.setDirty(true, true);
     clearInspector();
     wfLog('Template loaded: ' + name);
@@ -148,6 +151,7 @@ export default async function renderWorkflowEditor(main, hash) {
     graph.nodes = (graph.nodes||[]).map(n => ({
       ...n,
       type: n.type||'',
+      color: n.color||null,
       pos: Array.isArray(n.pos) ? [...n.pos] : (n.pos && typeof n.pos === 'object' && '0' in n.pos ? [n.pos[0]||0, n.pos[1]||0] : (n.pos || [100, 100]))
     }));
     try {
@@ -272,7 +276,7 @@ function initLiteGraph(nodeTypes) {
 
   // Node selection → update inspector
   wfCanvas.onNodeSelected = function(node) {
-    if (node && node._wfTypeId) renderInspector(node);
+    if (node) renderInspector(node);
     else clearInspector();
   };
 
@@ -305,16 +309,15 @@ function createLiteGraphNodeClass(typeId, nodeTypes) {
   function WFNode(title) {
     LiteGraph.LGraphNode.call(this, title || nt.label);
     this._wfTypeId = typeId;
+	    this.type = 'wf_' + typeId; // required by LiteGraph serialize/configure
 
     (nt.inputs||[]).forEach((p, i) => this.addInput(p.label || p.name, p.type || '*'));
     (nt.outputs||[]).forEach((p, i) => this.addOutput(p.label || p.name, p.type || '*'));
 
     if (nt.color) this.color = nt.color;
 
-    // ✕ delete button
-    this.addWidget('button', '✕', null, () => {
-      if (wfGraph) { wfGraph.remove(this); wfCanvas.setDirty(true, true); }
-    });
+    // Note: deletion is handled via the inspector panel's delete button, not a widget here.
+    // Widget buttons appear as full-width rows inside LiteGraph nodes which is intrusive.
 
     this.properties = {};
     Object.entries(nt.params||{}).forEach(([key, spec]) => {
@@ -332,7 +335,7 @@ function createLiteGraphNodeClass(typeId, nodeTypes) {
 
   // Ensure title shows in node header
   WFNode.prototype.getTitle = function() {
-    return this.title || nt.label;
+    return this.title || (getLang() === 'zh' ? (nt.label_zh || nt.label) : nt.label);
   };
 
   // Lenient connect — overrides LiteGraph's strict type check
@@ -367,26 +370,29 @@ function clearInspector() {
 }
 
 function renderInspector(node) {
-  if (!node || !node._wfTypeId) return;
+  if (!node) return;
   _inspSelectedNode = node;
   const panel = document.getElementById('wf-inspector');
   if (!panel) return;
   const isZh = getLang() === 'zh';
 
-  // Find node type def
-  const nt = (window._wfNodeTypes || []).find(n => n.id === node._wfTypeId);
+  // Resolve _wfTypeId: loaded nodes lose custom props via configure()
+  const typeId = node._wfTypeId || (node.type || '').replace(/^wf_/, '');
+  const nt = (window._wfNodeTypes || []).find(n => n.id === typeId);
   if (!nt) return;
 
   const nodeId = String(node.id);
-  const title = node.title || nt.label || node._wfTypeId;
+  const nodeTitle = isZh ? (nt.label_zh || nt.label) : nt.label;
+  const title = node.title || nodeTitle || node._wfTypeId;
 
   // Build upstream output options for each input port
   function buildUpstreamOptions(tgtPortType, currentTgtSlot) {
     let opts = `<option value="">${t('inspector.notConnected')}</option>`;
-    if (!wfGraph) return opts;
+    if (!wfGraph || !wfGraph._nodes) return opts;
     wfGraph._nodes.forEach(other => {
       if (String(other.id) === nodeId) return;
-      const otherNT = (window._wfNodeTypes || []).find(n => n.id === (other._wfTypeId || ''));
+      const otherTypeId = (other._wfTypeId || (other.type || '').replace(/^wf_/, ''));
+      const otherNT = (window._wfNodeTypes || []).find(n => n.id === otherTypeId);
       if (!otherNT) return;
       (otherNT.outputs || []).forEach((op, opIdx) => {
         if (!op.type) return;
@@ -396,7 +402,7 @@ function renderInspector(node) {
           const val = `${other.id}:${opIdx}`;
           // Check if this is the currently connected source
           let selected = '';
-          if (wfGraph) {
+          if (wfGraph && wfGraph._links) {
             wfGraph._links.forEach(link => {
               if (String(link.target_id) === nodeId && link.target_slot === currentTgtSlot &&
                   String(link.origin_id) === String(other.id) && link.origin_slot === opIdx) {
@@ -413,13 +419,14 @@ function renderInspector(node) {
 
   // Build output connection list
   function buildOutputConnections(srcSlot) {
-    if (!wfGraph) return '';
+    if (!wfGraph || !wfGraph._links) return '';
     let html = '';
     wfGraph._links.forEach(link => {
       if (String(link.origin_id) === nodeId && link.origin_slot === srcSlot) {
         const tgtNode = wfGraph._nodes.find(n => String(n.id) === String(link.target_id));
         if (tgtNode) {
-          const tgtNT = (window._wfNodeTypes || []).find(n => n.id === (tgtNode._wfTypeId || ''));
+          const tgtTypeId = (tgtNode._wfTypeId || (tgtNode.type || '').replace(/^wf_/, ''));
+          const tgtNT = (window._wfNodeTypes || []).find(n => n.id === tgtTypeId);
           const tgtLabel = tgtNode.title || (tgtNT && tgtNT.label) || String(tgtNode.id);
           const portName = (tgtNT && tgtNT.inputs && tgtNT.inputs[link.target_slot])
             ? (isZh ? (tgtNT.inputs[link.target_slot].label_zh || tgtNT.inputs[link.target_slot].label) : tgtNT.inputs[link.target_slot].label)
@@ -502,7 +509,8 @@ window._wfInspChange = function(selectEl) {
   const nodeId = String(selectEl.dataset.node);
   const slot = parseInt(selectEl.dataset.slot);
   const tgtNode = wfGraph._nodes.find(n => String(n.id) === nodeId);
-  if (!tgtNode) return;
+  if (!wfGraph || !wfGraph._nodes || !tgtNode) return;
+  if (!wfGraph._links) return;
 
   // Remove existing links to this input slot
   const linksToRemove = [];
@@ -517,9 +525,9 @@ window._wfInspChange = function(selectEl) {
   const val = selectEl.value;
   if (val) {
     const [srcId, srcSlot] = val.split(':');
-    const srcNode = wfGraph._nodes.find(n => String(n.id) === srcId);
+    const srcNode = wfGraph._nodes ? wfGraph._nodes.find(n => String(n.id) === srcId) : null;
     if (srcNode && srcNode.outputs[parseInt(srcSlot)]) {
-      wfGraph.add({ source: srcNode, target: tgtNode, sourcePort: parseInt(srcSlot), targetPort: slot });
+      try { srcNode.connect(parseInt(srcSlot), tgtNode, slot); } catch(_) {}
     }
   }
 
@@ -533,7 +541,7 @@ window._wfInspGetNode = function(nodeId) {
 };
 
 window._wfRemoveNode = function(nodeId) {
-  if (!wfGraph) return;
+  if (!wfGraph || !wfGraph._nodes) return;
   const node = wfGraph._nodes.find(n => String(n.id) === String(nodeId));
   if (node) {
     wfGraph.remove(node);
@@ -546,6 +554,29 @@ function loadGraph(graphData) {
   wfGraph.clear();
   if (graphData && graphData.nodes && graphData.nodes.length > 0) {
     wfGraph.configure(graphData);
+    // Restore custom properties that configure() strips (color, _wfTypeId)
+    const nodeMap = {};
+    wfGraph._nodes.forEach(n => { nodeMap[String(n.id)] = n; });
+    graphData.nodes.forEach(n => {
+      const node = nodeMap[String(n.id)];
+      if (node) {
+        if (n.color) node.color = n.color;
+        const typeId = (n.type || '').replace(/^wf_/, '');
+        if (typeId && !node._wfTypeId) node._wfTypeId = typeId;
+        // Recovery: if type is empty (broken save from missing this.type), guess from port names
+        if (!node._wfTypeId) {
+          const nodeTypes = window._wfNodeTypes || [];
+          let best = null; let bestScore = 0;
+          nodeTypes.forEach(nt => {
+            let score = 0;
+            (nt.inputs||[]).forEach(p => { if (node.findInputSlot(p.name) >= 0) score += 2; });
+            (nt.outputs||[]).forEach(p => { if (node.findOutputSlot(p.name) >= 0) score += 2; });
+            if (score > bestScore) { bestScore = score; best = nt.id; }
+          });
+          if (best && bestScore >= 2) { node._wfTypeId = best; node.type = "wf_" + best; }
+        }
+      }
+    });
   }
   wfCanvas.setDirty(true, true);
 }

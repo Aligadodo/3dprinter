@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse, sys, os, json, time, struct
+from pathlib import Path
 import numpy as np
 
 
@@ -270,106 +271,437 @@ def _export_color_map(map_path, bands, phys_w, phys_h, base_mm, layer_mm,
 
 
 # ═══════════════════════════════════════════════════════════════════
-#  3MF export (Bambu Studio compatible)
+#  3MF export (Bambu Studio multi-color compatible)
 # ═══════════════════════════════════════════════════════════════════
 
-def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
-                base_name):
-    """Export a 3MF file with embedded STL mesh and Bambu Studio metadata.
+def _resolve_template_dir():
+    return Path(__file__).resolve().parent / "templates" / "bambu"
 
-    The 3MF format is a ZIP archive containing:
-      [Content_Types].xml
-      _rels/.rels
-      3D/3dmodel.model       — model structure with BambuStudio namespace
-      3D/Objects/object.model — the STL binary mesh
-      Metadata/model_settings.config — plate & filament settings
+
+def _load_template(printer, filename, tpl_dir=None):
+    if tpl_dir is None:
+        tpl_dir = _resolve_template_dir()
+    path = tpl_dir / printer.lower() / filename
+    if not path.exists():
+        path = tpl_dir / "p1s" / filename
+    return path.read_text("utf-8")
+
+
+def _load_profile(printer, tpl_dir=None):
+    return json.loads(_load_template(printer, "profile.json", tpl_dir))
+
+
+def _resolve_template_json(json_str, vars):
+    """Parse a template JSON string with {{PLACEHOLDER}} values,
+    walk the resulting dict, and replace placeholder strings with
+    Python objects from vars. Returns a valid JSON string.
     """
-    import zipfile, io
+    import re
+    cfg = json.loads(json_str)
+    _placeholder_re = re.compile(r'\{\{(.+?)\}\}')
 
-    # Read STL binary data
+    def _walk(obj):
+        if isinstance(obj, dict):
+            return {k: _walk(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [_walk(v) for v in obj]
+        elif isinstance(obj, str):
+            # Single exact placeholder -> Python object (list, dict, str, etc.)
+            m = _placeholder_re.fullmatch(obj)
+            if m:
+                key = m.group(1)
+                if key in vars:
+                    return vars[key]
+            # String with embedded placeholders -> string substitution
+            if "{{" in obj:
+                def _replace(m):
+                    key = m.group(1)
+                    val = vars.get(key, m.group(0))
+                    if isinstance(val, (list, dict)):
+                        raise TypeError(
+                            f"Cannot substitute list/dict placeholder {{{{ {key} }}}} "
+                            f"inside compound string: \"{obj}\""
+                        )
+                    return str(val)
+                return _placeholder_re.sub(_replace, obj)
+            return obj
+        return obj
+
+    resolved = _walk(cfg)
+    return json.dumps(resolved, indent=4, ensure_ascii=False)
+
+
+
+def _build_defaults(N, profile):
+    """Build per-filament and per-extruder default values sized for N filaments.
+    Returns Python dict with list/string values (not JSON-encoded).
+    """
+    fa = lambda val, n=N: [str(val)] * n
+    nil8 = ["nil"] * (2 * N)
+
+    dfp = profile.get("default_filament_profile", "Bambu PLA Basic @BBL X1C")
+    ftype = "PLA"
+    default_bed_temp = "55"
+    default_pla_temp = "220"
+
+    return {
+        # --- Per-filament defaults (size N) ---
+        "FILAMENT_FILAMENT_COLOUR": ["#000000"] * N,
+        "FILAMENT_FILAMENT_TYPE": [ftype] * N,
+        "FILAMENT_FILAMENT_IDS": ["GFL99"] * N,
+        "FILAMENT_FILAMENT_VENDOR": ["Bambu Lab"] * N,
+        "FILAMENT_FILAMENT_SETTINGS_ID": [dfp] * N,
+        "FILAMENT_FILAMENT_COST": fa("24.99"),
+        "FILAMENT_FILAMENT_DENSITY": fa("1.26"),
+        "FILAMENT_FILAMENT_DIAMETER": fa("1.75"),
+        "FILAMENT_FILAMENT_SHRINK": fa("100%"),
+        "FILAMENT_FILAMENT_IS_SUPPORT": fa("0"),
+        "FILAMENT_FILAMENT_SOLUBLE": fa("0"),
+        "FILAMENT_FILAMENT_PRINTABLE": fa("3"),
+        "FILAMENT_FILAMENT_CHANGE_LENGTH": fa("5"),
+        "FILAMENT_FILAMENT_MINIMAL_PURGE_ON_WIPE_TOWER": fa("15"),
+        "FILAMENT_FILAMENT_MULTI_COLOUR": ["#000000"] * N,
+        "FILAMENT_FILAMENT_COLOUR_TYPE": fa("1"),
+        "FILAMENT_FILAMENT_END_GCODE": ["; filament end gcode \n\n"] * N,
+        "FILAMENT_FILAMENT_START_GCODE": ["; filament start gcode\n{if  (bed_temperature[current_extruder] >55)||(bed_temperature_initial_layer[current_extruder] >55)}M106 P3 S200\n{elsif(bed_temperature[current_extruder] >50)||(bed_temperature_initial_layer[current_extruder] >50)}M106 P3 S150\n{elsif(bed_temperature[current_extruder] >45)||(bed_temperature_initial_layer[current_extruder] >45)}M106 P3 S50\n{endif}\nM142 P1 R35 S40\n{if activate_air_filtration[current_extruder] && support_air_filtration}\nM106 P3 S{during_print_exhaust_fan_speed_num[current_extruder]} \n{endif}"] * N,
+        "FILAMENT_FILAMENT_VELOCITY_ADAPTATION_FACTOR": fa("1"),
+        "FILAMENT_FILAMENT_SCARF_GAP": fa("0%"),
+        "FILAMENT_FILAMENT_SCARF_HEIGHT": fa("10%"),
+        "FILAMENT_FILAMENT_SCARF_LENGTH": fa("10"),
+        "FILAMENT_FILAMENT_SCARF_SEAM_TYPE": fa("none"),
+        "FILAMENT_NOZZLE_TEMPERATURE_RANGE_HIGH": fa("240"),
+        "FILAMENT_NOZZLE_TEMPERATURE_RANGE_LOW": fa("190"),
+        "FILAMENT_HOT_PLATE_TEMP": fa(default_bed_temp),
+        "FILAMENT_HOT_PLATE_TEMP_INITIAL_LAYER": fa(default_bed_temp),
+        "FILAMENT_COOL_PLATE_TEMP": fa("35"),
+        "FILAMENT_COOL_PLATE_TEMP_INITIAL_LAYER": fa("35"),
+        "FILAMENT_ENG_PLATE_TEMP": fa("0"),
+        "FILAMENT_ENG_PLATE_TEMP_INITIAL_LAYER": fa("0"),
+        "FILAMENT_TEXTURED_PLATE_TEMP": fa(default_bed_temp),
+        "FILAMENT_TEXTURED_PLATE_TEMP_INITIAL_LAYER": fa(default_bed_temp),
+        "FILAMENT_SUPERTACK_PLATE_TEMP": fa("45"),
+        "FILAMENT_SUPERTACK_PLATE_TEMP_INITIAL_LAYER": fa("45"),
+        "FILAMENT_ACTIVATE_AIR_FILTRATION": ["0"] * N,
+        "FILAMENT_ADDITIONAL_COOLING_FAN_SPEED": fa("70"),
+        "FILAMENT_CHAMBER_TEMPERATURES": fa("0"),
+        "FILAMENT_CLOSE_FAN_THE_FIRST_X_LAYERS": fa("1"),
+        "FILAMENT_DEFAULT_FILAMENT_COLOUR": [""] * N,
+        "FILAMENT_DURING_PRINT_EXHAUST_FAN_SPEED": fa("70"),
+        "FILAMENT_FAN_COOLING_LAYER_TIME": fa("100"),
+        "FILAMENT_FAN_MAX_SPEED": fa("100"),
+        "FILAMENT_FAN_MIN_SPEED": fa("100"),
+        "FILAMENT_FIRST_X_LAYER_FAN_SPEED": fa("0"),
+        "FILAMENT_FULL_FAN_SPEED_LAYER": fa("0"),
+        "FILAMENT_IMPACT_STRENGTH_Z": fa("13.8"),
+        "FILAMENT_NO_SLOW_DOWN_FOR_COOLING_ON_OUTWALLS": fa("0"),
+        "FILAMENT_OVERHANG_FAN_SPEED": fa("100"),
+        "FILAMENT_OVERHANG_FAN_THRESHOLD": fa("50%"),
+        "FILAMENT_OVERHANG_THRESHOLD_PARTICIPATING_COOLING": fa("95%"),
+        "FILAMENT_PRE_START_FAN_TIME": fa("0"),
+        "FILAMENT_REDUCE_FAN_STOP_START_FREQ": fa("1"),
+        "FILAMENT_REQUIRED_NOZZLE_HRC": fa("3"),
+        "FILAMENT_SLOW_DOWN_FOR_LAYER_COOLING": fa("1"),
+        "FILAMENT_SLOW_DOWN_LAYER_TIME": fa("4"),
+        "FILAMENT_SLOW_DOWN_MIN_SPEED": fa("20"),
+        "FILAMENT_TEMPERATURE_VITRIFICATION": fa("45"),
+        # --- Per-extruder arrays (size 2*N) ---
+        "FILAMENT_NY_FILAMENT_SELF_INDEX": list(range(N)) * 2,
+        "FILAMENT_NY_FILAMENT_EXTRUDER_VARIANT": ["Direct Drive Standard", "Direct Drive High Flow"] * N,
+        "FILAMENT_NY_NOZZLE_TEMPERATURE": fa(default_pla_temp, 2 * N),
+        "FILAMENT_NY_NOZZLE_TEMPERATURE_INITIAL_LAYER": fa(default_pla_temp, 2 * N),
+        "FILAMENT_NY_FILAMENT_FLOW_RATIO": fa("0.98", 2 * N),
+        "FILAMENT_NY_FILAMENT_MAX_VOLUMETRIC_SPEED": fa("21", 2 * N),
+        "FILAMENT_NY_FILAMENT_FLUSH_TEMP": fa("0", 2 * N),
+        "FILAMENT_NY_FILAMENT_FLUSH_VOLUMETRIC_SPEED": fa("0", 2 * N),
+        "FILAMENT_NY_FILAMENT_LONG_RETRACTIONS_WHEN_CUT": fa("1", 2 * N),
+        "FILAMENT_NY_FILAMENT_RETRACTION_DISTANCES_WHEN_CUT": fa("18", 2 * N),
+        "FILAMENT_NY_FILAMENT_PRE_COOLING_TEMPERATURE": fa("0", 2 * N),
+        "FILAMENT_NY_FILAMENT_RAMMING_VOLUMETRIC_SPEED": fa("-1", 2 * N),
+        "FILAMENT_NY_FILAMENT_RAMMING_TRAVEL_TIME": fa("0", 2 * N),
+        "FILAMENT_NY_FILAMENT_ADAPTIVE_VOLUMETRIC_SPEED": fa("0", 2 * N),
+        "FILAMENT_NY_FILAMENT_DERETRACTION_SPEED": nil8,
+        "FILAMENT_NY_FILAMENT_RETRACT_BEFORE_WIPE": nil8,
+        "FILAMENT_NY_FILAMENT_RETRACT_RESTART_EXTRA": nil8,
+        "FILAMENT_NY_FILAMENT_RETRACT_WHEN_CHANGING_LAYER": nil8,
+        "FILAMENT_NY_FILAMENT_RETRACTION_LENGTH": nil8,
+        "FILAMENT_NY_FILAMENT_RETRACTION_MINIMUM_TRAVEL": nil8,
+        "FILAMENT_NY_FILAMENT_RETRACTION_SPEED": nil8,
+        "FILAMENT_NY_FILAMENT_WIPE": nil8,
+        "FILAMENT_NY_FILAMENT_WIPE_DISTANCE": nil8,
+        "FILAMENT_NY_FILAMENT_Z_HOP": nil8,
+        "FILAMENT_NY_FILAMENT_Z_HOP_TYPES": nil8,
+        "FILAMENT_NY_LONG_RETRACTIONS_WHEN_EC": fa("0", 2 * N),
+        "FILAMENT_NY_RETRACTION_DISTANCES_WHEN_EC": fa("0", 2 * N),
+        "FILAMENT_NY_VOLUMETRIC_SPEED_COEFFICIENTS": ["0 0 0 0 0 0"] * (2 * N),
+    }
+
+
+def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
+                base_name, printer="P1S", layer_height_mm=0.2):
+    """Export a 3MF file with full Bambu Studio multi-color configuration.
+
+    Generates:
+      [Content_Types].xml, _rels/.rels
+      3D/3dmodel.model, 3D/_rels/3dmodel.model.rels
+      3D/Objects/object.model (STL binary)
+      Metadata/project_settings.config (slicer config with N filaments)
+      Metadata/model_settings.config (plate + filament mapping)
+      Metadata/custom_gcode_per_layer.xml (height-based filament changes)
+      Metadata/cut_information.xml, Metadata/filament_sequence.json
+    """
+    import zipfile
+
+    tpl_dir = _resolve_template_dir()
+    profile = _load_profile(printer, tpl_dir)
+
+    # Load G-code templates
+    gcode_files = {
+        "MACHINE_START_GCODE": "machine_start_gcode.gcode",
+        "MACHINE_END_GCODE": "machine_end_gcode.gcode",
+        "LAYER_CHANGE_GCODE": "layer_change_gcode.gcode",
+        "CHANGE_FILAMENT_GCODE": "change_filament_gcode.gcode",
+    }
+    gcode_args = {}
+    for gvar, gfile in gcode_files.items():
+        gcode_args[gvar] = _load_template(printer, gfile, tpl_dir)
+
+    # --- Read STL binary ---
     with open(stl_path, 'rb') as f:
         stl_data = f.read()
 
-    # Build filament change description
-    color_desc_parts = []
-    for b in bands:
-        color_desc_parts.append(
-            f"{b['z_start_mm']:.2f}mm换{b['color_hex']}")
-    color_desc = "，".join(color_desc_parts)
-    desc_zh = f"<p>共{len(bands)}色版画 | {color_desc}</p><p>使用 Bambu Studio 打开后，在预览页面按高度范围设置耗材颜色。</p>"
-    change_list = "; ".join(f"{b['z_start_mm']:.1f}mm={b['color_hex']}" for b in bands)
-    desc_en = f"<p>{len(bands)}-color relief | filament changes at: {change_list}</p>"
+    # --- Compute dynamic values ---
+    N = len(bands)
+    sorted_bands = sorted(bands, key=lambda b: b["order"])
 
+    # Flush volumes matrix (NxN, diagonal=0, off-diagonal=280)
+    flush_default = 280
+    flush_matrix = [[0 if i == j else flush_default for j in range(N)] for i in range(N)]
+
+    # Flush volumes vector (N entries, 140 each)
+    flush_vector = [140] * N
+
+    # Filament map: "1 1 1 1" for N=4 (single extruder, all mapped to slot 1)
+    filament_map_str = " ".join(["1"] * N)
+
+    # Wipe tower position (60mm from right, 40mm from top)
+    bed_x = profile.get("bed_size_x", 256)
+    bed_y = profile.get("bed_size_y", 256)
+    wipe_tower_x = str(bed_x - 60)
+    wipe_tower_y = str(bed_y - 40)
+
+    # Inherits group
+    inherits = [profile.get("default_print_profile", "0.20mm Standard @BBL X1C")] + [""] * 5
+
+    # Print settings
+    print_settings_id = f"{layer_height_mm:.2f}mm Layered Relief"
     now = time.strftime("%Y-%m-%d")
+    bed_z = str(profile.get("bed_size_z", 250))
+    nozzle_volume = str(profile.get("nozzle_volume", "107"))
+    ecr = str(profile.get("extruder_clearance_max_radius", "68"))
+    ecr_h = str(profile.get("extruder_clearance_height_to_rod", "34"))
+    ecr_l = str(profile.get("extruder_clearance_height_to_lid", "90"))
 
-    # [Content_Types].xml
-    content_types = '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n</Types>'
+    # Build defaults for N filaments, then override with computed values
+    vars = {}
+    vars.update(_build_defaults(N, profile))
+    vars.update(gcode_args)
+    vars.update({
+        # Printer info
+        "PRINTER_MODEL": profile["printer_model"],
+        "PRINTER_SETTINGS_ID": profile["printer_settings_id"],
+        "PRINTER_STRUCTURE": profile.get("printer_structure", "corexy"),
+        "PRINTER_VARIANT": profile["printer_variant"],
+        "PRINTER_TECHNOLOGY": profile.get("printer_technology", "FFF"),
+        # Bed
+        "BED_SIZE_X": str(bed_x),
+        "BED_SIZE_Y": str(bed_y),
+        "BED_SIZE_Z": bed_z,
+        # Clearances
+        "EXTRUDER_CLEARANCE_MAX_RADIUS": ecr,
+        "EXTRUDER_CLEARANCE_HEIGHT_TO_ROD": ecr_h,
+        "EXTRUDER_CLEARANCE_HEIGHT_TO_LID": ecr_l,
+        # Nozzle
+        "NOZZLE_VOLUME": nozzle_volume,
+        # Profiles
+        "DEFAULT_PRINT_PROFILE": profile.get("default_print_profile", "0.20mm Standard @BBL X1C"),
+        "DEFAULT_FILAMENT_PROFILE": profile.get("default_filament_profile", "Bambu PLA Basic @BBL X1C"),
+        "INHERITS_GROUP": inherits,
+        "COMPATIBLE_PRINTERS": profile.get("compatible_printers", ["Bambu Lab P1S 0.4 nozzle"]),
+        "PRINT_SETTINGS_ID": print_settings_id,
+        # Filament colors (from k-means palette) — override defaults
+        "FILAMENT_FILAMENT_COLOUR": [b["color_hex"].upper() for b in sorted_bands],
+        "FILAMENT_FILAMENT_MULTI_COLOUR": [b["color_hex"].upper() for b in sorted_bands],
+        # Flush
+        "FLUSH_VOLUMES_MATRIX": flush_matrix,
+        "FLUSH_VOLUMES_VECTOR": flush_vector,
+        # Mapping
+        "FILAMENT_MAP": filament_map_str,
+        # Wipe tower
+        "WIPE_TOWER_X": wipe_tower_x,
+        "WIPE_TOWER_Y": wipe_tower_y,
+        # Print quality
+        "LAYER_HEIGHT": f"{layer_height_mm:.2f}",
+        "INITIAL_LAYER_PRINT_HEIGHT": f"{max(0.08, layer_height_mm):.2f}",
+        "SPARSE_INFILL_DENSITY": "100%",
+        "WALL_LOOPS": "2",
+        "TOP_SHELL_LAYERS": "5",
+        "BOTTOM_SHELL_LAYERS": "3",
+        "TOP_SHELL_THICKNESS": "0.6",
+        # Date
+        "CREATION_DATE": now,
+    })
 
-    # _rels/.rels
-    rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n  <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/3dmodel.model" Id="rel0"/>\n</Relationships>'
+    # Render project_settings.config
+    ps_template = _load_template(printer, "project_settings.template", tpl_dir)
+    project_settings = _resolve_template_json(ps_template, vars)
 
-    # 3D/3dmodel.model
+    # --- Build custom_gcode_per_layer.xml ---
+    # MultiAsSingle: at each band's z_end, switch to the NEXT extruder.
+    # Extruder 1 is active by default at Z=0; last band needs no event.
+    layer_events = []
+    for b in sorted_bands[:-1]:
+        next_extruder = b["order"] + 1
+        layer_events.append(
+            f'  <layer top_z="{b["z_end_mm"]:.2f}" type="2" '
+            f'extruder="{next_extruder}" color="{b["color_hex"].upper()}" '
+            f'extra="" gcode="tool_change"/>'
+        )
+    gcode_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<custom_gcodes_per_layer>\n'
+        ' <plate>\n'
+        '  <plate_info id="1"/>\n'
+        + "\n".join(layer_events) + "\n"
+        '  <mode value="MultiAsSingle"/>\n'
+        ' </plate>\n'
+        '</custom_gcodes_per_layer>'
+    )
+
+    # --- Build descriptions ---
+    color_desc = ", ".join(
+        f"{b['z_start_mm']:.1f}mm={b['color_hex']}" for b in sorted_bands)
+    desc_text = f"{N}-color relief | {color_desc}"
+    desc_html = "&lt;p&gt;" + desc_text + "&lt;/p&gt;"
+    title = f"{N} color {layer_height_mm:.2f}mm"
+
+    # --- 3D/3dmodel.model ---
     obj_uuid = "00000002-61cb-4c03-9d28-80fed5dfa1dc"
     build_uuid = "2c7c17d8-22b5-4d84-8835-1976022ea369"
     item_uuid = "00000002-b1ec-4553-aec9-835e5b724bb4"
+    # Center model on bed
+    tx = (bed_x - phys_w) / 2
+    ty = (bed_y - phys_h) / 2
 
-    model_xml = f'''<?xml version="1.0" encoding="UTF-8"?>
-<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
-       xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
-       unit="millimeter" xml:lang="en-US" requiredextensions="p"
-       xmlns:BambuStudio="http://schemas.bambulab.com/package/2021">
- <metadata name="Application">Claude-3DPrint-Pipeline</metadata>
- <metadata name="BambuStudio:3mfVersion">1</metadata>
- <metadata name="CreationDate">{now}</metadata>
- <metadata name="Description">{desc_en}</metadata>
- <metadata name="Title">{base_name}</metadata>
- <resources>
-  <object id="2" p:UUID="{obj_uuid}" type="model">
-   <components>
-    <component p:path="/3D/Objects/object.model" objectid="1"
-               p:UUID="00020000-b206-40ff-9872-83e8017abed1"
-               transform="1 0 0 0 1 0 0 0 1 0 0 0"/>
-   </components>
-  </object>
- </resources>
- <build p:UUID="{build_uuid}">
-  <item objectid="2" p:UUID="{item_uuid}"
-        transform="1 0 0 0 1 0 0 0 1 0 0 0" printable="1"/>
- </build>
-</model>'''
+    model_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<model unit="millimeter" xml:lang="en-US"'
+        ' xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"'
+        ' xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"'
+        ' xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"'
+        ' requiredextensions="p">\n'
+        f'  <metadata name="Application">BambuStudio-02.03.00.70</metadata>\n'
+        f'  <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
+        f'  <metadata name="Copyright" />\n'
+        f'  <metadata name="CreationDate">{now}</metadata>\n'
+        f'  <metadata name="Description">{desc_html}</metadata>\n'
+        f'  <metadata name="Designer" />\n'
+        f'  <metadata name="DesignerCover" />\n'
+        f'  <metadata name="DesignerUserId">3178235157</metadata>\n'
+        f'  <metadata name="License" />\n'
+        f'  <metadata name="ModificationDate">{now}</metadata>\n'
+        f'  <metadata name="Origin">original</metadata>\n'
+        f'  <metadata name="Title">{base_name}</metadata>\n'
+        f'  <resources>\n'
+        f'   <object id="2" p:UUID="{obj_uuid}" type="model">\n'
+        f'    <components>\n'
+        f'     <component p:path="/3D/Objects/object.model" objectid="1"'
+        f' p:UUID="00020000-b206-40ff-9872-83e8017abed1"'
+        f' transform="1 0 0 0 1 0 0 0 1 0 0 0" />\n'
+        f'    </components>\n'
+        f'   </object>\n'
+        f'  </resources>\n'
+        f'  <build p:UUID="{build_uuid}">\n'
+        f'   <item objectid="2" p:UUID="{item_uuid}"'
+        f' transform="1 0 0 0 1 0 0 0 1 {tx:.6f} {ty:.6f} {total_mm:.6f}"'
+        f' printable="1" />\n'
+        f'  </build>\n'
+        f'  <metadata name="CopyRight">[]</metadata>\n'
+        f'  <metadata name="ProfileTitle">{title}</metadata>\n'
+        f'  <metadata name="ProfileCover" />\n'
+        f'  <metadata name="ProfileDescription">{desc_html}</metadata>\n'
+        f'  <metadata name="ProfileUserId">3178235157</metadata>\n'
+        f'  <metadata name="ProfileUserName" />\n'
+        f'  <metadata name="DesignRegion">CN</metadata>\n'
+        f'  <metadata name="DesignModelId">{base_name}</metadata>\n'
+        f'  <metadata name="DesignProfileId">1</metadata>\n'
+        f'</model>'
+    )
 
-    # Metadata/model_settings.config
+    # --- Model settings config with filament_maps ---
+    # Compute face count from STL binary (80-byte header + 4-byte triangle count)
+    import struct as _struct
+    face_count = _struct.unpack_from('<I', stl_data, 80)[0] if len(stl_data) > 84 else 0
     model_settings = f'''<?xml version="1.0" encoding="UTF-8"?>
 <config>
- <object id="2">
-  <metadata key="name" value="{base_name}.stl"/>
-  <part id="1" subtype="normal_part">
-   <metadata key="name" value="{base_name}.stl"/>
-  </part>
- </object>
- <plate>
-  <metadata key="plater_id" value="1"/>
-  <metadata key="plater_name" value=""/>
-  <metadata key="locked" value="false"/>
-  <metadata key="thumbnail_file" value=""/>
-  <model_instance>
-   <metadata key="object_id" value="2"/>
-   <metadata key="instance_id" value="0"/>
-   <metadata key="identify_id" value="1"/>
-  </model_instance>
- </plate>
+  <object id="2">
+    <metadata key="name" value="{base_name}.stl"/>
+    <metadata key="extruder" value="1"/>
+    <metadata face_count="{face_count}"/>
+    <part id="1" subtype="normal_part">
+      <metadata key="name" value="{base_name}.stl"/>
+      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
+      <metadata key="source_object_id" value="0"/>
+      <metadata key="source_volume_id" value="0"/>
+      <metadata key="source_offset_x" value="0"/>
+      <metadata key="source_offset_y" value="0"/>
+      <metadata key="source_offset_z" value="0"/>
+      <mesh_stat face_count="{face_count}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>
+    </part>
+  </object>
+  <plate>
+    <metadata key="plater_id" value="1"/>
+    <metadata key="plater_name" value=""/>
+    <metadata key="locked" value="false"/>
+    <metadata key="filament_map_mode" value="Auto For Flush"/>
+    <metadata key="filament_maps" value="{filament_map_str}"/>
+    <metadata key="filament_volume_maps" value="{" ".join(["0"] * N)}"/>
+    <metadata key="thumbnail_file" value=""/>
+    <model_instance>
+      <metadata key="object_id" value="2"/>
+      <metadata key="instance_id" value="0"/>
+      <metadata key="identify_id" value="1"/>
+    </model_instance>
+  </plate>
+  <assemble>
+    <assemble_item object_id="2" instance_id="0"
+     transform="1 0 0 0 1 0 0 0 1 {tx:.6f} {ty:.6f} {total_mm:.6f}"
+     offset="0 0 0"/>
+  </assemble>
 </config>'''
 
-    # 3D/_rels/3dmodel.model.rels
-    model_rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n  <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/Objects/object.model" Id="rel1"/>\n</Relationships>'
+    # --- Compatibility files ---
+    content_types = '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n</Types>'
 
+    rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/3dmodel.model" Id="rel-1"/>\n</Relationships>'
+
+    model_rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/Objects/object.model" Id="rel1"/>\n</Relationships>'
+
+    cut_information = '<?xml version="1.0" encoding="UTF-8"?>\n<objects>\n <object id="1">\n  <cut_id id="0" check_sum="1" connectors_cnt="0"/>\n </object>\n</objects>'
+
+    filament_sequence = '{"plate_1":{"nozzle_sequence":[],"optimal_assignment":[],"sequence":[]}}'
+
+    # --- Write ZIP ---
     with zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as zf:
         zf.writestr('[Content_Types].xml', content_types)
         zf.writestr('_rels/.rels', rels)
         zf.writestr('3D/3dmodel.model', model_xml)
         zf.writestr('3D/_rels/3dmodel.model.rels', model_rels)
         zf.writestr('3D/Objects/object.model', stl_data)
+        zf.writestr('Metadata/project_settings.config', project_settings)
         zf.writestr('Metadata/model_settings.config', model_settings)
+        zf.writestr('Metadata/custom_gcode_per_layer.xml', gcode_xml)
+        zf.writestr('Metadata/cut_information.xml', cut_information)
+        zf.writestr('Metadata/filament_sequence.json', filament_sequence)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -379,7 +711,8 @@ def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
 def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
                             num_colors=4, layer_height_mm=0.4,
                             base_thickness_mm=0.3, edge_smooth=0.5,
-                            output_format="stl", pixel_spacing_mm=0.08):
+                            output_format="stl", pixel_spacing_mm=0.08,
+                            printer="P1S"):
     log = []
 
     if not os.path.exists(image_path):
@@ -494,7 +827,8 @@ def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
         _emit("progress", {"percent": 95, "message": "Exporting 3MF..."})
         mf_path = os.path.join(out_dir, f"{base}_{num_colors}color.3mf")
         try:
-            _export_3mf(mf_path, stl_path, bands, phys_w, phys_h, total_mm, base)
+            _export_3mf(mf_path, stl_path, bands, phys_w, phys_h, total_mm, base,
+                         printer=printer, layer_height_mm=layer_height_mm)
             mf_mb = os.path.getsize(mf_path) / 1024**2
             log.append(f"3MF: {mf_path} ({mf_mb:.1f} MB)")
             result["output_3mf"] = mf_path
@@ -529,6 +863,9 @@ if __name__ == "__main__":
                         help="Pixel spacing in mm (default: 0.08)")
     parser.add_argument("--format", type=str, default="stl", choices=["stl", "3mf"],
                         help="Output format: stl or 3mf (default: stl)")
+    parser.add_argument("--printer", type=str, default="P1S",
+                        choices=["P1S", "A1"],
+                        help="Bambu printer model for 3MF config (default: P1S)")
     args = parser.parse_args()
 
     # Print input params for the scheduler to log
@@ -539,6 +876,7 @@ if __name__ == "__main__":
         "layer_height_mm": args.layer_height,
         "base_thickness_mm": args.base_thickness,
         "format": args.format,
+        "printer": args.printer,
     }, indent=2))
 
     result = image_to_layered_relief(
@@ -551,6 +889,7 @@ if __name__ == "__main__":
         edge_smooth=args.edge_smooth,
         output_format=args.format,
         pixel_spacing_mm=args.pixel_spacing,
+        printer=args.printer,
     )
 
     if "error" in result:

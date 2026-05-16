@@ -570,14 +570,25 @@ async def get_workflow_inputs(wf_id: str):
     graph = wf.get("graph", {})
     input_ids = node_types.get_input_node_ids(graph)
     inputs_info = []
+
+    # Backward compat: title → node_type mapping for corrupted workflows
+    title_to_type = {
+        "file_input": "file_input", "File Input": "file_input", "File": "file_input",
+        "text_input": "text_input", "Text Input": "text_input",
+    }
+
     for n in graph.get("nodes", []):
         nid = str(n.get("id"))
         if nid in input_ids:
-            nt_def = node_types.get_node_type(n.get("type", ""))
             raw_type = n.get("type", "")
+            node_type_id = raw_type.replace("wf_", "", 1) if raw_type.startswith("wf_") else raw_type
+            # If type is empty, try to infer from title
+            if not node_type_id:
+                node_type_id = title_to_type.get(n.get("title", ""), raw_type)
+            nt_def = node_types.get_node_type(node_type_id)
             inputs_info.append({
                 "node_id": nid,
-                "node_type": raw_type.replace("wf_", "", 1) if raw_type.startswith("wf_") else raw_type,
+                "node_type": node_type_id,
                 "label": n.get("title", nt_def.label if nt_def else n.get("type")),
                 "params": nt_def.params if nt_def else {},
                 "outputs": [p.to_dict() for p in nt_def.outputs] if nt_def else [],
@@ -623,7 +634,7 @@ async def run_workflow(
             f.write(content)
 
         file_input_nodes = [str(n["id"]) for n in graph.get("nodes", [])
-                          if n.get("type") == "file_input"]
+                          if n.get("type") in ("file_input", "wf_file_input")]
         for fnid in file_input_nodes:
             if fnid not in inputs_dict or "file" not in inputs_dict.get(fnid, {}):
                 inputs_dict.setdefault(fnid, {})["file"] = file_path

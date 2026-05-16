@@ -1,13 +1,18 @@
 /* task-detail.js — Task detail page (standalone + workflow sub-tasks) */
 import { api, apiStream } from '../api.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import { escHtml, formatTime, formatBytes, cacheFile, showFileModal, showCtxMenu, getFile, toast } from '../utils.js';
+import { showConfirm } from '../components/confirm.js';
 import { setActiveSSE } from '../router.js';
 import { renderNodeDetailPanel } from '../components/node-detail.js';
 
 export default async function renderTaskDetail(main, hash) {
   const taskId = hash.startsWith('#/task/') ? hash.slice(7) : hash;
-  main.innerHTML = `<h2>${t('detail.title')}</h2><div id="detail-content">${t('detail.loading')}</div>`;
+  main.innerHTML = `<h2>${t('detail.title')}</h2><div id="detail-content">
+    <div class="skeleton skeleton-text"></div>
+    <div class="skeleton" style="height:120px;margin-bottom:12px"></div>
+    <div class="skeleton" style="height:200px;margin-bottom:12px"></div>
+  </div>`;
 
   let task;
   try {
@@ -34,6 +39,14 @@ export default async function renderTaskDetail(main, hash) {
   async function render() {
     const ofiles = task.output_files || [];
     const statusLabel = badgeLabels[task.status] || task.status;
+
+    // Fetch pipeline types for bilingual labels
+    let pipelineTypeCache = {};
+    try {
+      const ptData = await api('GET', '/pipeline-types');
+      pipelineTypeCache = ptData.types || {};
+    } catch (_) {}
+    const isZh = getLang() === 'zh';
 
     // ── Workflow sub-task: per-node breakdown ──
     if (wfCtx) {
@@ -85,7 +98,8 @@ export default async function renderTaskDetail(main, hash) {
         <div class="detail-header">
           <span class="badge badge-${task.status}">${statusLabel}</span>
           <span class="badge badge-workflow">🔄 ${t('dash.workflow')}</span>
-          <span style="font-size:14px;font-weight:600;flex:1">${task.display_name || (task.pipeline_type + ' — ' + task.id)}</span>
+          const ptLabel = (pipelineTypeCache[task.pipeline_type] && (isZh ? pipelineTypeCache[task.pipeline_type].label_zh : pipelineTypeCache[task.pipeline_type].label)) || task.pipeline_type;
+          <span style="font-size:14px;font-weight:600;flex:1">${task.display_name || (ptLabel + ' — ' + task.id)}</span>
         </div>`;
 
       // Workflow Context — per-node cards
@@ -183,20 +197,26 @@ export default async function renderTaskDetail(main, hash) {
     }
 
     // ── Standalone task (rendered as single-node "workflow") ──
-    let html = `<div class="help-tip">${t('detail.help')}</div>
-      <a href="#/dashboard" class="back-btn" style="margin-bottom:12px;display:inline-flex">← Dashboard</a>`;
+    let html = `<div class="breadcrumb">
+      <a href="#/dashboard">${t('nav.dashboard')}</a><span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">${escHtml(task.display_name || (ptLabel + ' — ' + task.id))}</span>
+    </div>
+    <div class="help-tip">${t('detail.help')}</div>`;
 
     // Progress bar for running/queued
     if (task.status === 'running' || task.status === 'queued') {
-      html += `<div class="progress-bar"><div class="fill" id="progress-fill" style="width:5%"></div></div>
+      html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div class="sse-indicator sse-connecting" id="sse-indicator"><span class="sse-dot"></span> Live</div>
+      </div>
+      <div class="progress-bar"><div class="fill" id="progress-fill" style="width:5%"></div></div>
         <div class="progress-text" id="progress-text">${t('detail.waiting')}</div>
         <div id="preview-zone"></div>`;
     }
 
     // Build node-detail-panel arguments from task data
-    const displayNode = { title: task.display_name || task.pipeline_type, type: task.pipeline_type, properties: {} };
+    const displayNode = { title: task.display_name || ptLabel, type: task.pipeline_type, properties: {} };
     const displayNr = { status: task.status, task_id: task.id, error: task.result?.error || null, output_files: ofiles, task: task };
-    const displayNt = { id: task.pipeline_type, label: task.pipeline_type, color: '#58a6ff', inputs: [], outputs: [], params: {} };
+    const displayNt = { id: task.pipeline_type, label: ptLabel, color: '#58a6ff', inputs: [], outputs: [], params: {} };
     const displayInputs = task.input_file ? { file: task.input_file } : {};
     const displayParams = {};
     Object.entries(task.params || {}).forEach(([k, v]) => { displayParams[k] = { value: v, source: 'runtime' }; });
@@ -229,10 +249,13 @@ export default async function renderTaskDetail(main, hash) {
 
   await render();
 
-  // SSE for live updates
-  if (task.status === 'running' || task.status === 'queued') {
+  // SSE for live updates (all non-terminal states so 'complete' can trigger re-render)
+  if (task.status !== 'failed' && task.status !== 'cancelled') {
     setActiveSSE(apiStream(taskId, (evt, data) => {
       handleSSEEvent(evt, data, taskId, task, render);
+    }, (connState) => {
+      const el = document.getElementById('sse-indicator');
+      if (el) { el.className = 'sse-indicator sse-' + connState; }
     }));
   }
 }
@@ -329,7 +352,7 @@ function bindTaskActions(taskId, task, renderFn) {
 
   const deleteBtn = document.getElementById('delete-btn');
   if (deleteBtn) deleteBtn.addEventListener('click', async () => {
-    if (!confirm(t('detail.deleteConfirm'))) return;
+    if (!await showConfirm(t('detail.delete'), t('detail.deleteConfirm'), t('detail.delete'), t('detail.cancel'))) return;
     try { await api('DELETE', `/tasks/${taskId}`); }
     catch (e) { toast(e.message, 'error'); return; }
     toast(t('toast.taskDeleted'), 'success');
@@ -363,14 +386,46 @@ function handleSSEEvent(evt, data, taskId, task, render) {
   }
   if (evt === 'complete') {
     toast(t('toast.taskCompleted'), 'success');
-    setTimeout(async () => { task = await api('GET', `/tasks/${taskId}`); render(); }, 500);
+    // Immediate UI feedback before re-fetch
+    const badge = document.querySelector('#detail-content .badge');
+    if (badge) { badge.className = 'badge badge-completed'; badge.textContent = t('badge.completed'); }
+    const fill = document.getElementById('progress-fill');
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--green)'; }
+    const pt = document.getElementById('progress-text');
+    if (pt) pt.textContent = t('detail.completed');
+    const ind = document.getElementById('sse-indicator');
+    if (ind) ind.style.display = 'none';
+    // Re-fetch to get output files + result, render immediately (no delay)
+    api('GET', `/tasks/${taskId}`).then(fresh => {
+      Object.assign(task, fresh);
+      render();
+    });
   }
   if (evt === 'error') {
     toast(data.error || t('toast.taskFailed'), 'error');
-    setTimeout(async () => { task = await api('GET', `/tasks/${taskId}`); render(); }, 500);
+    const badge = document.querySelector('#detail-content .badge');
+    if (badge) { badge.className = 'badge badge-failed'; badge.textContent = t('badge.failed'); }
+    const fill = document.getElementById('progress-fill');
+    if (fill) { fill.style.width = '100%'; fill.style.background = 'var(--red)'; }
+    const pt = document.getElementById('progress-text');
+    if (pt) pt.textContent = data.error || t('detail.failedToast');
+    const ind = document.getElementById('sse-indicator');
+    if (ind) ind.style.display = 'none';
+    // Re-fetch for result/error details, then render
+    api('GET', `/tasks/${taskId}`).then(fresh => {
+      Object.assign(task, fresh);
+      render();
+    });
   }
   if (evt === 'cancelled') {
     toast(t('toast.taskCancelled'), 'error');
-    setTimeout(async () => { task = await api('GET', `/tasks/${taskId}`); render(); }, 500);
+    const badge = document.querySelector('#detail-content .badge');
+    if (badge) { badge.className = 'badge badge-cancelled'; badge.textContent = t('badge.cancelled'); }
+    const ind = document.getElementById('sse-indicator');
+    if (ind) ind.style.display = 'none';
+    api('GET', `/tasks/${taskId}`).then(fresh => {
+      Object.assign(task, fresh);
+      render();
+    });
   }
 }

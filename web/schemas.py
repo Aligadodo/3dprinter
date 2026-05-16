@@ -82,6 +82,8 @@ PIPELINE_TYPES = {
              "label": "Pixel Spacing (mm)", "label_zh": "像素间距 (mm)", "description": "Resolution of height field", "description_zh": "高度场分辨率（越小越精细，文件越大）"},
             {"name": "format", "type": "choice", "default": "stl", "choices": ["stl", "3mf"],
              "label": "Output Format", "label_zh": "输出格式", "description": "STL + colour map, or Bambu Studio 3MF", "description_zh": "STL + 换色说明，或 Bambu Studio 兼容 3MF"},
+            {"name": "printer", "type": "choice", "default": "P1S", "choices": ["P1S", "A1"],
+             "label": "Printer", "label_zh": "打印机型号", "description": "Bambu printer for 3MF slicer config", "description_zh": "用于 3MF 切片配置的打印机型号（P1S / A1）"},
         ]
     },
     "triposr": {
@@ -102,6 +104,8 @@ PIPELINE_TYPES = {
              "label": "Foreground Ratio", "label_zh": "前景比例", "description": "Crop ratio for background removal", "description_zh": "背景移除时的裁剪比例"},
             {"name": "no_bg_remove", "type": "bool", "default": False,
              "label": "Skip Background Removal", "label_zh": "跳过背景移除"},
+            {"name": "auto_prep", "type": "bool", "default": True,
+             "label": "Auto Prep", "label_zh": "自动打印准备", "description": "Auto-repair and convert to STL after generation", "description_zh": "生成后自动进行水密修复和格式转换"},
         ]
     },
     "hunyuan": {
@@ -126,6 +130,8 @@ PIPELINE_TYPES = {
              "label": "Output Format", "label_zh": "输出格式"},
             {"name": "skip_bg_remove", "type": "bool", "default": False,
              "label": "Skip Background Removal", "label_zh": "跳过背景移除"},
+            {"name": "auto_prep", "type": "bool", "default": True,
+             "label": "Auto Prep", "label_zh": "自动打印准备", "description": "Auto-repair and convert to printable STL after generation", "description_zh": "生成后自动进行水密修复并转换为打印就绪 STL"},
         ]
     },
     "mesh_simplify": {
@@ -210,6 +216,30 @@ PIPELINE_TYPES = {
              "label": "Output Format", "label_zh": "输出格式"},
             {"name": "scale", "type": "float", "default": 1.0, "min": 0.1, "max": 10.0,
              "label": "Scale", "label_zh": "缩放", "description": "Uniform scale factor", "description_zh": "均匀缩放倍数"},
+        ]
+    },
+    "model_prep": {
+        "label": "Model Prep",
+        "description": "Convert generated mesh to print-ready format with optional simplify, repair, scale, and grounding.",
+        "label_zh": "打印准备 (Model Prep)",
+        "description_zh": "将生成模型转换为打印就绪格式，支持减面、修复、缩放和落地。",
+        "script": "model-prep.py",
+        "input": "mesh",
+        "accepts": [".glb", ".obj", ".stl", ".gltf", ".ply"],
+        "gpu": False,
+        "params": [
+            {"name": "output_format", "type": "choice", "default": "stl", "choices": ["stl", "3mf", "obj"],
+             "label": "Output Format", "label_zh": "输出格式"},
+            {"name": "simplify", "type": "int", "default": 50000, "min": 0, "max": 1000000,
+             "label": "Target Faces", "label_zh": "目标面数", "description": "0=skip; e.g. 50000 for print-ready", "description_zh": "0=不简化；打印建议 50000"},
+            {"name": "repair", "type": "bool", "default": True,
+             "label": "Watertight Repair", "label_zh": "水密修复"},
+            {"name": "fill_holes", "type": "bool", "default": True,
+             "label": "Fill Holes", "label_zh": "填充孔洞"},
+            {"name": "target_size_mm", "type": "float", "default": 100.0, "min": 0.0, "max": 500.0,
+             "label": "Target Size (mm)", "label_zh": "目标尺寸 (mm)", "description": "Scale to this max dimension; 0=keep original", "description_zh": "缩放至该最大尺寸；0=保持原始大小"},
+            {"name": "ground", "type": "bool", "default": True,
+             "label": "Ground to Base", "label_zh": "落地", "description": "Center and set z-min to 0", "description_zh": "居中并将模型底部放在 z=0"},
         ]
     },
 }

@@ -64,6 +64,12 @@
     "multi": "MULTI",
     "searchPlaceholder": "Search pipelines...",
     "filterAll": "All",
+    "filterCategory": {
+      "input": "Input",
+      "generate": "Generate",
+      "process": "Process",
+      "output": "Output"
+    },
     "pipelineTasks": "Pipeline Tasks",
     "workflowsSection": "Workflows",
     "noMatch": "No matching pipeline types",
@@ -186,7 +192,8 @@
       "basic": "Basic: File→Relief",
       "text2img": "Text2Img: Text→Image→Relief",
       "advanced": "Advanced: File→Layered→Repair",
-      "full": "Full: File→3D→Views"
+      "full": "Full: File→3D→Prep→Views",
+      "printReady": "Print Ready: File→3D→Prep"
     },
     "runner": {
       "title": "Workflow Run",
