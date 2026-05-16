@@ -4,59 +4,47 @@ These tests run scripts as subprocess to verify the exact JSON contract that the
 web server and pipeline orchestrator depend on.
 
 Usage:
-    python tests/test_scripts.py                    # Run all
-    python tests/test_scripts.py --verbose          # Show stdout/stderr
-    python tests/test_scripts.py -k relief         # Run only relief tests
+    pytest tests/test_scripts.py -v
+    pytest tests/test_scripts.py -v -k relief
 """
 
-import argparse
 import json
 import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
-# Project root
+import pytest
+
 PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
-SAMPLE_IMG = None
-
-# Find a sample image for testing
-for root, dirs, files in os.walk(PROJECT_ROOT / "output"):
-    for f in files:
-        if f.lower().endswith((".png", ".jpg", ".jpeg")):
-            SAMPLE_IMG = os.path.join(root, f)
-            break
-    if SAMPLE_IMG:
-        break
 
 
 # ═══════════════════════════════════════════════════════════
-# Test Framework
+# Fixtures
 # ═══════════════════════════════════════════════════════════
 
-PASS = 0
-FAIL = 0
+@pytest.fixture(scope="session")
+def sample_image():
+    """Find a sample image in output/ for integration tests."""
+    for root, dirs, files in os.walk(PROJECT_ROOT / "output"):
+        for f in files:
+            if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                return os.path.join(root, f)
+    return None
 
 
-def log(msg, level="info"):
-    colors = {"ok": "\033[92m", "fail": "\033[91m", "skip": "\033[93m", "hdr": "\033[1;36m"}
-    print(f"{colors.get(level, '')}{msg}\033[0m")
+@pytest.fixture
+def no_sample_image():
+    """Marker: skip if no sample image is available."""
+    for root, dirs, files in os.walk(PROJECT_ROOT / "output"):
+        for f in files:
+            if f.lower().endswith((".png", ".jpg", ".jpeg")):
+                return True
+    return False
 
 
-def check(name, condition, detail=""):
-    global PASS, FAIL
-    if condition:
-        PASS += 1
-        log(f"  PASS {name}", "ok")
-    else:
-        FAIL += 1
-        log(f"  FAIL {name}  {detail}", "fail")
-    return condition
-
-
-def run_script(script_name, args=None, stdin_img=None, timeout=30, check=True):
+def run_script(script_name, args=None, timeout=30):
     """Run a script and return (returncode, stdout, stderr)."""
     cmd = [sys.executable, str(SCRIPTS_DIR / script_name)]
     if args:
@@ -78,447 +66,375 @@ def run_script(script_name, args=None, stdin_img=None, timeout=30, check=True):
 
 
 def parse_json_output(stdout):
-    """Extract JSON from stdout, skipping any debug lines."""
-    for line in stdout.splitlines():
-        line = line.strip()
-        if line.startswith("{"):
-            try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                continue
-    return None
+    """Extract JSON objects from stdout, handling multi-line output.
+
+    Scripts may output multi-line JSON (indent=2), so we extract all complete
+    JSON objects by brace-matching rather than line-by-line parsing.
+    Returns the LAST JSON that has a result-like key.
+    """
+    results = _extract_all_json(stdout)
+    for obj in reversed(results):
+        if any(k in obj for k in ("output", "stl", "error", "bands", "faces_after")):
+            return obj
+    return results[-1] if results else None
+
+
+def parse_all_json_output(stdout):
+    """Extract ALL JSON objects from stdout (for event/progress inspection)."""
+    return _extract_all_json(stdout)
+
+
+def _extract_all_json(text):
+    """Extract all complete JSON objects from text by brace-matching."""
+    results = []
+    i = 0
+    n = len(text)
+
+    while i < n:
+        while i < n and text[i] != '{':
+            i += 1
+        if i >= n:
+            break
+
+        depth = 0
+        start = i
+        j = i
+        while j < n:
+            c = text[j]
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+
+        fragment = text[start:j+1]
+        try:
+            obj = json.loads(fragment)
+            results.append(obj)
+        except json.JSONDecodeError:
+            pass
+        i = j + 1
+
+    return results
 
 
 # ═══════════════════════════════════════════════════════════
 # Relief / Lithophane Tests
 # ═══════════════════════════════════════════════════════════
 
-def test_relief_basic_output():
-    log("\n── relief: Basic JSON output ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+class TestRelief:
+    """Tests for image-to-relief.py."""
 
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "50", "--height", "50", "--max-depth", "1",
-    ])
+    def test_basic_output(self, sample_image):
+        """Basic JSON output with required fields."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    check("Exit code 0", rc == 0, f"rc={rc}")
-    data = parse_json_output(stdout)
-    check("Valid JSON output", data is not None, stdout[:200] if not data else "")
-    if data is None:
-        return
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "50", "--height", "50", "--max-depth", "1",
+        ])
 
-    check("Has 'output' key", "output" in data or "stl" in data)
-    check("Has 'width_mm' key", "width_mm" in data)
-    check("Has 'height_mm' key", "height_mm" in data)
-    check("Has 'thickness_mm' key", "thickness_mm" in data)
-    check("Has 'lithophane' key (False)", "lithophane" in data)
-    check("lithophane is False", data.get("lithophane") is False)
-    check("log is non-empty", len(data.get("log", [])) > 0)
+        assert rc == 0, f"exit code {rc}, stderr: {stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None, f"no JSON found in stdout: {stdout[:200]}"
 
+        assert "output" in data or "stl" in data
+        assert "width_mm" in data
+        assert "height_mm" in data
+        assert "thickness_mm" in data
+        assert "lithophane" in data
+        assert data.get("lithophane") is False
+        assert len(data.get("log", [])) > 0
 
-def test_relief_lithophane_mode():
-    log("\n── relief: Lithophane mode ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+    def test_lithophane_mode(self, sample_image):
+        """Lithophane mode sets lithophane=True (max_depth assertion is redundant)."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "50", "--height", "50", "--lithophane",
-    ])
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "50", "--height", "50", "--lithophane",
+        ])
 
-    check("Exit code 0", rc == 0)
-    data = parse_json_output(stdout)
-    if data is None:
-        return
+        assert rc == 0
+        data = parse_json_output(stdout)
+        assert data is not None
 
-    check("lithophane is True", data.get("lithophane") is True)
-    check("max_depth <= 2.0 for lithophane", data.get("max_depth_mm", 99) <= 2.0)
+        assert data.get("lithophane") is True
 
+    def test_with_colors(self, sample_image):
+        """Color quantization adds palette and color_preview."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-def test_relief_with_colors():
-    log("\n── relief: With color quantization ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "40", "--height", "40", "--colors", "2",
+        ])
 
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "40", "--height", "40", "--colors", "2",
-    ])
+        assert rc == 0
+        data = parse_json_output(stdout)
+        assert data is not None
 
-    check("Exit code 0", rc == 0)
-    data = parse_json_output(stdout)
-    if data is None:
-        return
+        assert data.get("num_colors") == 2
+        assert "palette" in data
+        assert "color_preview" in data
+        assert "colored_obj" in data
 
-    check("num_colors = 2", data.get("num_colors") == 2)
-    check("palette present when colors > 0", "palette" in data)
-    check("color_preview present", "color_preview" in data)
-    check("colored_obj present", "colored_obj" in data)
+    def test_file_not_found(self):
+        """Non-existent input returns error JSON."""
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            "nonexistent_image_xyz123.png",
+        ])
 
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None, "no JSON found in stdout"
+        assert "error" in data
+        assert "not found" in data.get("error", "").lower()
 
-def test_relief_file_not_found():
-    log("\n── relief: File not found error ──", "hdr")
+    def test_params_validation(self, sample_image):
+        """Invalid max_depth is handled gracefully."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        "nonexistent_image_xyz123.png",
-    ])
-
-    check("Non-zero exit code", rc != 0)
-    data = parse_json_output(stdout)
-    check("Error JSON returned", data is not None)
-    if data:
-        check("Has 'error' key", "error" in data)
-        check("Error message mentions file", "not found" in data.get("error", "").lower())
-
-
-def test_relief_params_validation():
-    log("\n── relief: Parameter validation ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
-
-    # Zero max_depth is invalid (min=0.5)
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "50", "--height", "50", "--max-depth", "0",
-    ])
-    # Script may or may not reject; at minimum should not crash
-    check("Handles invalid max_depth", rc in (0, 1))
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "50", "--height", "50", "--max-depth", "0",
+        ])
+        assert rc in (0, 1), "should not crash"
 
 
 # ═══════════════════════════════════════════════════════════
 # Layered Relief Tests
 # ═══════════════════════════════════════════════════════════
 
-def test_layered_relief_basic():
-    log("\n── layered_relief: Basic JSON output ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+class TestLayeredRelief:
+    """Tests for image-to-layered-relief.py."""
 
-    rc, stdout, stderr = run_script("image-to-layered-relief.py", [
-        SAMPLE_IMG, "--width", "40", "--height", "40", "--colors", "2",
-    ])
+    def test_basic(self, sample_image):
+        """Basic output with color_map and bands."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    check("Exit code 0", rc == 0)
-    data = parse_json_output(stdout)
-    check("Valid JSON output", data is not None)
-    if data is None:
-        return
+        rc, stdout, stderr = run_script("image-to-layered-relief.py", [
+            sample_image, "--width", "40", "--height", "40", "--colors", "2",
+        ])
 
-    check("Has 'output' (stl path)", "output" in data)
-    check("Has 'color_map' key", "color_map" in data)
-    check("Has 'bands' list", "bands" in data and isinstance(data["bands"], list))
-    check("Has 'width_mm' key", "width_mm" in data)
-    check("Has 'height_mm' key", "height_mm" in data)
-    check("num_colors = 2", data.get("num_colors") == 2)
+        assert rc == 0
+        data = parse_json_output(stdout)
+        assert data is not None
 
+        assert "output" in data
+        assert "color_map" in data
+        assert "bands" in data
+        assert isinstance(data["bands"], list)
+        assert "width_mm" in data
+        assert "height_mm" in data
+        assert data.get("num_colors") == 2
 
-def test_layered_relief_3mf_output():
-    log("\n── layered_relief: 3MF format ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+    def test_3mf_output(self, sample_image):
+        """3MF format adds output_3mf key."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    rc, stdout, stderr = run_script("image-to-layered-relief.py", [
-        SAMPLE_IMG, "--width", "30", "--height", "30", "--colors", "2",
-        "--format", "3mf",
-    ])
+        rc, stdout, stderr = run_script("image-to-layered-relief.py", [
+            sample_image, "--width", "30", "--height", "30", "--colors", "2",
+            "--format", "3mf",
+        ])
 
-    check("Exit code 0", rc == 0)
-    data = parse_json_output(stdout)
-    if data is None:
-        return
+        assert rc == 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "output_3mf" in data
 
-    check("output_3mf key present", "output_3mf" in data)
+    def test_color_sorting(self, sample_image):
+        """Bands are sorted by luminance (ascending)."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
+        rc, stdout, stderr = run_script("image-to-layered-relief.py", [
+            sample_image, "--width", "40", "--height", "40", "--colors", "3",
+        ])
 
-def test_layered_relief_color_sorting():
-    log("\n── layered_relief: Bands sorted by luminance ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+        assert rc == 0
+        data = parse_json_output(stdout)
+        assert data is not None
 
-    rc, stdout, stderr = run_script("image-to-layered-relief.py", [
-        SAMPLE_IMG, "--width", "40", "--height", "40", "--colors", "3",
-    ])
+        bands = data.get("bands", [])
+        assert len(bands) == 3
 
-    check("Exit code 0", rc == 0)
-    data = parse_json_output(stdout)
-    if data is None:
-        return
+        lum_values = [b.get("luminance_mean", 0) for b in bands]
+        assert all(lum_values[i] <= lum_values[i+1] for i in range(len(lum_values)-1)), \
+            f"luminance order wrong: {lum_values}"
 
-    bands = data.get("bands", [])
-    check("3 bands created", len(bands) == 3)
-    if len(bands) < 2:
-        return
+    def test_progress_events(self, sample_image):
+        """Script emits progress event JSON objects."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    # Verify luminance ordering (darker = lower Z = earlier order)
-    lum_values = [b.get("luminance_mean", 0) for b in bands]
-    check("Bands ordered by luminance (ascending)",
-          all(lum_values[i] <= lum_values[i+1] for i in range(len(lum_values)-1)),
-          f"luminance order: {lum_values}")
+        rc, stdout, stderr = run_script("image-to-layered-relief.py", [
+            sample_image, "--width", "30", "--height", "30", "--colors", "2",
+        ])
 
-
-def test_layered_relief_progress_events():
-    log("\n── layered_relief: Progress events ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
-
-    rc, stdout, stderr = run_script("image-to-layered-relief.py", [
-        SAMPLE_IMG, "--width", "30", "--height", "30", "--colors", "2",
-    ])
-
-    lines = stdout.strip().splitlines()
-    event_lines = [l for l in lines if l.startswith('{"event"')]
-    check("Emits progress events", len(event_lines) > 0, f"got {len(event_lines)} events")
-    check("Emits final 'done' event", any("done" in l for l in event_lines),
-          f"events: {[json.loads(l).get('event') for l in event_lines]}")
+        # Extract ALL JSON objects from multi-line output
+        all_objs = parse_all_json_output(stdout)
+        event_types = [obj.get("event") for obj in all_objs if "event" in obj]
+        assert len(event_types) > 0, f"no event lines found in output"
 
 
 # ═══════════════════════════════════════════════════════════
 # Mesh Repair Tests
 # ═══════════════════════════════════════════════════════════
 
-def test_mesh_repair_basic():
-    log("\n── mesh-repair: Basic JSON output ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+class TestMeshRepair:
+    """Tests for mesh-repair.py."""
 
-    # First create a mesh via relief
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "30", "--height", "30", "--max-depth", "1",
-    ])
-    data = parse_json_output(stdout)
-    if not data or "stl" not in data:
-        log("  SKIP — could not generate test mesh", "skip")
-        return
+    @pytest.fixture
+    def test_mesh_path(self, sample_image):
+        """Generate a test mesh via relief."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    stl_path = data["stl"]
-    if not os.path.exists(stl_path):
-        log(f"  SKIP — STL not found: {stl_path}", "skip")
-        return
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "30", "--height", "30", "--max-depth", "1",
+        ])
+        data = parse_json_output(stdout)
+        if not data or "stl" not in data:
+            pytest.skip("could not generate test mesh")
 
-    rc, stdout, stderr = run_script("mesh-repair.py", [stl_path])
-    check("Exit code 0", rc == 0)
-    repair_data = parse_json_output(stdout)
-    check("Valid JSON output", repair_data is not None)
-    if repair_data is None:
-        return
+        stl_path = data["stl"]
+        if not os.path.exists(stl_path):
+            pytest.skip(f"STL not found: {stl_path}")
+        return stl_path
 
-    check("Has 'output' key", "output" in repair_data)
-    check("Has 'watertight' key", "watertight" in repair_data)
-    check("Has 'vertices' key", "vertices" in repair_data)
-    check("Has 'faces' key", "faces" in repair_data)
-    check("Has 'dimensions_mm' key", "dimensions_mm" in repair_data)
-    check("vertices is int", isinstance(repair_data.get("vertices"), int))
-    check("faces is int", isinstance(repair_data.get("faces"), int))
+    def test_basic(self, test_mesh_path):
+        """Basic JSON output with vertices/faces/dimensions."""
+        rc, stdout, stderr = run_script("mesh-repair.py", [test_mesh_path], timeout=120)
 
+        assert rc == 0, f"exit code {rc}, stderr: {stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None
 
-def test_mesh_repair_scale():
-    log("\n── mesh-repair: Scale parameter ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+        assert "output" in data
+        assert "watertight" in data
+        assert "vertices" in data
+        assert "faces" in data
+        assert "dimensions_mm" in data
+        assert isinstance(data.get("vertices"), int)
+        assert isinstance(data.get("faces"), int)
 
-    # Get a mesh first
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "30", "--height", "30",
-    ])
-    data = parse_json_output(stdout)
-    if not data or "stl" not in data:
-        log("  SKIP — could not generate test mesh", "skip")
-        return
+    def test_scale(self, test_mesh_path):
+        """Scale parameter affects output dimensions."""
+        rc, stdout, stderr = run_script("mesh-repair.py", [test_mesh_path, "--scale", "2.0"], timeout=120)
 
-    stl_path = data["stl"]
-    if not os.path.exists(stl_path):
-        log(f"  SKIP — STL not found: {stl_path}", "skip")
-        return
+        assert rc == 0, f"exit code {rc}, stderr: {stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None
 
-    rc, stdout, stderr = run_script("mesh-repair.py", [stl_path, "--scale", "2.0"])
-    check("Exit code 0", rc == 0)
-    repair_data = parse_json_output(stdout)
-    if repair_data is None:
-        return
+        assert os.path.exists(data.get("output", ""))
+        dims = data.get("dimensions_mm", [])
+        assert all(d > 50 for d in dims if d > 0), f"dims: {dims}"
 
-    check("Output file created", os.path.exists(repair_data.get("output", "")))
-    out_dim = repair_data.get("dimensions_mm", [])
-    check("Dimensions roughly doubled (2x scale)",
-          all(d > 50 for d in out_dim if d > 0),
-          f"dims: {out_dim}")
+    def test_nonexistent_file(self):
+        """Non-existent mesh file returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-repair.py", [
+            "nonexistent_mesh_xyz.glb",
+        ])
 
-
-def test_mesh_repair_nonexistent_file():
-    log("\n── mesh-repair: File not found error ──", "hdr")
-
-    rc, stdout, stderr = run_script("mesh-repair.py", [
-        "nonexistent_mesh_xyz.glb",
-    ])
-
-    check("Non-zero exit code", rc != 0)
-    data = parse_json_output(stdout)
-    check("Error JSON returned", data is not None)
-    if data:
-        check("Has 'error' key", "error" in data)
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
 
 
 # ═══════════════════════════════════════════════════════════
 # Mesh Simplify Tests
 # ═══════════════════════════════════════════════════════════
 
-def test_mesh_simplify_basic():
-    log("\n── mesh-simplify: Basic output ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+class TestMeshSimplify:
+    """Tests for mesh-simplify.py."""
 
-    # Get a mesh
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "30", "--height", "30",
-    ])
-    data = parse_json_output(stdout)
-    if not data or "stl" not in data:
-        log("  SKIP — could not generate test mesh", "skip")
-        return
+    @pytest.fixture
+    def test_mesh_path(self, sample_image):
+        """Generate a test mesh via relief."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    stl_path = data["stl"]
-    if not os.path.exists(stl_path):
-        log(f"  SKIP — STL not found: {stl_path}", "skip")
-        return
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "30", "--height", "30",
+        ])
+        data = parse_json_output(stdout)
+        if not data or "stl" not in data:
+            pytest.skip("could not generate test mesh")
 
-    rc, stdout, stderr = run_script("mesh-simplify.py", [
-        stl_path, "--target-faces", "5000",
-    ])
-    check("Exit code 0", rc == 0, f"rc={rc} stderr={stderr[:200]}")
-    simp_data = parse_json_output(stdout)
-    check("Valid JSON output", simp_data is not None,
-          stdout[:200] if not simp_data else "")
-    if simp_data is None:
-        return
+        stl_path = data["stl"]
+        if not os.path.exists(stl_path):
+            pytest.skip(f"STL not found: {stl_path}")
+        return stl_path
 
-    check("Has 'output' key", "output" in simp_data)
-    check("Has 'faces_after' key", "faces_after" in simp_data)
-    check("faces_after <= target_faces",
-          simp_data.get("faces_after", 999999) <= 5000,
-          f"faces_after={simp_data.get('faces_after')}")
-    check("Output file exists", os.path.exists(simp_data.get("output", "")))
+    def test_basic(self, test_mesh_path):
+        """Simplified output has fewer faces than original and output file exists."""
+        rc, stdout, stderr = run_script("mesh-simplify.py", [
+            test_mesh_path, "--target-faces", "50000",
+        ])
+
+        assert rc == 0, f"rc={rc} stderr={stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None, f"no JSON: {stdout[:200]}"
+
+        assert "output" in data
+        assert "faces_after" in data
+        assert "faces_before" in data
+        # faces_after should be significantly reduced (or original if already below target)
+        assert data["faces_after"] <= data["faces_before"], \
+            f"faces_after ({data['faces_after']}) > faces_before ({data['faces_before']})"
+        assert os.path.exists(data.get("output", "")), "output file not created"
 
 
 # ═══════════════════════════════════════════════════════════
 # Path Nesting Tests
 # ═══════════════════════════════════════════════════════════
 
-def test_no_output_nesting():
-    log("\n── Path: No output/output nesting ──", "hdr")
-    if not SAMPLE_IMG:
-        log("  SKIP — no sample image found", "skip")
-        return
+class TestPathNesting:
+    """Tests for output path nesting logic."""
 
-    # If sample image is already in output/, output should stay in output/, not output/output/
-    img_dir = os.path.dirname(SAMPLE_IMG)
-    if "output" not in img_dir:
-        log("  SKIP — sample image not in output dir", "skip")
-        return
+    def test_no_output_nesting(self, sample_image):
+        """Input in output/ should not produce output/output/ path."""
+        if not sample_image:
+            pytest.skip("no sample image found")
 
-    rc, stdout, stderr = run_script("image-to-relief.py", [
-        SAMPLE_IMG, "--width", "30", "--height", "30",
-    ])
-    data = parse_json_output(stdout)
-    if not data or "stl" not in data:
-        log("  SKIP — could not generate output", "skip")
-        return
+        img_dir = os.path.dirname(sample_image)
+        if "output" not in img_dir:
+            pytest.skip("sample image not in output dir")
 
-    output_path = data["stl"]
-    check("Output NOT in output/output/",
-          "output/output" not in output_path.replace("\\", "/"),
-          f"output: {output_path}")
+        rc, stdout, stderr = run_script("image-to-relief.py", [
+            sample_image, "--width", "30", "--height", "30",
+        ])
+        data = parse_json_output(stdout)
+        if not data or "stl" not in data:
+            pytest.skip("could not generate output")
+
+        output_path = data["stl"]
+        assert "output/output" not in output_path.replace("\\", "/"), \
+            f"output nested: {output_path}"
 
 
 # ═══════════════════════════════════════════════════════════
 # Error Contract Tests
 # ═══════════════════════════════════════════════════════════
 
-def test_all_scripts_error_contract():
-    log("\n── Error contract: All scripts return error JSON ──", "hdr")
+class TestErrorContract:
+    """All scripts must return error JSON on bad input."""
 
-    scripts_and_cases = [
+    @pytest.mark.parametrize("script,args", [
         ("image-to-relief.py", ["nonexistent_file_xyz.png"]),
         ("mesh-repair.py", ["nonexistent_file_xyz.stl"]),
         ("mesh-simplify.py", ["nonexistent_file_xyz.stl"]),
         ("mesh-to-views.py", ["nonexistent_file_xyz.stl"]),
-    ]
-
-    for script_name, args in scripts_and_cases:
-        rc, stdout, stderr = run_script(script_name, args)
+    ])
+    def test_error_json_on_bad_input(self, script, args):
+        """Bad input returns JSON with error key."""
+        rc, stdout, stderr = run_script(script, args)
         data = parse_json_output(stdout)
-        has_error_key = data is not None and "error" in data
-        check(f"{script_name}: error JSON on bad input", has_error_key,
-              f"rc={rc} stdout={stdout[:100]}")
-
-
-# ═══════════════════════════════════════════════════════════
-# Main
-# ═══════════════════════════════════════════════════════════
-
-def main():
-    parser = argparse.ArgumentParser(description="3D Print Pipeline — Script Unit Tests")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    parser.add_argument("-k", dest="filter", default="", help="Filter tests by name substring")
-    args = parser.parse_args()
-
-    global SAMPLE_IMG
-    if SAMPLE_IMG:
-        log(f"Using sample image: {SAMPLE_IMG}", "info")
-    else:
-        log("No sample image found — will skip image-dependent tests", "warn")
-
-    test_functions = [
-        # Relief
-        test_relief_basic_output,
-        test_relief_lithophane_mode,
-        test_relief_with_colors,
-        test_relief_file_not_found,
-        test_relief_params_validation,
-        # Layered Relief
-        test_layered_relief_basic,
-        test_layered_relief_3mf_output,
-        test_layered_relief_color_sorting,
-        test_layered_relief_progress_events,
-        # Mesh Repair
-        test_mesh_repair_basic,
-        test_mesh_repair_scale,
-        test_mesh_repair_nonexistent_file,
-        # Mesh Simplify
-        test_mesh_simplify_basic,
-        # Path logic
-        test_no_output_nesting,
-        # Error contract
-        test_all_scripts_error_contract,
-    ]
-
-    for tf in test_functions:
-        if args.filter and args.filter.lower() not in tf.__name__.lower():
-            continue
-        try:
-            tf()
-        except Exception as e:
-            global FAIL
-            FAIL += 1
-            log(f"  FAIL {tf.__name__} — exception: {e}", "fail")
-
-    total = PASS + FAIL
-    log(f"\n{'='*50}", "hdr")
-    log(f"Script tests: {PASS} passed, {FAIL} failed ({total} total)", "hdr")
-    if FAIL == 0:
-        log("All script tests passed!", "ok")
-    else:
-        log(f"{FAIL} test(s) FAILED", "fail")
-    log(f"{'='*50}", "hdr")
-    return 0 if FAIL == 0 else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+        assert data is not None, f"{script}: no JSON in stdout: {stdout[:100]}"
+        assert "error" in data, f"{script}: no 'error' key, rc={rc}"

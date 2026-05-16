@@ -1,6 +1,6 @@
 @echo off
 REM run-tests.bat — CI test runner for 3D Print Pipeline (Windows)
-REM Runs: Python schema tests → vitest frontend → Playwright E2E
+REM Runs: Python schema → Python engine → Python scripts → pytest API → vitest → Playwright
 
 setlocal enabledelayedexpansion
 set "ROOT=%~dp0"
@@ -16,9 +16,9 @@ echo.
 
 REM ── Stage 1: Python Schema Consistency Tests ──────────────────
 set "STAGE=Python Schema Consistency"
-echo [1/3] !STAGE!
+echo [1/6] !STAGE!
 python "%ROOT%tests\test_schema_consistency.py"
-if %ERRORLEVEL% neq 0 (
+if !ERRORLEVEL! neq 0 (
     set /a FAIL+=1
     echo [FAIL] !STAGE!
 ) else (
@@ -29,9 +29,9 @@ echo.
 
 REM ── Stage 2: Python Backend Unit Tests ────────────────────────
 set "STAGE=Python Backend Unit Tests"
-echo [2/5] !STAGE!
+echo [2/6] !STAGE!
 python "%ROOT%tests\test_workflow_engine.py"
-if %ERRORLEVEL% neq 0 (
+if !ERRORLEVEL! neq 0 (
     set /a FAIL+=1
     echo [FAIL] !STAGE!
 ) else (
@@ -40,11 +40,37 @@ if %ERRORLEVEL% neq 0 (
 )
 echo.
 
-REM ── Stage 3: Frontend Unit Tests (vitest) ─────────────────────
+REM ── Stage 3: Python Script Tests ────────────────────────────────
+set "STAGE=Python Script Tests"
+echo [3/6] !STAGE!
+python -m pytest "%ROOT%tests\test_scripts.py" -v
+if !ERRORLEVEL! neq 0 (
+    set /a FAIL+=1
+    echo [FAIL] !STAGE!
+) else (
+    set /a PASS+=1
+    echo [PASS] !STAGE!
+)
+echo.
+
+REM ── Stage 4: Python API Tests ──────────────────────────────────
+set "STAGE=Python API Tests"
+echo [4/6] !STAGE!
+python -m pytest "%ROOT%tests\test_api.py" -v --start-server
+if !ERRORLEVEL! neq 0 (
+    set /a FAIL+=1
+    echo [FAIL] !STAGE!
+) else (
+    set /a PASS+=1
+    echo [PASS] !STAGE!
+)
+echo.
+
+REM ── Stage 5: Frontend Unit Tests (vitest) ─────────────────────
 set "STAGE=Frontend Unit Tests (vitest)"
-echo [3/5] !STAGE!
+echo [5/6] !STAGE!
 call npx vitest run tests/frontend/
-if %ERRORLEVEL% neq 0 (
+if !ERRORLEVEL! neq 0 (
     set /a FAIL+=1
     echo [FAIL] !STAGE!
 ) else (
@@ -53,11 +79,11 @@ if %ERRORLEVEL% neq 0 (
 )
 echo.
 
-REM ── Stage 4: E2E Tests (Playwright) ───────────────────────────
+REM ── Stage 6: E2E Tests (Playwright) ───────────────────────────
 set "STAGE=E2E Tests (Playwright)"
-echo [4/5] !STAGE!
+echo [6/6] !STAGE!
 call npx playwright test --config=e2e/playwright.config.js
-if %ERRORLEVEL% neq 0 (
+if !ERRORLEVEL! neq 0 (
     set /a FAIL+=1
     echo [FAIL] !STAGE!
 ) else (

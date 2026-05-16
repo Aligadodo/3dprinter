@@ -24,44 +24,7 @@ from web import scheduler
 from web import node_types as nt
 from web import providers
 from web import inline_nodes
-
-# Extensions mapped to port types for output file matching
-PORT_TYPE_EXTENSIONS = {
-    "stl": [".stl"],
-    "mesh": [".stl", ".obj", ".glb", ".3mf"],
-    "image": [".png", ".jpg", ".jpeg", ".webp", ".bmp"],
-    "json": [".json"],
-    "file": [".stl", ".obj", ".glb", ".3mf", ".png", ".jpg", ".jpeg", ".json", ".txt"],
-    "dir": None,
-    "any": None,
-}
-
-# File extension sets for input validation against port types
-_PORT_EXTENSIONS = {
-    "image": {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"},
-    "stl": {".stl"},
-    "mesh": {".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply"},
-    "file": {".stl", ".obj", ".glb", ".gltf", ".3mf", ".ply",
-             ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".json", ".txt"},
-}
-
-
-def _validate_file_for_port(file_path: str, port_type: str):
-    """Check if a file's extension matches the expected port type.
-    Returns a warning string if mismatched, or None if compatible."""
-    if not file_path or not port_type:
-        return None
-    if port_type in ("*", "any", "string", "dir"):
-        return None
-    ext = os.path.splitext(file_path)[1].lower()
-    expected = _PORT_EXTENSIONS.get(port_type)
-    if expected is None:
-        return None  # Unknown port type — allow
-    if ext not in expected:
-        expected_list = sorted(expected)
-        return (f"File '{os.path.basename(file_path)}' (extension {ext}) may not be "
-                f"compatible with port type '{port_type}'. Expected: {expected_list}")
-    return None
+from web import dag
 
 
 class WorkflowEngine:
@@ -152,166 +115,25 @@ class WorkflowEngine:
         return round_num
 
     def _normalize_edges(self, graph: dict) -> list[dict]:
-        """Normalize edges from LiteGraph 'links' array format or legacy 'edges' format.
-
-        LiteGraph serializes: {"links": [[linkId, srcId, srcSlot, tgtId, tgtSlot, type], ...]}
-        Engine expects:       [{"source": srcId, "source_port": srcSlot, "target": tgtId, "target_port": tgtSlot}, ...]
-        """
-        edges = graph.get("edges", [])
-        if edges:
-            return edges
-
-        links = graph.get("links", [])
-        if not links:
-            return []
-
-        normalized = []
-        for link in links:
-            if not isinstance(link, (list, tuple)) or len(link) < 5:
-                continue
-            # link format: [linkId, srcNodeId, srcSlotIdx, tgtNodeId, tgtSlotIdx, linkType?]
-            normalized.append({
-                "source": str(link[1]),
-                "source_port": link[2],
-                "target": str(link[3]),
-                "target_port": link[4],
-            })
-        return normalized
+        return dag.normalize_edges(graph)
 
     def _build_dag(self, node_map, edges):
-        adj = {nid: [] for nid in node_map}
-        in_degree = {nid: 0 for nid in node_map}
-        for e in edges:
-            src = str(e.get("source") or e.get("source_node"))
-            tgt = str(e.get("target") or e.get("target_node"))
-            if src in adj and tgt in in_degree:
-                adj[src].append(tgt)
-                in_degree[tgt] += 1
-        return adj, in_degree
+        return dag.build_dag(node_map, edges)
 
     def _topsort(self, node_map, adj, in_degree):
-        queue = deque([nid for nid, deg in in_degree.items() if deg == 0])
-        topsort = []
-        while queue:
-            nid = queue.popleft()
-            topsort.append(nid)
-            for neighbor in adj.get(nid, []):
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    queue.append(neighbor)
-        return topsort if len(topsort) == len(node_map) else None
+        return dag.topsort(node_map, adj, in_degree)
 
     def _build_port_edge_map(self, node_map, edges):
-        """Build edge_map: (target_nid, target_port_name) → (source_nid, source_port_name).
-
-        Translates Litegraph.js numeric slot indices to port names using node_types.
-        """
-        edge_map = {}
-        for e in edges:
-            src_nid = str(e.get("source") or e.get("source_node"))
-            tgt_nid = str(e.get("target") or e.get("target_node"))
-            src_slot = e.get("source_port", 0)
-            tgt_slot = e.get("target_port", 0)
-
-            if src_nid not in node_map or tgt_nid not in node_map:
-                continue
-
-            src_type = node_map[src_nid].get("type", "")
-            tgt_type = node_map[tgt_nid].get("type", "")
-
-            src_nt = nt.get_node_type(src_type)
-            tgt_nt = nt.get_node_type(tgt_type)
-
-            src_port_name = None
-            if src_nt and isinstance(src_slot, int) and src_slot < len(src_nt.outputs):
-                src_port_name = src_nt.outputs[src_slot].name
-            elif isinstance(src_slot, str):
-                src_port_name = src_slot
-
-            tgt_port_name = None
-            if tgt_nt and isinstance(tgt_slot, int) and tgt_slot < len(tgt_nt.inputs):
-                tgt_port_name = tgt_nt.inputs[tgt_slot].name
-            elif isinstance(tgt_slot, str):
-                tgt_port_name = tgt_slot
-
-            if src_port_name is not None and tgt_port_name is not None:
-                edge_map[(tgt_nid, tgt_port_name)] = (src_nid, src_port_name)
-
-        return edge_map
+        return dag.build_port_edge_map(node_map, edges)
 
     def _build_upstream(self, nid, ctx, edge_map):
-        """Build a flat index of all upstream values available to a node.
-
-        Returns dict with qualified keys like:
-          "1.text"        — upstream node's direct output
-          "2.image"       — upstream node's direct output
-          "2._params.size" — upstream node's resolved param
-        """
-        cascade = {}
-        visited = set()
-
-        # BFS upstream through edge_map
-        queue = []
-        for (tgt_id, tgt_port), (src_id, src_port) in edge_map.items():
-            if tgt_id == str(nid) and src_id not in visited:
-                visited.add(src_id)
-                queue.append(str(src_id))
-
-        while queue:
-            src_id = queue.pop(0)
-            src_ctx = ctx.get(src_id, {})
-            if not isinstance(src_ctx, dict):
-                continue
-
-            # Index direct outputs (skip _internal keys for display, but include for machine use)
-            for key, val in src_ctx.items():
-                if not key.startswith("_"):
-                    cascade[f"{src_id}.{key}"] = val
-
-            # Index _params
-            params = src_ctx.get("_params", {})
-            if isinstance(params, dict):
-                for pk, pv in params.items():
-                    cascade[f"{src_id}._params.{pk}"] = pv
-
-            # Index _inputs
-            inputs = src_ctx.get("_inputs", {})
-            if isinstance(inputs, dict):
-                for ik, iv in inputs.items():
-                    cascade[f"{src_id}._inputs.{ik}"] = iv
-
-            # Continue BFS — find nodes upstream of src_id
-            for (tgt_id, tgt_port), (s_id, s_port) in edge_map.items():
-                if tgt_id == src_id and s_id not in visited:
-                    visited.add(s_id)
-                    queue.append(str(s_id))
-
-        return cascade
+        return dag.build_upstream(nid, ctx, edge_map)
 
     def _enrich_ctx(self, nid, resolved_inputs, resolved_params, ctx, edge_map):
-        """After node execution, write cascade metadata into ctx[nid]."""
-        if str(nid) not in ctx:
-            ctx[str(nid)] = {}
+        return dag.enrich_ctx(nid, resolved_inputs, resolved_params, ctx, edge_map)
 
-        node_ctx = ctx[str(nid)]
-        node_ctx["_inputs"] = dict(resolved_inputs or {})
-        node_ctx["_params"] = dict(resolved_params or {})
-
-        # Build upstream: merge all direct upstream node contexts
-        upstream = {}
-        for (tgt_id, tgt_port), (src_id, src_port) in edge_map.items():
-            if tgt_id == str(nid):
-                src_ctx = ctx.get(str(src_id), {})
-                if isinstance(src_ctx, dict):
-                    upstream[str(src_id)] = dict(src_ctx)
-                # Also pull in that source's own _upstream
-                src_upstream = src_ctx.get("_upstream", {})
-                if isinstance(src_upstream, dict):
-                    for uk, uv in src_upstream.items():
-                        if uk not in upstream:
-                            upstream[uk] = dict(uv) if isinstance(uv, dict) else uv
-
-        node_ctx["_upstream"] = upstream
+    def _resolve_input(self, node_id, port_name, edge_map, ctx):
+        return dag.resolve_input(node_id, port_name, edge_map, ctx)
 
     async def _execute(self, workflow_id, instance_id, start_node=None,
                         preserved_ctx=None, round_num=0):
@@ -570,7 +392,7 @@ class WorkflowEngine:
             raise ValueError(f"No input file for node {node_type}:{nid}")
 
         # Validate file extension against expected port type (warn only, don't block)
-        warning = _validate_file_for_port(input_file, resolved_port_type)
+        warning = dag.validate_file_for_port(input_file, resolved_port_type)
         if warning:
             await self._emit(instance_id, "node_progress", {
                 "node_id": nid, "message": f"⚠ {warning}",
@@ -647,7 +469,7 @@ class WorkflowEngine:
         # Build extension→port_name map from node type outputs
         ext_port_map = {}
         for port in nt_def.outputs:
-            exts = PORT_TYPE_EXTENSIONS.get(port.type, [])
+            exts = dag.PORT_TYPE_EXTENSIONS.get(port.type, [])
             if exts:
                 for file_ext in exts:
                     ext_port_map.setdefault(file_ext, port.name)
@@ -665,7 +487,7 @@ class WorkflowEngine:
             # Fallback: assign by first unmatched port of matching type
             for port in nt_def.outputs:
                 if port.name not in ctx[nid]:
-                    exts = PORT_TYPE_EXTENSIONS.get(port.type, [])
+                    exts = dag.PORT_TYPE_EXTENSIONS.get(port.type, [])
                     if exts is None or file_ext in exts:
                         ctx[nid][port.name] = path
                         break

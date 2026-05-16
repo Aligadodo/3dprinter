@@ -1,18 +1,21 @@
-"""conftest.py - pytest fixtures for test_api.py
+"""conftest.py - pytest configuration and shared fixtures for test suite."""
 
-Provides a pytest-asyncio client fixture so that:
-- pytest can inject an httpx.AsyncClient into each async test
-- `python tests/test_api.py --start-server` continues to work (it imports test_api
-  but never calls the pytest-style functions directly — they are invoked from
-  run_all_tests() which passes its own client instance).
-"""
+import sys
+import os
+from pathlib import Path
+
+# Ensure project root is on path for all tests
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+sys.path.insert(0, str(PROJECT_ROOT))
+
 import pytest
-import pytest_asyncio
-import httpx
+
+# Fix Windows console encoding for subprocess output
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
-@pytest_asyncio.fixture
-async def client():
-    """Async HTTP client pointed at the local dev server."""
-    async with httpx.AsyncClient(base_url="http://127.0.0.1:8080/api", timeout=15) as c:
-        yield c
+def pytest_configure(config):
+    """Register custom markers."""
+    config.addinivalue_line("markers", "asyncio: mark test as async")

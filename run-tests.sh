@@ -1,6 +1,6 @@
 #!/bin/bash
 # run-tests.sh — CI test runner for 3D Print Pipeline (Unix/macOS)
-# Runs: Python schema tests → vitest frontend → Playwright E2E
+# Runs: Python schema → engine → scripts (pytest) → vitest → Playwright
 
 set -e
 
@@ -33,21 +33,30 @@ else
 fi
 echo
 
-# Stage 3: Frontend Unit Tests (vitest)
-echo "[3/5] Frontend Unit Tests (vitest)"
-if npx vitest run tests/frontend/; then
+# Stage 3: Python Script Tests (pytest)
+echo "[3/5] Python Script Tests"
+if python -m pytest "$ROOT/tests/test_scripts.py" -v; then
     PASS=$((PASS+1)); echo "[PASS] Stage 3"
 else
     FAIL=$((FAIL+1)); echo "[FAIL] Stage 3"
 fi
 echo
 
-# Stage 4: E2E Tests (Playwright)
-echo "[4/5] E2E Tests (Playwright)"
-if npx playwright test --config=e2e/playwright.config.js; then
+# Stage 4: Frontend Unit Tests (vitest)
+echo "[4/5] Frontend Unit Tests (vitest)"
+if npx vitest run tests/frontend/; then
     PASS=$((PASS+1)); echo "[PASS] Stage 4"
 else
     FAIL=$((FAIL+1)); echo "[FAIL] Stage 4"
+fi
+echo
+
+# Stage 5: E2E Tests (Playwright)
+echo "[5/5] E2E Tests (Playwright)"
+if npx playwright test --config=e2e/playwright.config.js; then
+    PASS=$((PASS+1)); echo "[PASS] Stage 5"
+else
+    FAIL=$((FAIL+1)); echo "[FAIL] Stage 5"
 fi
 echo
 

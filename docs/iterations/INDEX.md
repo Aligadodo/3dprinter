@@ -2,6 +2,8 @@
 
 Sorted by time (newest first).
 
+- [2026-05-16] [测试基础设施评估与改进方案](2026-05-16-103953-test-infrastructure-evaluation.md)
+- [2026-05-16] [迭代 2026-05-16 10:47](2026-05-16-104737-report.md)
 - [2026-05-16] [dynamic-beaming-zebra](2026-05-16-104317-report.md)
 - [2026-05-16] [迭代 2026-05-16 10:38](2026-05-16-103802-report.md)
 - [2026-05-16] [dynamic-beaming-zebra](2026-05-16-093133-report.md)
