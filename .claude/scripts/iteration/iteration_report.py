@@ -2,6 +2,7 @@
 import json
 import os
 import glob
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -9,6 +10,72 @@ from datetime import datetime
 # Force UTF-8 on Windows
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
+CODE_EXTS = {'.py', '.js', '.ts', '.jsx', '.tsx', '.vue', '.css', '.scss', '.html', '.jinja', '.jinja2'}
+TEST_DIRS = {'tests', 'test'}
+IGNORE_PATTERNS = ['.claude/', 'docs/', 'iterations/']
+
+
+def _is_code_file(filepath):
+    """Check if a file is application code (not docs/config/scripts/hooks)."""
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext not in CODE_EXTS:
+        return False
+    for pat in IGNORE_PATTERNS:
+        if filepath.startswith(pat) or ('/' + pat) in filepath or ('\\' + pat) in filepath:
+            return False
+    # Exclude test files themselves
+    parts = filepath.replace('\\', '/').split('/')
+    for part in parts:
+        if part in TEST_DIRS:
+            return False
+    return True
+
+
+def _has_code_changes(all_changed):
+    """Return True if any changed file is application code."""
+    return any(_is_code_file(f) for f in all_changed)
+
+
+def _run_tests(project_dir, timeout=180):
+    """Run pytest and return (passed, failed, errors, skipped, output_lines)."""
+    try:
+        result = subprocess.run(
+            [sys.executable, '-m', 'pytest', 'tests/', '-q', '--tb=short'],
+            capture_output=True, text=True, timeout=timeout,
+            cwd=project_dir,
+            env={**os.environ, 'PYTHONPATH': project_dir,
+                 'PYTHONUNBUFFERED': '1'}
+        )
+        output = (result.stdout + '\n' + result.stderr).strip()
+        lines = output.split('\n')
+
+        # Parse pytest short summary: "28 passed, 14 errors"
+        passed = failed = errors = skipped = 0
+        summary_line = ''
+        for line in reversed(lines):
+            if re.search(r'\d+\s+(passed|failed|error)', line):
+                summary_line = line
+                break
+
+        m = re.search(r'(\d+)\s+passed', summary_line)
+        if m:
+            passed = int(m.group(1))
+        m = re.search(r'(\d+)\s+failed', summary_line)
+        if m:
+            failed = int(m.group(1))
+        m = re.search(r'(\d+)\s+errors?', summary_line)
+        if m:
+            errors = int(m.group(1))
+        m = re.search(r'(\d+)\s+skipped', summary_line)
+        if m:
+            skipped = int(m.group(1))
+
+        return passed, failed, errors, skipped, lines
+    except subprocess.TimeoutExpired:
+        return 0, 0, 0, 0, ['TIMEOUT: tests did not complete within %ds' % timeout]
+    except Exception as e:
+        return 0, 0, 0, 0, ['ERROR running tests: %s' % str(e)]
 
 
 def run_git(project_dir, args):
@@ -36,49 +103,24 @@ def _storage_dirs(base_dir):
 
 def _update_index(iterations_dir, report_filename, title):
     """Add entry to top of INDEX.md (newest first), creating it if needed."""
+    import re
     index_path = os.path.join(iterations_dir, 'INDEX.md')
     today = datetime.now().strftime('%Y-%m-%d')
-
     new_entry = f'- [{today}] [{title}]({report_filename})'
 
+    existing_entries = []
     if os.path.exists(index_path):
         with open(index_path, 'r', encoding='utf-8-sig') as f:
-            content = f.read()
+            for line in f:
+                line = line.strip()
+                if re.match(r'^- \[', line):
+                    existing_entries.append(line)
 
-        # Find where the list starts (after header blank line) and insert at top
-        lines = content.split('\n')
-        new_lines = []
-        header_end = 0
-        for i, line in enumerate(lines):
-            if line.startswith('# '):
-                header_end = i
-        # Skip header + blank line after it, insert there
-        insert_at = header_end + 1
-        while insert_at < len(lines) and lines[insert_at].strip() == '':
-            insert_at += 1
-        # Find end of header section (blank line after description)
-        # Actually, just find first list entry and insert before it
-        insert_at = header_end + 1
-        for i in range(header_end + 1, len(lines)):
-            if lines[i].strip().startswith('- ['):
-                insert_at = i
-                break
-            if lines[i].strip() == '' and i + 1 < len(lines) and lines[i+1].strip().startswith('- ['):
-                insert_at = i + 1
-                break
-
-        for i, line in enumerate(lines):
-            if i == insert_at:
-                new_lines.append(new_entry)
-            new_lines.append(line)
-        if insert_at >= len(lines):
-            new_lines.append(new_entry)
-
-        with open(index_path, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(new_lines))
-    else:
-        with open(index_path, 'w', encoding='utf-8') as f:
-            f.write(f'# Iteration History\n\nSorted by time (newest first).\n\n{new_entry}\n')
+    with open(index_path, 'w', encoding='utf-8') as f:
+        f.write('# Iteration History\n\nSorted by time (newest first).\n\n')
+        f.write(new_entry + '\n')
+        for entry in existing_entries:
+            f.write(entry + '\n')
 
 
 def main():
@@ -91,16 +133,20 @@ def main():
     report_filename = now.strftime('%Y-%m-%d-%H%M%S-report.md')
     report_file = os.path.join(reports_dir, report_filename)
 
-    # Find most recent iteration start
-    start_files = sorted(
-        glob.glob(os.path.join(iteration_dir, '*-start.json')),
-        key=os.path.getmtime, reverse=True
-    )
-
+    # Find most recent iteration start (or use explicit file from env)
     start_data = None
-    if start_files:
-        with open(start_files[0], 'r', encoding='utf-8') as f:
+    explicit_start = os.environ.get('ITERATION_START_FILE', '')
+    if explicit_start and os.path.exists(explicit_start):
+        with open(explicit_start, 'r', encoding='utf-8') as f:
             start_data = json.load(f)
+    else:
+        start_files = sorted(
+            glob.glob(os.path.join(iteration_dir, '*-start.json')),
+            key=os.path.getmtime, reverse=True
+        )
+        if start_files:
+            with open(start_files[0], 'r', encoding='utf-8') as f:
+                start_data = json.load(f)
 
     # Current git status
     has_git = os.path.isdir(os.path.join(project_dir, '.git'))
@@ -202,8 +248,42 @@ def main():
         lines.append('```')
         lines.append('')
 
-    # Section 3: Analysis
-    lines.append('## 三、分析评估')
+    # Section 3.5: Test Results (only if code changed)
+    test_results = None
+    if _has_code_changes(all_changed):
+        passed, failed, errors, skipped, test_output = _run_tests(project_dir)
+        test_results = {
+            'passed': passed, 'failed': failed, 'errors': errors, 'skipped': skipped
+        }
+        lines.append('## 三、测试结果')
+        lines.append('')
+        total = passed + failed + errors
+        if total > 0:
+            status_icon = '✅' if failed == 0 and errors == 0 else '❌'
+            lines.append(f'{status_icon} **{passed}** 通过, **{failed}** 失败, **{errors}** 错误, **{skipped}** 跳过 (共 {total})')
+        else:
+            lines.append('⚠️ 未能获取测试结果（可能测试套件不存在或运行超时）')
+        lines.append('')
+        # Show failures inline
+        if failed > 0 or errors > 0:
+            lines.append('### 失败详情')
+            lines.append('```')
+            in_failure = False
+            failure_lines = 0
+            for line in test_output:
+                if 'FAILED' in line or 'ERRORS' in line or 'assert' in line or 'Error' in line:
+                    in_failure = True
+                if in_failure:
+                    lines.append(line[:200])
+                    failure_lines += 1
+                    if failure_lines > 40:
+                        lines.append('... (truncated)')
+                        break
+            lines.append('```')
+        lines.append('')
+
+    # Section 4: Analysis
+    lines.append('## 四、分析评估')
     lines.append('')
     if plan_progress and all_changed:
         lines.append(f'- **完成度评估**: 方案涉及 {plan_progress["tasks_total"]} 个任务，有实质性代码变更')
@@ -223,8 +303,8 @@ def main():
 
     lines.append('')
 
-    # Section 4: Next Steps
-    lines.append('## 四、下一阶段建议')
+    # Section 5: Next Steps
+    lines.append('## 五、下一阶段建议')
     lines.append('')
     if plan_progress:
         remaining = plan_progress['tasks_total'] - plan_progress['tasks_done_start']
@@ -287,6 +367,12 @@ def main():
         parts.append(f'  分布: {" ".join(cat_parts)}')
     if plan_progress:
         parts.append(f'  方案: {plan_progress["name"][:50]}')
+    if test_results:
+        passed, failed, errors = test_results['passed'], test_results['failed'], test_results['errors']
+        if failed > 0 or errors > 0:
+            parts.append(f'  ❌ 测试: {passed}通过 {failed}失败 {errors}错误')
+        else:
+            parts.append(f'  ✅ 测试: {passed}通过')
     parts.append(f'  报告: {os.path.basename(report_file)}')
 
     summary = '\n'.join(parts)

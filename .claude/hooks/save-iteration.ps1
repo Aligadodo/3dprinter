@@ -47,9 +47,13 @@ $planHash | Out-File $stateFile -NoNewline -Encoding utf8
 # Update INDEX.md
 $indexFile = Join-Path $IterDir "INDEX.md"
 $entry = "- [$timestamp] [$titleLine]($filename)"
-$existing = @()
-if (Test-Path $indexFile) { $existing = Get-Content $indexFile -Encoding UTF8 | Where-Object { $_ -ne "" } }
-$newContent = @("# Iteration History", "", "Sorted by time (newest first).", "") + @($entry) + $existing
+$existingEntries = @()
+if (Test-Path $indexFile) {
+    $existingEntries = Get-Content $indexFile -Encoding UTF8 |
+        Where-Object { $_ -match '^- \[' } |
+        Where-Object { $_ -ne "" }
+}
+$newContent = @("# Iteration History", "", "Sorted by time (newest first).", "") + @($entry) + $existingEntries
 $newContent -join "`n" | Out-File $indexFile -Encoding utf8
 
 Write-Output "[iter-hook] Saved: $filename"

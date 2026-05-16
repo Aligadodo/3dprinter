@@ -41,12 +41,27 @@ def main():
     plans_dir = os.path.join(os.path.expanduser('~'), '.claude', 'plans')
     os.makedirs(iteration_dir, exist_ok=True)
 
-    # Remove old start records (keep only current baseline)
-    for old in glob.glob(os.path.join(iteration_dir, '*-start.json')):
-        try:
-            os.remove(old)
-        except OSError:
-            pass
+    # Generate reports for orphaned start records from compacted sessions
+    # (Stop hooks don't fire on compaction, so we catch up here)
+    orphaned = sorted(glob.glob(os.path.join(iteration_dir, '*-start.json')))
+    if orphaned:
+        report_script = os.path.join(os.path.dirname(__file__), 'iteration_report.py')
+        if os.path.exists(report_script):
+            for old_start in orphaned:
+                try:
+                    subprocess.run(
+                        [sys.executable, report_script, project_dir],
+                        capture_output=True, text=True, timeout=30,
+                        env={**os.environ, 'ITERATION_START_FILE': old_start}
+                    )
+                except Exception:
+                    pass
+        # Remove any remaining start files that report script didn't consume
+        for old in glob.glob(os.path.join(iteration_dir, '*-start.json')):
+            try:
+                os.remove(old)
+            except OSError:
+                pass
 
     now = datetime.now()
     iter_id = now.strftime('%Y-%m-%d-%H%M%S')
