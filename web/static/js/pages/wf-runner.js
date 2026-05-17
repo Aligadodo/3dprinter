@@ -1,8 +1,27 @@
 /* wf-runner.js — Workflow Runner page (DAG + tabs + node detail + SSE) */
 import { api } from '../api.js';
 import { t, getLang } from '../i18n.js';
-import { escHtml, toast, showImageModal } from '../utils.js';
+import { escHtml, toast, getBilingualLabel } from '../utils.js';
 import { renderNodeDetailPanel } from '../components/node-detail.js';
+
+/** Generate a display label with type counter: "文件输入 File Input #1" */
+export function getNodeDisplayLabel(node, nt, graphNodes, ntMap) {
+  if (node && node.title) return node.title;
+  const base = nt ? getBilingualLabel(nt) : (node && node.type) || '';
+  // Count nodes of same type in the graph
+  let count = 0;
+  let targetIdx = -1;
+  (graphNodes || []).forEach((n, i) => {
+    const tid = (n.type || '').replace(/^wf_/, '');
+    const nodeTid = (node && node.type || '').replace(/^wf_/, '');
+    if (tid === nodeTid) {
+      count++;
+      if (String(n.id) === String(node && node.id)) targetIdx = count;
+    }
+  });
+  if (count <= 1) return base;
+  return base + ' #' + (targetIdx > 0 ? targetIdx : 1);
+}
 
 let wfRunnerGraph = null;
 let wfRunnerCanvas = null;
@@ -218,7 +237,7 @@ function buildRunnerDAG(inst, wfDef, ntMap, nrMap, instId) {
   graphData.nodes.forEach(n => {
     const nr = nrMap[n.id] || {};
     const nt = ntMap[(n.type||'').replace(/^wf_/, '')] || {};
-    const node = new LiteGraph.LGraphNode(n.title || nt.label || n.type);
+    const node = new LiteGraph.LGraphNode(getNodeDisplayLabel(n, nt, graphData.nodes, ntMap));
     node.id = n.id;
     // Ensure pos is a valid array-like (LiteGraph pos setter requires .length >= 2)
     const rawPos = n.pos;
@@ -314,7 +333,7 @@ function buildNodeTabs(inst, nrMap, ntMap, instId) {
   nodeRuns.forEach(nr => {
     const node = graphNodeMap[String(nr.node_id)] || {};
     const nt = ntMap[(node.type||'').replace(/^wf_/, '')] || {};
-    const label = node.title || nt.label || nr.node_id;
+    const label = getNodeDisplayLabel(node, nt, graphNodes, ntMap);
     tabsHTML += `<button data-tab="${nr.node_id}">${escHtml(label)}</button>`;
   });
   tabs.innerHTML = tabsHTML;
@@ -337,7 +356,7 @@ function buildNodeTabs(inst, nrMap, ntMap, instId) {
     overviewHTML += `<div class="wf-overview-card" data-node="${nr.node_id}" onclick="document.querySelector('.wf-results-tabs button[data-tab=\\'${nr.node_id}\\']').click()">
       <div class="ovc-header">
         <span class="ovc-dot" style="background:var(--${statusCls})"></span>
-        <span class="ovc-title">${statusEmoji} ${escHtml(node.title || nt.label || nr.node_id)}</span>
+        <span class="ovc-title">${statusEmoji} ${escHtml(getNodeDisplayLabel(node, nt, graphNodes, ntMap))}</span>
       </div>
       <div class="ovc-meta">
         <span>📥 ${inputCount} input${inputCount!==1?'s':''}</span>
@@ -358,6 +377,7 @@ function buildNodeTabs(inst, nrMap, ntMap, instId) {
 
     // Compute inputs: translate numeric slot indices to port names via ntMap
     const inputs = {};
+    const upstreamInfo = []; // [{targetPort, sourceLabel, sourcePort, resolved}]
     const edgesIn = upstreamEdges[nid] || [];
     edgesIn.forEach(e => {
       const srcNode = graphNodeMap[e.sourceId] || {};
@@ -365,10 +385,19 @@ function buildNodeTabs(inst, nrMap, ntMap, instId) {
       const srcNT = ntMap[srcTypeId] || {};
       // Translate numeric slot index → port name
       const srcPortName = (srcNT.outputs && srcNT.outputs[e.sourcePort]) ? srcNT.outputs[e.sourcePort].name : e.sourcePort;
+      const srcPortLabel = (srcNT.outputs && srcNT.outputs[e.sourcePort])
+        ? ((srcNT.outputs[e.sourcePort].label_zh && srcNT.outputs[e.sourcePort].label_zh !== srcNT.outputs[e.sourcePort].label)
+          ? srcNT.outputs[e.sourcePort].label_zh + ' ' + srcNT.outputs[e.sourcePort].label
+          : srcNT.outputs[e.sourcePort].label || srcPortName)
+        : srcPortName;
       const tgtPortName = (nt.inputs && nt.inputs[e.targetPort]) ? nt.inputs[e.targetPort].name : String(e.targetPort);
       const srcOutputs = (inst.context && inst.context[String(e.sourceId)]) || {};
+      const srcLabel = srcNode.title || (srcNT ? getBilingualLabel(srcNT) : '') || String(e.sourceId);
       if (srcOutputs[srcPortName]) {
         inputs[tgtPortName] = srcOutputs[srcPortName];
+        upstreamInfo.push({ targetPort: tgtPortName, sourceLabel: srcLabel, sourcePort: srcPortLabel, resolved: true });
+      } else {
+        upstreamInfo.push({ targetPort: tgtPortName, sourceLabel: srcLabel, sourcePort: srcPortLabel, resolved: false });
       }
     });
 
@@ -390,7 +419,7 @@ function buildNodeTabs(inst, nrMap, ntMap, instId) {
     }
 
     const detailHTML = `<div id="wf-tab-${nr.node_id}" style="display:none">
-      ${renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles: nr.output_files || (nr.task && nr.task.output_files) || [], params, showTaskLink: true })}
+      ${renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, upstreamEdges: upstreamInfo, taskFiles: nr.output_files || (nr.task && nr.task.output_files) || [], params, showTaskLink: true })}
       ${nr.status === 'completed' && nr.node_id ? `<div class="nd-replay-bar">
         <button class="btn btn-sm btn-primary" onclick="import('/static/js/pages/wf-runner.js').then(m=>m._replayFrom('${instId}','${nr.node_id}'))">↻ ${t('wf.runner.replay')}</button>
       </div>` : ''}
@@ -429,7 +458,7 @@ function refreshNodeTab(nodeId, nrMap, ntMap) {
   const tabContent = document.getElementById('wf-tab-' + nodeId);
   if (!tabContent) return;
   // Simple status update in overview
-  const overviewCard = document.querySelector(`#wf-tab-overview .wf-node-card:nth-child(${Object.keys(nrMap).indexOf(String(nodeId))+1})`);
+  const overviewCard = document.querySelector(`#wf-tab-overview .wf-overview-card:nth-child(${Object.keys(nrMap).indexOf(String(nodeId))+1})`);
   // For now, just update the DAG node
 }
 
@@ -448,7 +477,7 @@ function addOrUpdateRunnerNode(nodeId, nr, wfDef, ntMap) {
   const nodeDef = graphNodes.find(n => String(n.id) === String(nodeId));
   if (!nodeDef) return; // Node not in graph definition
   const nt = ntMap[(nodeDef.type||'').replace(/^wf_/, '')] || {};
-  const node = new LiteGraph.LGraphNode(nodeDef.title || nt.label || nodeDef.type);
+  const node = new LiteGraph.LGraphNode(getNodeDisplayLabel(nodeDef, nt, graphNodes, ntMap));
   node.id = nodeDef.id;
   const rawPos = nodeDef.pos;
   node.pos = (Array.isArray(rawPos) && rawPos.length >= 2) ? rawPos : [100, 100];

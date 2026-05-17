@@ -2,10 +2,38 @@
    workflow.css — DAG Editor, Palette, Runner Layout, Node Detail, STL Cards
    ═══════════════════════════════════════════ */
 
+/* ── Validation Modal ── */
+.wf-valid-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:10000;display:flex;align-items:center;justify-content:center}
+.wf-valid-modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);width:480px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+.wf-valid-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.wf-valid-header h3{margin:0;font-size:15px;color:var(--fg)}
+.wf-valid-close{background:none;border:none;font-size:18px;color:var(--fg2);cursor:pointer;padding:0 4px}
+.wf-valid-close:hover{color:var(--fg)}
+.wf-valid-body{padding:16px 18px}
+.wf-valid-section{margin-bottom:14px}
+.wf-valid-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.wf-valid-error-title{color:var(--red)}
+.wf-valid-warn-title{color:#d29922}
+.wf-valid-item{padding:6px 10px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:4px}
+.wf-valid-error{background:var(--red-dim);color:var(--red)}
+.wf-valid-warn{background:rgba(210,153,34,0.1);color:#d29922}
+.wf-valid-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)}
+
+/* ── Pending upstream input ── */
+.nd-pending{border-style:dashed;opacity:0.8}
+.nd-pending-tag{font-size:9px;color:var(--fg2);margin-top:2px;font-style:italic}
+
 /* ── Workflow Editor Layout ── */
 .wf-layout{display:flex;height:calc(100vh - 140px);gap:0}
 .wf-palette{width:180px;min-width:180px;background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:8px}
 .wf-palette .cat-title{font-size:10px;font-weight:700;color:var(--fg2);text-transform:uppercase;padding:8px 4px 4px;letter-spacing:1px}
+.wf-palette .cat-section{margin-bottom:2px}
+.wf-palette .cat-header{display:flex;align-items:center;gap:4px;padding:6px 4px;font-size:11px;font-weight:600;color:var(--fg2);cursor:pointer;border-radius:var(--radius-sm);user-select:none}
+.wf-palette .cat-header:hover{background:var(--bg3)}
+.wf-palette .cat-arrow{font-size:9px;color:var(--fg2)}
+.wf-palette .cat-nodes{padding-left:4px}
+.wf-palette .cat-section.collapsed .cat-nodes{display:none}
+.wf-palette .cat-section.collapsed .cat-arrow{color:var(--fg3)}
 .wf-palette .node-item{display:flex;align-items:center;gap:6px;padding:6px 8px;margin:2px 0;border-radius:var(--radius-sm);cursor:grab;font-size:12px;background:var(--bg3);border:1px solid transparent;transition:border-color var(--transition)}
 .wf-palette .node-item:hover{border-color:var(--accent)}
 .wf-palette .node-item:active{cursor:grabbing}

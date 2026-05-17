@@ -700,14 +700,194 @@ PARAM_META: dict[str, dict] = {
         "desc": "Replace transparent background with a color. Empty = keep transparency. e.g. 'white', '#ffffff', '255,0,0'",
         "desc_zh": "替换透明背景为指定颜色。留空=保持透明。如 'white', '#ffffff', '255,0,0'",
     },
+# ── Mesh Boolean ───────────────────────────────────────────────────
+    "bool_op": {
+        "label": "Boolean Op", "label_zh": "布尔运算",
+        "desc": "Boolean operation: union (merge), diff (subtract), intersect (overlap)",
+        "desc_zh": "布尔运算: union(合并)/diff(减去)/intersect(交集)",
+    },
+    "bool_mesh_a": {
+        "label": "Mesh A", "label_zh": "Mesh A",
+        "desc": "First mesh input (the base)",
+        "desc_zh": "第一个输入 Mesh（被操作的主体）",
+    },
+    "bool_mesh_b": {
+        "label": "Mesh B", "label_zh": "Mesh B",
+        "desc": "Second mesh input (the tool)",
+        "desc_zh": "第二个输入 Mesh（用于操作）",
+    },
+    # ── Mesh Stitch ─────────────────────────────────────────────────
+    "stitch_smooth": {
+        "label": "Smooth Steps", "label_zh": "平滑次数",
+        "desc": "Number of HC Laplacian smoothing iterations (default: 3)",
+        "desc_zh": "HC 拉普拉斯平滑迭代次数",
+    },
+    "stitch_lambda": {
+        "label": "Lambda", "label_zh": "Lambda",
+        "desc": "Smoothing lambda value (default: 0.1)",
+        "desc_zh": "平滑 lambda 值",
+    },
+    # ── Mesh Decorate ───────────────────────────────────────────────
+    "deco_texture": {
+        "label": "Texture Image", "label_zh": "纹理图像",
+        "desc": "PNG image to project onto mesh surface via UV",
+        "desc_zh": "PNG 图片，通过 UV 映射到 Mesh 表面",
+    },
+    "deco_displacement": {
+        "label": "Displacement", "label_zh": "位移强度",
+        "desc": "Max displacement in mesh units (default: 0.5)",
+        "desc_zh": "最大位移量（Mesh 单位）",
+    },
+    # ── Mesh Transform ───────────────────────────────────────────────
+    "tf_translate": {
+        "label": "Translate", "label_zh": "平移",
+        "desc": "Translate by dx,dy,dz (default: 0,0,0)",
+        "desc_zh": "沿 X/Y/Z 轴平移量",
+    },
+    "tf_rotate": {
+        "label": "Rotate", "label_zh": "旋转",
+        "desc": "Rotate by angle (degrees) around axis (default: 0,0,1)",
+        "desc_zh": "绕轴旋转角度（度）",
+    },
+    "tf_scale": {
+        "label": "Scale", "label_zh": "缩放",
+        "desc": "Uniform scale factor (default: 1.0)",
+        "desc_zh": "等比例缩放系数",
+    },
+    # ── Mesh Select ──────────────────────────────────────────────────
+    "sel_bbox": {
+        "label": "Bounding Box", "label_zh": "包围盒",
+        "desc": "Select vertices within bounding box: xmin,ymin,zmin,xmax,ymax,zmax (default: all)",
+        "desc_zh": "在包围盒内的顶点: xmin,ymin,zmin,xmax,ymax,zmax",
+    },
 }
 # ---------------------------------------------------------------------------
 
+# ── Mesh Boolean Node ───────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_boolean",
+    label="Mesh Boolean",
+    label_zh="布尔运算",
+    category="mesh_ops",
+    inputs=[
+        PortSpec("mesh_a", "mesh", required=True, label="Mesh A", label_zh="Mesh A"),
+        PortSpec("mesh_b", "mesh", required=True, label="Mesh B", label_zh="Mesh B"),
+    ],
+    outputs=[PortSpec("mesh", "mesh", required=True)],
+    params={
+        "bool_op": "union",
+        "bool_mesh_a": "",
+        "bool_mesh_b": "",
+    },
+    color="#9370db",
+))
+
+# ── Mesh Stitch Node ─────────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_stitch",
+    label="Mesh Stitch",
+    label_zh="Mesh 缝合",
+    category="mesh_ops",
+    inputs=[PortSpec("mesh", "mesh", required=True)],
+    outputs=[PortSpec("mesh", "mesh", required=True)],
+    params={
+        "stitch_smooth": 3,
+        "stitch_lambda": 0.1,
+    },
+    color="#9370db",
+))
+
+# ── Mesh Decorate Node ───────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_decorate",
+    label="Mesh Decorate",
+    label_zh="曲面装饰",
+    category="mesh_ops",
+    inputs=[
+        PortSpec("mesh", "mesh", required=True),
+        PortSpec("texture", "image", required=True),
+    ],
+    outputs=[PortSpec("mesh", "mesh", required=True)],
+    params={
+        "deco_displacement": 0.5,
+    },
+    color="#9370db",
+))
+
+# ── Mesh Transform Node ──────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_transform",
+    label="Mesh Transform",
+    label_zh="几何变换",
+    category="mesh_ops",
+    inputs=[PortSpec("mesh", "mesh", required=True)],
+    outputs=[PortSpec("mesh", "mesh", required=True)],
+    params={
+        "tf_translate": "0,0,0",
+        "tf_rotate_angle": 0,
+        "tf_rotate_axis": "0,0,1",
+        "tf_scale": 1.0,
+    },
+    color="#9370db",
+    inline=True,  # handled inline without subprocess
+))
+
+# ── Mesh Select Node ─────────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_select",
+    label="Mesh Select",
+    label_zh="Mesh 选择",
+    category="mesh_ops",
+    inputs=[PortSpec("mesh", "mesh", required=True)],
+    outputs=[PortSpec("mesh", "mesh", required=True)],
+    params={
+        "sel_bbox": "",
+    },
+    color="#9370db",
+    inline=True,
+))
+
+# ── Mesh Cut Node ────────────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_cut",
+    label="Mesh Cut",
+    label_zh="Mesh 切割",
+    category="mesh_ops",
+    inputs=[PortSpec("mesh", "mesh", required=True)],
+    outputs=[
+        PortSpec("mesh_outer", "mesh", required=True, label="Outer", label_zh="外侧"),
+        PortSpec("mesh_inner", "mesh", required=False, label="Inner", label_zh="内侧"),
+    ],
+    params={
+        "cut_plane_co": "0,0,0",
+        "cut_plane_no": "0,0,1",
+        "cut_fill": True,
+    },
+    color="#9370db",
+))
+
+# ── Mesh Align Node ───────────────────────────────────────────────────────────
+_register(NodeType(
+    "mesh_align",
+    label="Mesh Align",
+    label_zh="Mesh 对齐",
+    category="mesh_ops",
+    inputs=[
+        PortSpec("mesh_a", "mesh", required=True, label="Target", label_zh="目标"),
+        PortSpec("mesh_b", "mesh", required=True, label="Source", label_zh="源"),
+    ],
+    outputs=[PortSpec("mesh_aligned", "mesh", required=True)],
+    params={},
+    color="#9370db",
+))
+
 CATEGORIES = {
-    "input": {"label": "Input", "label_zh": "输入"},
-    "generate": {"label": "Generate", "label_zh": "生成"},
-    "process": {"label": "Process", "label_zh": "处理"},
-    "output": {"label": "Output", "label_zh": "输出"},
+    "input":     {"label": "Input",      "label_zh": "输入"},
+    "generate":  {"label": "Generate",   "label_zh": "生成"},
+    "process":   {"label": "Process",    "label_zh": "处理"},
+    "output":    {"label": "Output",    "label_zh": "输出"},
+    "mesh_ops":  {"label": "Mesh Ops",   "label_zh": "高级Mesh",  "collapsed": True},
+    "other":     {"label": "Other",      "label_zh": "其他",      "collapsed": True},
 }
 
 _register(NodeType(
@@ -756,6 +936,11 @@ def node_pipeline_map() -> dict[str, str]:
         "mesh_simplify": "mesh_simplify",
         "mesh_smooth": "mesh_smooth",
         "mesh_scale": "mesh_scale",
+        "mesh_boolean": "mesh_boolean",
+        "mesh_stitch": "mesh_stitch",
+        "mesh_cut": "mesh_cut",
+        "mesh_align": "mesh_align",
+        "mesh_decorate": "mesh_decorate",
     }
 
 

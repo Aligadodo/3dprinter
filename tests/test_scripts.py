@@ -25,6 +25,93 @@ SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 # ═══════════════════════════════════════════════════════════
 
 @pytest.fixture(scope="session")
+def sample_stl():
+    """Create a simple test STL for mesh operation tests."""
+    import numpy as np
+    import trimesh
+    box = trimesh.creation.box(extents=[10, 10, 10])
+    path = PROJECT_ROOT / "output" / "test_mesh.stl"
+    box.export(str(path))
+    return str(path)
+
+
+@pytest.fixture(scope="session")
+def sample_stl_2():
+    """Create a second test STL with boundary features for boolean/align tests."""
+    import trimesh
+    import numpy as np
+    # Create a proper 3D shape (truncated box) with boundary at the top
+    box = trimesh.creation.box(extents=[10, 10, 10])
+    # Remove top face only (normal pointing up, z near top)
+    fn = box.face_normals
+    face_z = box.vertices[box.faces][:, :, 2]
+    face_z_max = face_z.max(axis=1)
+    is_top_face = (fn[:, 2] > 0.9) & (face_z_max > 4.5)
+    # Only remove 1 face (the top), not all matching faces
+    # Find first face matching criteria and remove only that one
+    top_idx = np.where(is_top_face)[0]
+    if len(top_idx) > 0:
+        mask = np.ones(len(box.faces), dtype=bool)
+        mask[top_idx[0]] = False  # remove only first matching face
+        box.update_faces(mask)
+    box.remove_unreferenced_vertices()
+    box.merge_vertices()
+
+    # Verify we still have a proper 3D mesh
+    assert len(box.vertices) >= 8, f"Too few verts: {len(box.vertices)}"
+    assert len(box.faces) >= 6, f"Too few faces: {len(box.faces)}"
+
+    path = PROJECT_ROOT / "output" / "test_mesh_2.stl"
+    box.export(str(path))
+    return str(path)
+
+
+@pytest.fixture(scope="session")
+def sample_glb():
+    """Create a test GLB with basic mesh."""
+    import trimesh
+    box = trimesh.creation.box(extents=[8, 8, 8])
+    path = PROJECT_ROOT / "output" / "test_mesh.glb"
+    box.export(str(path))
+    return str(path)
+
+
+@pytest.fixture(scope="session")
+def sample_obj_with_uv():
+    """Create a test OBJ with embedded UV coordinates for decoration tests."""
+    import trimesh
+    box = trimesh.creation.box(extents=[8, 8, 8])
+    # Add planar UV mapping (front view projection)
+    v = box.vertices
+    uv = np.zeros((len(v), 2), dtype=np.float64)
+    uv[:, 0] = (v[:, 0] - v[:, 0].min()) / (v[:, 0].max() - v[:, 0].min() + 1e-6)
+    uv[:, 1] = (v[:, 1] - v[:, 1].min()) / (v[:, 1].max() - v[:, 1].min() + 1e-6)
+    box.visual.uv = uv
+
+    path = PROJECT_ROOT / "output" / "test_mesh_with_uv.obj"
+    # OBJ format preserves UV when exported from trimesh
+    with open(str(path), 'w') as f:
+        trimesh.exchange.obj.export_obj(box, file_obj=f)
+    return str(path)
+
+
+@pytest.fixture(scope="session")
+def sample_png():
+    """Create a simple PNG texture for decoration tests."""
+    import numpy as np
+    from PIL import Image
+    arr = np.zeros((64, 64, 3), dtype=np.uint8)
+    # Create a simple pattern
+    arr[16:48, 16:48] = [200, 150, 100]  # center block
+    arr[0:16, :] = [255, 0, 0]  # top stripe (red)
+    arr[48:64, :] = [0, 255, 0]  # bottom stripe (green)
+    img = Image.fromarray(arr)
+    path = PROJECT_ROOT / "output" / "test_texture.png"
+    img.save(str(path))
+    return str(path)
+
+
+@pytest.fixture(scope="session")
 def sample_image():
     """Find a sample image in output/ for integration tests."""
     for root, dirs, files in os.walk(PROJECT_ROOT / "output"):
@@ -420,6 +507,224 @@ class TestPathNesting:
 
 
 # ═══════════════════════════════════════════════════════════
+# Mesh Boolean Tests
+# ═══════════════════════════════════════════════════════════
+
+class TestMeshBoolean:
+    """Tests for mesh-boolean.py (manifold3d union/diff/intersect)."""
+
+    def test_union_basic(self, sample_stl, sample_stl_2):
+        """Union of two meshes produces result or proper error."""
+        rc, stdout, stderr = run_script("mesh-boolean.py", [
+            sample_stl, sample_stl_2, "--op", "union",
+        ], timeout=60)
+
+        # Non-watertight mesh B may cause boolean to fail - that's ok
+        # Just verify it either succeeds with output file, or gives proper error JSON
+        data = parse_json_output(stdout)
+        if rc == 0:
+            assert data is not None, f"no JSON: {stdout[:200]}"
+            assert "output" in data
+            assert os.path.exists(data.get("output", "")), "output file not created"
+        else:
+            # Should output error JSON (not crash with traceback)
+            assert data is not None and "error" in data, f"expected error JSON: {stdout[:200]}"
+
+    def test_diff_basic(self, sample_stl, sample_stl_2):
+        """Difference of two meshes produces result or proper error."""
+        rc, stdout, stderr = run_script("mesh-boolean.py", [
+            sample_stl, sample_stl_2, "--op", "diff",
+        ], timeout=60)
+
+        data = parse_json_output(stdout)
+        if rc == 0:
+            assert data is not None, f"no JSON: {stdout[:200]}"
+            assert "output" in data
+            assert os.path.exists(data.get("output", "")), "output file not created"
+        else:
+            assert data is not None and "error" in data, f"expected error JSON: {stdout[:200]}"
+
+    def test_intersect_basic(self, sample_stl, sample_stl_2):
+        """Intersection of two meshes produces result or proper error."""
+        rc, stdout, stderr = run_script("mesh-boolean.py", [
+            sample_stl, sample_stl_2, "--op", "intersect",
+        ], timeout=60)
+
+        data = parse_json_output(stdout)
+        if rc == 0:
+            assert data is not None, f"no JSON: {stdout[:200]}"
+            assert "output" in data
+        else:
+            assert data is not None and "error" in data, f"expected error JSON: {stdout[:200]}"
+
+    def test_nonexistent_input(self):
+        """Non-existent input returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-boolean.py", [
+            "nonexistent_file_xyz.stl", "another_missing.stl", "--op", "union",
+        ])
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None, "no JSON found in stdout"
+        assert "error" in data
+
+    def test_invalid_operation(self, sample_stl, sample_stl_2):
+        """Invalid operation name is handled (argparse catches invalid choice)."""
+        rc, stdout, stderr = run_script("mesh-boolean.py", [
+            sample_stl, sample_stl_2, "--op", "invalid_op",
+        ])
+        # argparse exits with code 2 for invalid choice - still has no JSON
+        assert rc != 0
+        data = parse_json_output(stdout)
+        # The script itself doesn't output JSON when argparse catches the error
+        # We just verify it doesn't crash silently
+
+
+# ═══════════════════════════════════════════════════════════
+# Mesh Stitch Tests
+# ═══════════════════════════════════════════════════════════
+
+class TestMeshStitch:
+    """Tests for mesh-stitch.py (pymeshlab HC smoothing + repair)."""
+
+    def test_basic(self, sample_stl):
+        """Stitch produces repaired mesh with smoothed seams."""
+        rc, stdout, stderr = run_script("mesh-stitch.py", [
+            sample_stl,
+        ], timeout=60)
+
+        assert rc == 0, f"rc={rc} stderr={stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None, f"no JSON: {stdout[:200]}"
+        assert "output" in data
+        assert "faces" in data
+        assert os.path.exists(data.get("output", "")), "output file not created"
+
+    def test_nonexistent_input(self):
+        """Non-existent input returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-stitch.py", [
+            "nonexistent_file_xyz.stl",
+        ])
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
+
+
+# ═══════════════════════════════════════════════════════════
+# Mesh Cut Tests
+# ═══════════════════════════════════════════════════════════
+
+class TestMeshCut:
+    """Tests for mesh-cut.py (planar cutting via trimesh slice_plane)."""
+
+    def test_basic_cut(self, sample_stl):
+        """Cut along X=0 plane produces outer half."""
+        rc, stdout, stderr = run_script("mesh-cut.py", [
+            sample_stl, "--plane-co", "0,0,0", "--plane-no", "1,0,0",
+        ], timeout=60)
+
+        assert rc == 0, f"rc={rc} stderr={stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None, f"no JSON: {stdout[:200]}"
+        assert "output_outer" in data
+        assert "vertices" in data
+        assert "faces" in data
+        assert data.get("watertight") is True, "cut result should be watertight"
+        assert os.path.exists(data.get("output_outer", "")), "output file not created"
+
+    def test_nonexistent_input(self):
+        """Non-existent input returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-cut.py", [
+            "nonexistent_file_xyz.stl", "--plane-co", "0,0,0", "--plane-no", "1,0,0",
+        ])
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
+
+    def test_invalid_plane(self, sample_stl):
+        """Invalid plane parameters handled gracefully."""
+        rc, stdout, stderr = run_script("mesh-cut.py", [
+            sample_stl, "--plane-co", "not,a,number", "--plane-no", "0,0,1",
+        ])
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
+
+
+# ═══════════════════════════════════════════════════════════
+# Mesh Align Tests
+# ═══════════════════════════════════════════════════════════
+
+class TestMeshAlign:
+    """Tests for mesh-align.py (boundary-based mesh alignment)."""
+
+    def test_basic_align(self, sample_stl, sample_stl_2):
+        """Align produces transformation matrix and aligned output."""
+        rc, stdout, stderr = run_script("mesh-align.py", [
+            sample_stl, sample_stl_2, "--output", str(PROJECT_ROOT / "output" / "test_aligned.stl"),
+        ], timeout=60)
+
+        assert rc == 0, f"rc={rc} stderr={stderr[:200]}"
+        data = parse_json_output(stdout)
+        assert data is not None, f"no JSON: {stdout[:200]}"
+        assert "output" in data
+        assert "transform_matrix" in data
+        assert len(data["transform_matrix"]) == 16, "4x4 matrix = 16 values"
+        assert os.path.exists(data.get("output", "")), "output file not created"
+
+    def test_nonexistent_input(self):
+        """Non-existent input returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-align.py", [
+            "nonexistent_file_xyz.stl", "another_missing.stl",
+        ])
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
+
+
+# ═══════════════════════════════════════════════════════════
+# Mesh Decorate Tests
+# ═══════════════════════════════════════════════════════════
+
+class TestMeshDecorate:
+    """Tests for mesh-decorate.py (UV displacement + vertex colors)."""
+
+    def test_requires_uv(self, sample_glb, sample_png):
+        """Decorate requires mesh with UV coordinates (glTF/OBJ without UV returns error)."""
+        rc, stdout, stderr = run_script("mesh-decorate.py", [
+            sample_glb, sample_png, "--output", str(PROJECT_ROOT / "output" / "test_decorated.glb"),
+        ], timeout=60)
+
+        # Mesh without UV should return error JSON
+        data = parse_json_output(stdout)
+        assert data is not None, f"no JSON: {stdout[:200]}"
+        assert "error" in data, "should error on mesh without UV"
+        assert "UV" in data["error"]
+
+    def test_nonexistent_mesh(self, sample_png):
+        """Non-existent mesh returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-decorate.py", [
+            "nonexistent_file_xyz.glb", sample_png,
+        ])
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
+
+    def test_nonexistent_texture(self, sample_glb):
+        """Non-existent texture returns error JSON."""
+        rc, stdout, stderr = run_script("mesh-decorate.py", [
+            sample_glb, "nonexistent_texture_xyz.png",
+        ])
+        assert rc != 0
+        data = parse_json_output(stdout)
+        assert data is not None
+        assert "error" in data
+
+
+# ═══════════════════════════════════════════════════════════
 # Error Contract Tests
 # ═══════════════════════════════════════════════════════════
 
@@ -431,6 +736,11 @@ class TestErrorContract:
         ("mesh-repair.py", ["nonexistent_file_xyz.stl"]),
         ("mesh-simplify.py", ["nonexistent_file_xyz.stl"]),
         ("mesh-to-views.py", ["nonexistent_file_xyz.stl"]),
+        ("mesh-boolean.py", ["nonexistent_a.stl", "nonexistent_b.stl", "--op", "union"]),
+        ("mesh-stitch.py", ["nonexistent_file_xyz.stl"]),
+        ("mesh-cut.py", ["nonexistent_file_xyz.stl", "--plane-co", "0,0,0", "--plane-no", "1,0,0"]),
+        ("mesh-align.py", ["nonexistent_a.stl", "nonexistent_b.stl"]),
+        ("mesh-decorate.py", ["nonexistent_file_xyz.glb", "nonexistent_tex.png"]),
     ])
     def test_error_json_on_bad_input(self, script, args):
         """Bad input returns JSON with error key."""

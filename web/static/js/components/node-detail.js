@@ -54,12 +54,20 @@ function fileMeta(filePath) {
 }
 
 // ── Main render ──
-export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles, params, showTaskLink }) {
+export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles, params, showTaskLink, upstreamEdges }) {
   const status = (nr && nr.status) || 'queued';
   const isCompleted = status === 'completed';
   const isFailed = status === 'failed';
   const isRunning = status === 'running';
-  const nodeLabel = (node && (node.title || node.type)) || (nt && nt.label) || 'Node';
+  // Bilingual label helper
+  const getBl = (n) => {
+    if (!n) return '';
+    const zh = n.label_zh || n.label;
+    const en = n.label;
+    if (!zh || zh === en) return en || '';
+    return zh + ' ' + en;
+  };
+  const nodeLabel = (node && (node.title || node.type)) || (nt && getBl(nt)) || 'Node';
   const nodeColor = (nt && nt.color) || '#888';
   const errorMsg = (nr && nr.error) || null;
 
@@ -98,11 +106,27 @@ export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, task
 
   // Left: Inputs
   html += `<div class="nd-io-col nd-inputs"><div class="nd-section-title">📥 ${t('node.inputs')}</div>`;
+  let hasInputContent = false;
   if (Object.keys(inputMap).length > 0) {
+    hasInputContent = true;
     Object.entries(inputMap).forEach(([portName, file]) => {
       html += renderPortEntry(portName, file);
     });
-  } else {
+  }
+  // Show pending upstream connections (edges exist but upstream hasn't produced output yet)
+  if (upstreamEdges && upstreamEdges.length > 0) {
+    upstreamEdges.forEach(ue => {
+      if (!ue.resolved && !inputMap[ue.targetPort]) {
+        hasInputContent = true;
+        html += `<div class="nd-port-entry nd-pending">
+          <div class="nd-port-label">${escHtml(ue.targetPort)}</div>
+          <div class="nd-filename" style="color:var(--fg2)">← ${escHtml(ue.sourceLabel)}.${escHtml(ue.sourcePort)}</div>
+          <div class="nd-pending-tag">${t('node.upstreamPending').replace('{label}', escHtml(ue.sourceLabel)).replace('{port}', escHtml(ue.sourcePort))}</div>
+        </div>`;
+      }
+    });
+  }
+  if (!hasInputContent) {
     html += `<div class="nd-empty-hint">${t('node.noInputs')}</div>`;
   }
   html += `</div>`;

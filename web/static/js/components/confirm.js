@@ -1,6 +1,11 @@
 /* confirm.js — Custom confirmation dialog */
 import { t } from '../i18n.js';
 
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 export function showConfirm(title, message, yesLabel, noLabel) {
   return new Promise((resolve) => {
     const yesText = yesLabel || 'OK';
@@ -11,10 +16,10 @@ export function showConfirm(title, message, yesLabel, noLabel) {
     overlay.innerHTML = `
       <div class="modal confirm-modal" style="max-width:400px;width:90%">
         <div class="modal-header">
-          <h3>${title}</h3>
+          <h3>${escHtml(title)}</h3>
         </div>
         <div class="modal-body" style="text-align:center;font-size:14px;line-height:1.6">
-          <p style="white-space:pre-wrap">${message}</p>
+          <p style="white-space:pre-wrap">${escHtml(message)}</p>
         </div>
         <div class="modal-footer" style="justify-content:center">
           <button class="btn btn-danger confirm-yes">${yesText}</button>

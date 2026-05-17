@@ -1,10 +1,33 @@
 /* task-detail.js — Task detail page (standalone + workflow sub-tasks) */
 import { api, apiStream } from '../api.js';
 import { t, getLang } from '../i18n.js';
-import { escHtml, formatTime, formatBytes, cacheFile, showFileModal, showCtxMenu, getFile, toast } from '../utils.js';
+import { escHtml, formatTime, formatBytes, cacheFile, showFileModal, showCtxMenu, getFile, toast, getBilingualLabel } from '../utils.js';
 import { showConfirm } from '../components/confirm.js';
 import { setActiveSSE } from '../router.js';
 import { renderNodeDetailPanel } from '../components/node-detail.js';
+
+/** Compute ptLabel from pipeline type cache + task */
+export function getPipelineTypeLabel(pipelineTypeCache, pipelineType, isZh) {
+  return (pipelineTypeCache[pipelineType] &&
+    (isZh ? pipelineTypeCache[pipelineType].label_zh : pipelineTypeCache[pipelineType].label)) || pipelineType;
+}
+
+/** Generate display label with type counter */
+function getNodeDisplayLabel(node, nt, graphNodes) {
+  if (node && node.title) return node.title;
+  const base = nt ? getBilingualLabel(nt) : (node && node.type) || '';
+  let count = 0, targetIdx = -1;
+  (graphNodes || []).forEach((n, i) => {
+    const tid = (n.type || '').replace(/^wf_/, '');
+    const nodeTid = (node && node.type || '').replace(/^wf_/, '');
+    if (tid === nodeTid) {
+      count++;
+      if (String(n.id) === String(node && node.id)) targetIdx = count;
+    }
+  });
+  if (count <= 1) return base;
+  return base + ' #' + (targetIdx > 0 ? targetIdx : 1);
+}
 
 export default async function renderTaskDetail(main, hash) {
   const taskId = hash.startsWith('#/task/') ? hash.slice(7) : hash;
@@ -93,12 +116,12 @@ export default async function renderTaskDetail(main, hash) {
 
       const backHref = wfCtx.instance_id ? `#/workflow/instance/${wfCtx.instance_id}` : '#/dashboard';
       const currentNodeId = String(wfCtx.node_id || '');
+      const ptLabel = getPipelineTypeLabel(pipelineTypeCache, task.pipeline_type, isZh);
 
       let html = `<a href="${backHref}" class="wf-breadcrumb">← ${t('detail.backToWorkflow')}: ${escHtml(wfCtx.workflow_name || 'workflow')}</a>
         <div class="detail-header">
           <span class="badge badge-${task.status}">${statusLabel}</span>
           <span class="badge badge-workflow">🔄 ${t('dash.workflow')}</span>
-          const ptLabel = (pipelineTypeCache[task.pipeline_type] && (isZh ? pipelineTypeCache[task.pipeline_type].label_zh : pipelineTypeCache[task.pipeline_type].label)) || task.pipeline_type;
           <span style="font-size:14px;font-weight:600;flex:1">${task.display_name || (ptLabel + ' — ' + task.id)}</span>
         </div>`;
 
@@ -120,12 +143,13 @@ export default async function renderTaskDetail(main, hash) {
           const node = graphNodeMap[nid] || {};
           const nt = ntMap[(node.type || '').replace(/^wf_/, '')] || {};
           const isCurrentNode = nid === currentNodeId;
-          const nodeLabel = node.title || nt.label || nr.node_id || 'Node';
+          const nodeLabel = getNodeDisplayLabel(node, nt, graphNodes);
           const statusEmoji = nr.status === 'completed' ? '✅' : nr.status === 'running' ? '⚡' : nr.status === 'failed' ? '❌' : '⏳';
           const nodeColor = (nt && nt.color) || '#888';
 
           // Per-node inputs from upstream edges (translate slot indices to port names)
           const inputs = {};
+          const upstreamInfo = [];
           const edgesIn = upstreamEdges[nid] || [];
           edgesIn.forEach(e => {
             const srcNr = nrMap[e.sourceId];
@@ -134,12 +158,21 @@ export default async function renderTaskDetail(main, hash) {
             const srcNT = ntMap[srcTypeId] || {};
             // Translate numeric slot index → port name using node type def
             const srcPortName = (srcNT.outputs && srcNT.outputs[e.sourcePort]) ? srcNT.outputs[e.sourcePort].name : e.sourcePort;
+            const srcPortLabel = (srcNT.outputs && srcNT.outputs[e.sourcePort])
+              ? ((srcNT.outputs[e.sourcePort].label_zh && srcNT.outputs[e.sourcePort].label_zh !== srcNT.outputs[e.sourcePort].label)
+                ? srcNT.outputs[e.sourcePort].label_zh + ' ' + srcNT.outputs[e.sourcePort].label
+                : srcNT.outputs[e.sourcePort].label || srcPortName)
+              : srcPortName;
             // Translate target slot index → port name
             const tgtPortName = (nt.inputs && nt.inputs[e.targetPort]) ? nt.inputs[e.targetPort].name : String(e.targetPort);
             const srcOutputs = (inst && inst.context && inst.context[String(e.sourceId)]) || {};
+            const srcLabel = srcNode.title || (srcNT ? getBilingualLabel(srcNT) : '') || String(e.sourceId);
             const portVal = srcOutputs[srcPortName];
             if (portVal) {
               inputs[tgtPortName] = portVal;
+              upstreamInfo.push({ targetPort: tgtPortName, sourceLabel: srcLabel, sourcePort: srcPortLabel, resolved: true });
+            } else {
+              upstreamInfo.push({ targetPort: tgtPortName, sourceLabel: srcLabel, sourcePort: srcPortLabel, resolved: false });
             }
           });
 
@@ -176,7 +209,7 @@ export default async function renderTaskDetail(main, hash) {
               <span class="wf-ctx-toggle">${isCurrentNode ? '▾' : '▸'}</span>
             </div>
             <div class="wf-ctx-card-body" style="display:${isCurrentNode ? 'block' : 'none'}">
-              ${renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles: nr.output_files || [], params, showTaskLink: false })}
+              ${renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, upstreamEdges: upstreamInfo, taskFiles: nr.output_files || [], params, showTaskLink: false })}
             </div>
           </div>`;
         });
@@ -197,6 +230,7 @@ export default async function renderTaskDetail(main, hash) {
     }
 
     // ── Standalone task (rendered as single-node "workflow") ──
+    const ptLabel = getPipelineTypeLabel(pipelineTypeCache, task.pipeline_type, isZh);
     let html = `<div class="breadcrumb">
       <a href="#/dashboard">${t('nav.dashboard')}</a><span class="breadcrumb-sep">/</span>
       <span class="breadcrumb-current">${escHtml(task.display_name || (ptLabel + ' — ' + task.id))}</span>
@@ -221,10 +255,43 @@ export default async function renderTaskDetail(main, hash) {
     const displayParams = {};
     Object.entries(task.params || {}).forEach(([k, v]) => { displayParams[k] = { value: v, source: 'runtime' }; });
 
+    // Extract output file paths from result (some pipelines don't populate output_files table)
+    const displayOutputs = {};
+    if (task.result && typeof task.result === 'object') {
+      // Known file keys in pipeline results
+      const fileKeys = ['output', 'stl', 'preview', 'result', 'mesh', 'views', 'height_preview', 'texture'];
+      const nonFileKeys = new Set([
+        'log', 'error', 'engine', 'format', 'vertices', 'faces', 'watertight',
+        'decimated_vertices', 'decimated_faces', 'width_mm', 'height_mm',
+        'thickness_mm', 'min_thickness_mm', 'max_thickness_mm', 'lithophane',
+        'file_size', 'dimensions_mm', 'foreground_ratio', 'resolution'
+      ]);
+      Object.entries(task.result).forEach(([k, v]) => {
+        if (typeof v === 'string' && v.length > 4 && !nonFileKeys.has(k)) {
+          // Heuristic: string value that is a file path (has extension or path separator)
+          if (/[\/\\]/.test(v) || /\.[a-z0-9]{2,4}$/i.test(v)) {
+            displayOutputs[k] = v;
+          }
+        }
+      });
+      // Also check known file keys even if they don't match heuristic
+      fileKeys.forEach(k => {
+        if (task.result[k] && typeof task.result[k] === 'string' && !displayOutputs[k]) {
+          displayOutputs[k] = task.result[k];
+        }
+      });
+    }
+
+    // Only pass non-input output_files to the outputs column
+    const nonInputFiles = ofiles.filter(f => f.category !== 'input');
+
     html += renderNodeDetailPanel({
       nid: task.id, node: displayNode, nr: displayNr, nt: displayNt,
-      inputs: displayInputs, outputs: {}, taskFiles: ofiles, params: displayParams, showTaskLink: false,
+      inputs: displayInputs, outputs: displayOutputs, taskFiles: nonInputFiles, params: displayParams, showTaskLink: false,
     });
+
+    // Render categorized output files section
+    html += buildOutputFiles(nonInputFiles);
 
     // Log for running/queued
     if (task.status === 'running' || task.status === 'queued') {
@@ -262,7 +329,7 @@ export default async function renderTaskDetail(main, hash) {
 
 // ── Helpers ──
 
-function buildCompletedResult(task, ofiles) {
+export function buildCompletedResult(task, ofiles) {
   const r = task.result || {};
   let html = `<h4>${t('detail.result')}</h4><div class="detail-result-grid">`;
   if (r.decimated_vertices) html += `<div class="detail-result-item"><div class="val">${r.decimated_vertices.toLocaleString()}</div><div class="lbl">${t('detail.vertices')}</div></div>`;
@@ -286,14 +353,14 @@ function buildCompletedResult(task, ofiles) {
   return html;
 }
 
-function buildFailedResult(task) {
+export function buildFailedResult(task) {
   return `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:var(--radius);padding:12px;margin-bottom:16px">
     <strong style="color:var(--red)">${t('detail.error')}</strong>
     <pre style="font-size:12px;margin-top:8px;white-space:pre-wrap;color:var(--fg2)">${task.result?.error || t('detail.unknownError')}</pre>
   </div>`;
 }
 
-function buildOutputFiles(ofiles) {
+export function buildOutputFiles(ofiles) {
   if (ofiles.length === 0) return '';
   const cats = {preview:[], result:[], input:[], intermediate:[], other:[]};
   ofiles.forEach(f => { cats[f.category||'result'] ? cats[f.category||'result'].push(f) : cats.other.push(f); });
@@ -306,7 +373,7 @@ function buildOutputFiles(ofiles) {
         const ext = (f.file_type||'').toLowerCase();
         const isImg = ['.png','.jpg','.jpeg','.webp','.bmp'].includes(ext);
         const fileUrl = f.url || '#';
-        const fileName = f.filename || f.path.split(/[\\/]/).pop();
+        const fileName = f.filename || (f.path || '').split(/[\\/]/).pop();
         const fid = cacheFile(f);
         html += `<div class="preview-card file-card" data-fid="${fid}" onclick="import('/static/js/utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('/static/js/utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">
           ${isImg ? `<img src="${fileUrl}" alt="${fileName}" loading="lazy">` : `<div style="height:160px;display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--fg2)">&#128736;</div>`}
@@ -342,7 +409,7 @@ function bindTaskActions(taskId, task, renderFn) {
     const stlFile = outputFiles.find(f => ['.stl', '.obj', '.glb'].includes(f.file_type || ''));
     const defaultName = task.display_name || task.pipeline_type;
     const graph = {
-      nodes: [{ id: 1, type: 'output_file', title: task.pipeline_type + ' → ' + (stlFile ? stlFile.filename : task.id.slice(0,8)), pos: [50, 150] }],
+      nodes: [{ id: 1, type: 'wf_output_file', title: task.pipeline_type + ' → ' + (stlFile ? stlFile.filename : task.id.slice(0,8)), pos: [50, 150] }],
       edges: [],
     };
     api('POST', '/workflows', { name: 'From: ' + defaultName, description: 'Auto-created from task ' + task.id, graph })

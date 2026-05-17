@@ -186,7 +186,9 @@
       "input": "输入",
       "generate": "生成",
       "process": "处理",
-      "output": "输出"
+      "output": "输出",
+      "mesh_ops": "高级Mesh",
+      "other": "其他"
     },
     "template": {
       "basic": "基础流程: 文件输入→浮雕",
@@ -209,6 +211,20 @@
       "overview": "概览",
       "downloadOutputs": "下载全部输出",
       "round": "轮次"
+    },
+    "format": "格式化",
+    "validation": {
+      "title": "工作流校验",
+      "errors": "错误 (必须修复)",
+      "warnings": "警告",
+      "saveAnyway": "仍要保存",
+      "cancel": "取消",
+      "noNodes": "工作流没有节点",
+      "duplicateIds": "节点 ID 重复: {id}",
+      "inputNoConsumer": "输入节点 \"{label}\" 没有下游消费者",
+      "requiredPortUnconnected": "必要端口 \"{port}\" 在 \"{label}\" 上未连接",
+      "outputNoInput": "输出节点 \"{label}\" 没有输入",
+      "isolatedNode": "节点 \"{label}\" 孤立 (无连接)"
     }
   },
   "node": {
@@ -220,7 +236,8 @@
     "noParams": "无可配置参数",
     "download": "下载",
     "viewTask": "查看任务",
-    "stats": "统计信息"
+    "stats": "统计信息",
+    "upstreamPending": "← {label}.{port} (等待上游输出)"
   },
   "text2img": {
     "title": "文生图",
@@ -243,7 +260,8 @@
     "notConnected": "-- 未连接 --",
     "connectedTo": "连接到",
     "deleteNode": "删除节点",
-    "portFrom": "#{n}: {title} → {port} [{type}]"
+    "portFrom": "#{n}: {title} → {port} [{type}]",
+    "fromUpstream": "← {label}.{port}"
   },
   "docs": {
     "title": "设计文档",

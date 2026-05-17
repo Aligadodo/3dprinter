@@ -58,10 +58,15 @@ export default async function renderBrowse(main) {
     updateBatchBar();
   };
 
+  window._bfClearSelection = () => {
+    selected.clear();
+    updateBatchBar();
+    document.querySelectorAll('.bf-checkbox').forEach(cb => { cb.checked = false; });
+  };
+
   window._bfDownloadSelected = () => {
     files.forEach(f => {
-      const fid = cacheFile(f);
-      if (selected.has(fid) && f.url) {
+      if (selected.has(f._fid) && f.url) {
         const a = document.createElement('a');
         a.href = f.url;
         a.download = f.filename || '';
@@ -72,7 +77,7 @@ export default async function renderBrowse(main) {
   };
 
   window._bfCopyPaths = () => {
-    const paths = files.filter(f => selected.has(cacheFile(f))).map(f => f.path || '').filter(Boolean).join('\n');
+    const paths = files.filter(f => selected.has(f._fid)).map(f => f.path || '').filter(Boolean).join('\n');
     navigator.clipboard.writeText(paths).then(() => {
       toast(isZh ? `已复制 ${selected.size} 个路径` : `Copied ${selected.size} paths`, 'success');
     }).catch(() => toast('Copy failed', 'error'));
@@ -84,15 +89,16 @@ export default async function renderBrowse(main) {
       <span style="flex:1"></span>
       <button class="btn btn-sm" onclick="window._bfDownloadSelected()">${isZh?'下载选中':'Download'}</button>
       <button class="btn btn-sm" onclick="window._bfCopyPaths()">${isZh?'复制路径':'Copy paths'}</button>
-      <button class="btn btn-sm" onclick="window._bfSelectAll(false);selected.clear();updateBatchBar()">${isZh?'取消选择':'Clear'}</button>
+      <button class="btn btn-sm" onclick="window._bfClearSelection()">${isZh?'取消选择':'Clear'}</button>
     </div>
     <div class="browse-grid">
       ${files.map(f => {
         const ext = (f.file_type||'').toLowerCase();
         const isImg = ['.png','.jpg','.jpeg','.webp','.bmp'].includes(ext);
         const fileUrl = f.url || '#';
-        const fileName = f.filename || f.path.split(/[\\/]/).pop();
+        const fileName = f.filename || (f.path || '').split(/[\\/]/).pop();
         const fid = cacheFile(f);
+        f._fid = fid;
         return `<div class="browse-card file-card" data-fid="${fid}" style="position:relative">
             <input type="checkbox" class="bf-checkbox" value="${fid}" onclick="event.stopPropagation()" onchange="window._bfToggleSelect('${fid}',this.checked)" title="${isZh?'选择':'Select'}">
             <div onclick="import('/static/js/utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('/static/js/utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">

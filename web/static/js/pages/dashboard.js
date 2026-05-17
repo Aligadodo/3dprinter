@@ -104,9 +104,12 @@ export default async function renderDashboard(main) {
 
   // ── Full refresh (initial load + 30s fallback + filter changes) ──
 
+  let _refreshBusy = false;
   async function refresh() {
+    if (_refreshBusy) return;
+    _refreshBusy = true;
     const dash = main.querySelector('#dash-content');
-    if (!dash) return;
+    if (!dash) { _refreshBusy = false; return; }
 
     // Fetch pipeline types once for bilingual labels
     if (Object.keys(pipelineTypeCache).length === 0) {
@@ -129,7 +132,7 @@ export default async function renderDashboard(main) {
         <p>${t('dash.error')}: ${e.message}</p>
         <button class="btn btn-primary" onclick="location.reload()">${t('dash.retry')}</button>
       </div>`;
-      return;
+      _refreshBusy = false; return;
     }
 
     const { tasks, stats } = data;
@@ -210,6 +213,7 @@ export default async function renderDashboard(main) {
 
     // Sync SSE subscriptions after render
     syncSSE(tasks);
+    _refreshBusy = false;
   }
 
   // ── Initial load ──

@@ -99,8 +99,8 @@ export async function fetchProviderStatuses() {
     const d = await r.json();
     _providerStatuses = {};
     (d.providers || []).forEach(p => { _providerStatuses[p.id] = p; });
-  } catch(e) { _providerStatuses = {}; }
-  return _providerStatuses;
+  } catch(e) { /* Don't cache failures — allow retry next call */ }
+  return _providerStatuses || {};
 }
 
 export function providerChoiceLabel(providerId) {

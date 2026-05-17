@@ -186,7 +186,9 @@
       "input": "Input",
       "generate": "Generate",
       "process": "Process",
-      "output": "Output"
+      "output": "Output",
+      "mesh_ops": "Mesh Ops",
+      "other": "Other"
     },
     "template": {
       "basic": "Basic: File→Relief",
@@ -209,6 +211,20 @@
       "overview": "Overview",
       "downloadOutputs": "Download All Outputs",
       "round": "Round"
+    },
+    "format": "Format",
+    "validation": {
+      "title": "Workflow Validation",
+      "errors": "Errors (must fix)",
+      "warnings": "Warnings",
+      "saveAnyway": "Save Anyway",
+      "cancel": "Cancel",
+      "noNodes": "Workflow has no nodes",
+      "duplicateIds": "Duplicate node ID: {id}",
+      "inputNoConsumer": "Input node \"{label}\" has no downstream consumer",
+      "requiredPortUnconnected": "Required port \"{port}\" on \"{label}\" is not connected",
+      "outputNoInput": "Output node \"{label}\" has no input",
+      "isolatedNode": "Node \"{label}\" is isolated (no connections)"
     }
   },
   "node": {
@@ -220,7 +236,8 @@
     "noParams": "No configurable params",
     "download": "Download",
     "viewTask": "View Task",
-    "stats": "Statistics"
+    "stats": "Statistics",
+    "upstreamPending": "← {label}.{port} (waiting for upstream)"
   },
   "text2img": {
     "title": "Text to Image",
@@ -243,7 +260,8 @@
     "notConnected": "-- Not connected --",
     "connectedTo": "Connected to",
     "deleteNode": "Delete Node",
-    "portFrom": "#{n}: {title} → {port} [{type}]"
+    "portFrom": "#{n}: {title} → {port} [{type}]",
+    "fromUpstream": "← {label}.{port}"
   },
   "docs": {
     "title": "Design Docs",

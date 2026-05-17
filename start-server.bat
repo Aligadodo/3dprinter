@@ -20,10 +20,12 @@ echo   Python:
 python --version 2>&1
 echo.
 
-echo   API keys for text-to-image providers:
-echo     Create config\.env with your keys
-echo     (see config\.env.example for template)
-echo.
+if not exist "%~dp0config\.env" (
+    echo   API keys for text-to-image providers:
+    echo     Create config\.env with your keys
+    echo     (see config\.env.example for template)
+    echo.
+)
 
 python "%~dp0start-server.py" %*
 

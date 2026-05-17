@@ -1,7 +1,7 @@
 /* new-task.js — New task creation page (pipeline + file upload + workflow) */
 import { api, fetchProviderStatuses, providerChoiceLabel } from '../api.js';
 import { t, getLang } from '../i18n.js';
-import { formatBytes, toast, escHtml } from '../utils.js';
+import { formatBytes, toast, escHtml, isTypeCompatible } from '../utils.js';
 
 export default async function renderNewTask(main) {
   let types = {};
@@ -184,7 +184,7 @@ export default async function renderNewTask(main) {
   }
 
   function validateField(el) {
-    const group = el.closest('.form-group');
+    const group = el.closest('.form-row');
     if (!group) return true;
     const p = (types[selectedType]?.params||[]).find(p => p.name === el.name);
     const errEl = group.querySelector('.field-error');
@@ -502,7 +502,7 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
     const typeId = (n.type || '').replace(/^wf_/, '');
     const nt = ntMap[typeId];
     const props = n.properties || {};
-    const label = n.title || (nt && (isZh ? (nt.label_zh || nt.label) : nt.label)) || typeId;
+    const label = n.title || (nt ? (nt.label_zh && nt.label_zh !== nt.label ? nt.label_zh + ' ' + nt.label : nt.label) : typeId);
     const colorDot = nt && nt.color ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${nt.color};flex-shrink:0;vertical-align:middle"></span>` : '';
 
     html += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;margin-bottom:10px">`;
@@ -515,7 +515,7 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
     if (portEntries.length > 0) {
       html += `<div style="margin-bottom:8px;font-size:11px">`;
       portEntries.forEach((p, pi) => {
-        const portLabel = isZh ? (p.label_zh || p.label || p.name) : (p.label || p.name);
+        const portLabel = (p.label_zh && p.label_zh !== p.label) ? (p.label_zh + ' ' + (p.label || p.name)) : (p.label || p.name);
         const portType = p.type || '*';
         html += `<div style="margin-bottom:4px"><label style="display:block;font-size:10px;font-weight:600;color:var(--fg);margin-bottom:2px">${portLabel} <span style="font-weight:400;color:var(--fg2)">[${portType}]</span></label>`;
         html += `<select class="rp-input-sel" data-node="${n.id}" data-slot="${pi}" data-port="${escHtml(p.name)}" style="width:100%;padding:5px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:11px;font-family:var(--font)">`;
@@ -527,9 +527,9 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
           if (!otherNT) return;
           (otherNT.outputs || []).forEach((op, opIdx) => {
             if (!op.type) return;
-            if (_isTypeCompatible(op.type, portType)) {
-              const srcLabel = other.title || (otherNT && otherNT.label) || String(other.id);
-              const srcPortLabel = isZh ? (op.label_zh || op.label || op.name) : (op.label || op.name);
+            if (isTypeCompatible(op.type, portType)) {
+              const srcLabel = other.title || (otherNT ? (otherNT.label_zh && otherNT.label_zh !== otherNT.label ? otherNT.label_zh + ' ' + otherNT.label : otherNT.label) : '') || String(other.id);
+              const srcPortLabel = (op.label_zh && op.label_zh !== op.label ? op.label_zh + ' ' : '') + (op.label || op.name);
               const optVal = `${other.id}:${opIdx}:${escHtml(op.name)}`;
               const edgeInfo = portEdgeMap[n.id] || {};
               const curSrc = edgeInfo[pi] || edgeInfo[p.name] || edgeInfo[op.name];
@@ -564,19 +564,6 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
     html += `</div>`;
   });
   return html;
-}
-
-// ── Lenient type compatibility (shared with wf-editor) ──
-function _isTypeCompatible(srcType, tgtType) {
-  if (!srcType || !tgtType) return true;
-  if (srcType === tgtType) return true;
-  if (srcType === '*' || tgtType === '*') return true;
-  if (srcType === 'any' || tgtType === 'any') return true;
-  if (srcType === 'file' && ['image', 'stl', 'mesh'].includes(tgtType)) return true;
-  if (srcType === 'string' && tgtType === 'image') return true;
-  if ((srcType === 'stl' && tgtType === 'mesh') || (srcType === 'mesh' && tgtType === 'stl')) return true;
-  if (srcType === 'json') return true;
-  return false;
 }
 
 // ── Text-to-Image panel ──

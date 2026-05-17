@@ -1,6 +1,6 @@
 # pre-commit-hook.ps1 — Fast smoke tests for 3D Print Pipeline
 # Install: copy to .git/hooks/pre-commit (without .ps1 extension) or configure via git config
-# Runs: schema + engine + error-contract tests (~10-30s total)
+# Runs: schema + engine + script error contracts + frontend vitest (~10-30s total)
 
 $ErrorActionPreference = "SilentlyContinue"
 $ROOT = "D:\projects\3dprint"
@@ -25,6 +25,7 @@ Write-Host ""
 Run-Test "Schema Consistency" "python $ROOT\tests\test_schema_consistency.py"
 Run-Test "Workflow Engine" "python $ROOT\tests\test_workflow_engine.py"
 Run-Test "Script Error Contracts" "python -m pytest $ROOT\tests\test_scripts.py -k `"file_not_found or nonexistent or error_json`" -v --tb=line"
+Run-Test "Frontend Unit Tests" "npx vitest run tests/frontend/ --reporter=default"
 
 Write-Host ""
 if ($FAIL -eq 0) {

@@ -68,6 +68,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add cache-control for JS/CSS modules during development
+@app.middleware("http")
+async def add_cache_control(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/") and (path.endswith(".js") or path.endswith(".css")):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 

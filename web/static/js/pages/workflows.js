@@ -2,6 +2,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { showConfirm } from '../components/confirm.js';
+import { escHtml } from '../utils.js';
 
 export default async function renderWorkflowList(main) {
   main.innerHTML = `<h2>${t('wf.title')}</h2><div id="wf-list-content">
@@ -31,21 +32,26 @@ export default async function renderWorkflowList(main) {
         <div class="wf-instance-card" style="cursor:pointer" onclick="location.hash='#/workflow/${wf.id}'">
           <span style="font-size:20px">🔧</span>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:13px">${wf.name || t('wf.untitled')}</div>
-            <div style="font-size:11px;color:var(--fg2);margin-top:2px">${wf.description||''} — ${(wf.graph?.nodes||[]).length} nodes</div>
+            <div style="font-weight:600;font-size:13px">${escHtml(wf.name) || t('wf.untitled')}</div>
+            <div style="font-size:11px;color:var(--fg2);margin-top:2px">${escHtml(wf.description) || ''} — ${(wf.graph?.nodes||[]).length} nodes</div>
           </div>
-          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteWF('${wf.id}','${(wf.name||'').replace(/'/g,"\\'")}')">${t('wf.delete')}</button>
+          <button class="btn btn-sm btn-danger wf-delete-btn" data-wf-id="${wf.id}" data-wf-name="${escHtml(wf.name || '')}">${t('wf.delete')}</button>
         </div>
       `).join('')}
     </div>
   `;
 
-  // Delete handler
-  window.deleteWF = async (id, name) => {
+  // Delete handler via event delegation — avoids XSS via onclick injection
+  content.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.wf-delete-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    const id = btn.dataset.wfId;
+    const name = btn.dataset.wfName;
     if (!await showConfirm(t('wf.delete'), t('wf.deleteConfirm') + '\n\n' + name, t('wf.delete'), t('wf.runner.cancel'))) return;
     try {
       await api('DELETE', `/workflows/${id}`);
       location.reload();
     } catch (e) { alert(e.message); }
-  };
+  });
 }

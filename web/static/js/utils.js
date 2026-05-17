@@ -1,8 +1,32 @@
 /* ═══════════════════════════════════════════
-   utils.js — Shared utility functions
+   utils.js — Shared utility functions  (v2)
    ═══════════════════════════════════════════ */
 
 import { t, getLang } from './i18n.js';
+
+// ── Bilingual label helper ──
+/** Return bilingual label: "中文 English" regardless of current language */
+export function getBilingualLabel(nt) {
+  if (!nt) return '';
+  const zh = nt.label_zh && nt.label_zh.trim() || '';
+  const en = nt.label && nt.label.trim() || '';
+  if (!zh) return en;
+  if (!en || zh === en) return zh;
+  return zh + ' ' + en;
+}
+
+// ── Lenient type compatibility ──
+export function isTypeCompatible(srcType, tgtType) {
+  if (!srcType || !tgtType) return true;
+  if (srcType === tgtType) return true;
+  if (srcType === '*' || tgtType === '*') return true;
+  if (srcType === 'any' || tgtType === 'any') return true;
+  if (srcType === 'file' && ['image', 'stl', 'mesh'].includes(tgtType)) return true;
+  if (srcType === 'string' && tgtType === 'image') return true;
+  if ((srcType === 'stl' && tgtType === 'mesh') || (srcType === 'mesh' && tgtType === 'stl')) return true;
+  if (srcType === 'json') return true;
+  return false;
+}
 
 // ── HTML escaping ──
 export function escHtml(s) {

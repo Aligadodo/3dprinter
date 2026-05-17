@@ -340,6 +340,128 @@ async def run_remove_background(nid, node, node_params, ctx, instance_id, node_r
 
 
 # ═══════════════════════════════════════════
+#  Mesh Inline Handlers
+# ═══════════════════════════════════════════
+
+async def run_mesh_transform(nid, node, node_params, ctx, instance_id, node_run_id, engine, node_map, edges):
+    """Transform mesh: translate, rotate, scale."""
+    import numpy as np
+    import trimesh
+
+    input_file = _resolve_input(nid, ctx, engine, node_map, edges)
+    if not input_file:
+        raise ValueError(f"mesh_transform: no input mesh for node {nid}")
+
+    mesh = trimesh.load(input_file, force="mesh")
+    if isinstance(mesh, trimesh.Scene):
+        meshes = [m for m in mesh.geometry.values() if hasattr(m, "vertices")]
+        mesh = max(meshes, key=lambda m: len(m.vertices)) if meshes else None
+
+    # Parse transform params
+    translate_str = node_params.get("tf_translate", "0,0,0")
+    rotate_str = node_params.get("tf_rotate", "0,0,1")
+    scale_val = float(node_params.get("tf_scale", 1.0))
+
+    translate = [float(x) for x in translate_str.split(",")][:3]
+    rotate_angle = float(node_params.get("tf_rotate_angle", 0))
+    if "tf_rotate" in node_params:
+        # rotate is expressed as angle,axis format
+        parts = node_params.get("tf_rotate", "0,0,1").split(",")
+        if len(parts) >= 4:
+            rotate_angle = float(parts[0])
+            axis = np.array([float(parts[1]), float(parts[2]), float(parts[3])])
+            axis = axis / np.linalg.norm(axis)
+        else:
+            rotate_angle = 0
+            axis = np.array([0, 0, 1])
+    else:
+        axis = np.array([0, 0, 1])
+
+    work_dir = ctx.get("_work_dir", "")
+    os.makedirs(work_dir, exist_ok=True)
+
+    # Apply translate
+    if any(t != 0 for t in translate):
+        mesh.apply_translation(translate)
+
+    # Apply rotation
+    if rotate_angle != 0:
+        angle_rad = np.radians(rotate_angle)
+        K = np.array([
+            [0, -axis[2], axis[1]],
+            [axis[2], 0, -axis[0]],
+            [-axis[1], axis[0], 0]
+        ])
+        R = np.eye(3) + np.sin(angle_rad) * K + (1 - np.cos(angle_rad)) * (K @ K)
+        mesh.apply_transform(np.column_stack([R, [0, 0, 0]]).ravel().tolist() + [0, 0, 0, 1])
+
+    # Apply scale
+    if scale_val != 1.0:
+        mesh.apply_scale(scale_val)
+
+    out_path = os.path.join(work_dir, f"mesh_tf_{nid}.glb")
+    mesh.export(out_path)
+
+    ctx[str(nid)] = {"mesh": out_path}
+    return out_path
+
+
+async def run_mesh_select(nid, node, node_params, ctx, instance_id, node_run_id, engine, node_map, edges):
+    """Select mesh region by bounding box."""
+    import numpy as np
+    import trimesh
+
+    input_file = _resolve_input(nid, ctx, engine, node_map, edges)
+    if not input_file:
+        raise ValueError(f"mesh_select: no input mesh for node {nid}")
+
+    mesh = trimesh.load(input_file, force="mesh")
+    if isinstance(mesh, trimesh.Scene):
+        meshes = [m for m in mesh.geometry.values() if hasattr(m, "vertices")]
+        mesh = max(meshes, key=lambda m: len(m.vertices)) if meshes else None
+
+    bbox_str = node_params.get("sel_bbox", "")
+    if not bbox_str:
+        # No selection - pass through
+        out_path = os.path.join(ctx.get("_work_dir", "."), f"mesh_sel_{nid}.glb")
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        mesh.export(out_path)
+        ctx[str(nid)] = {"mesh": out_path}
+        return out_path
+
+    parts = [float(x) for x in bbox_str.split(",")]
+    if len(parts) != 6:
+        raise ValueError(f"sel_bbox needs xmin,ymin,zmin,xmax,ymax,zmax, got: {bbox_str}")
+
+    xmin, ymin, zmin, xmax, ymax, zmax = parts
+
+    # Select vertices within bounding box
+    v = mesh.vertices
+    mask = (
+        (v[:, 0] >= xmin) & (v[:, 0] <= xmax) &
+        (v[:, 1] >= ymin) & (v[:, 1] <= ymax) &
+        (v[:, 2] >= zmin) & (v[:, 2] <= zmax)
+    )
+    face_mask = np.any(mask[mesh.faces], axis=1)
+
+    if face_mask.sum() == 0:
+        raise ValueError(f"No faces in bounding box {bbox_str}")
+
+    selected = mesh.copy()
+    selected.update_faces(face_mask)
+    selected.remove_unreferenced_vertices()
+    selected.merge_vertices()
+
+    work_dir = ctx.get("_work_dir", "")
+    os.makedirs(work_dir, exist_ok=True)
+    out_path = os.path.join(work_dir, f"mesh_sel_{nid}.glb")
+    selected.export(out_path)
+
+    ctx[str(nid)] = {"mesh": out_path}
+    return out_path
+
+
+# ═══════════════════════════════════════════
 #  Handler Registry
 # ═══════════════════════════════════════════
 
@@ -350,4 +472,6 @@ INLINE_HANDLERS = {
     "image_adjust": run_image_adjust,
     "image_convert": run_image_convert,
     "remove_background": run_remove_background,
+    "mesh_transform": run_mesh_transform,
+    "mesh_select": run_mesh_select,
 }
