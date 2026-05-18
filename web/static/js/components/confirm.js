@@ -1,10 +1,6 @@
 /* confirm.js — Custom confirmation dialog */
 import { t } from '../i18n.js';
-
-function escHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+import { escHtml } from '../utils.js';
 
 export function showConfirm(title, message, yesLabel, noLabel) {
   return new Promise((resolve) => {

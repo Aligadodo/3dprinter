@@ -6,6 +6,8 @@ import { showConfirm } from '../components/confirm.js';
 import { setActiveSSE } from '../router.js';
 import { renderNodeDetailPanel } from '../components/node-detail.js';
 
+let _renderGen = 0;
+
 /** Compute ptLabel from pipeline type cache + task */
 export function getPipelineTypeLabel(pipelineTypeCache, pipelineType, isZh) {
   return (pipelineTypeCache[pipelineType] &&
@@ -329,30 +331,6 @@ export default async function renderTaskDetail(main, hash) {
 
 // ── Helpers ──
 
-export function buildCompletedResult(task, ofiles) {
-  const r = task.result || {};
-  let html = `<h4>${t('detail.result')}</h4><div class="detail-result-grid">`;
-  if (r.decimated_vertices) html += `<div class="detail-result-item"><div class="val">${r.decimated_vertices.toLocaleString()}</div><div class="lbl">${t('detail.vertices')}</div></div>`;
-  if (r.decimated_faces) html += `<div class="detail-result-item"><div class="val">${r.decimated_faces.toLocaleString()}</div><div class="lbl">${t('detail.faces')}</div></div>`;
-  if (r.vertices && !r.decimated_vertices) html += `<div class="detail-result-item"><div class="val">${r.vertices.toLocaleString()}</div><div class="lbl">${t('detail.vertices')}</div></div>`;
-  if (r.faces && !r.decimated_faces) html += `<div class="detail-result-item"><div class="val">${r.faces.toLocaleString()}</div><div class="lbl">${t('detail.faces')}</div></div>`;
-  if (r.width_mm) html += `<div class="detail-result-item"><div class="val">${r.width_mm}×${r.height_mm}</div><div class="lbl">${t('detail.size')}</div></div>`;
-  if (r.thickness_mm) html += `<div class="detail-result-item"><div class="val">${r.thickness_mm}</div><div class="lbl">${t('detail.thickness')}</div></div>`;
-  html += `</div>`;
-  if (r.bands) {
-    html += `<h4>${t('detail.colorBands')}</h4><div style="margin-bottom:16px">`;
-    r.bands.forEach(b => {
-      const sw = b.color_rgb ? `rgb(${b.color_rgb.join(',')})` : b.color_hex;
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px">
-        <span style="display:inline-block;width:18px;height:18px;border-radius:3px;background:${sw};border:1px solid var(--border)"></span>
-        <span style="color:var(--fg2);min-width:80px">Z ${b.z_start_mm} – ${b.z_end_mm} mm</span>
-        <span style="color:var(--fg)">${b.color_hex}</span></div>`;
-    });
-    html += `</div>`;
-  }
-  return html;
-}
-
 export function buildFailedResult(task) {
   return `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:var(--radius);padding:12px;margin-bottom:16px">
     <strong style="color:var(--red)">${t('detail.error')}</strong>
@@ -453,7 +431,6 @@ function handleSSEEvent(evt, data, taskId, task, render) {
   }
   if (evt === 'complete') {
     toast(t('toast.taskCompleted'), 'success');
-    // Immediate UI feedback before re-fetch
     const badge = document.querySelector('#detail-content .badge');
     if (badge) { badge.className = 'badge badge-completed'; badge.textContent = t('badge.completed'); }
     const fill = document.getElementById('progress-fill');
@@ -462,8 +439,9 @@ function handleSSEEvent(evt, data, taskId, task, render) {
     if (pt) pt.textContent = t('detail.completed');
     const ind = document.getElementById('sse-indicator');
     if (ind) ind.style.display = 'none';
-    // Re-fetch to get output files + result, render immediately (no delay)
+    const gen = ++_renderGen;
     api('GET', `/tasks/${taskId}`).then(fresh => {
+      if (gen !== _renderGen) return;
       Object.assign(task, fresh);
       render();
     });
@@ -478,8 +456,9 @@ function handleSSEEvent(evt, data, taskId, task, render) {
     if (pt) pt.textContent = data.error || t('detail.failedToast');
     const ind = document.getElementById('sse-indicator');
     if (ind) ind.style.display = 'none';
-    // Re-fetch for result/error details, then render
+    const gen = ++_renderGen;
     api('GET', `/tasks/${taskId}`).then(fresh => {
+      if (gen !== _renderGen) return;
       Object.assign(task, fresh);
       render();
     });
@@ -490,7 +469,9 @@ function handleSSEEvent(evt, data, taskId, task, render) {
     if (badge) { badge.className = 'badge badge-cancelled'; badge.textContent = t('badge.cancelled'); }
     const ind = document.getElementById('sse-indicator');
     if (ind) ind.style.display = 'none';
+    const gen = ++_renderGen;
     api('GET', `/tasks/${taskId}`).then(fresh => {
+      if (gen !== _renderGen) return;
       Object.assign(task, fresh);
       render();
     });

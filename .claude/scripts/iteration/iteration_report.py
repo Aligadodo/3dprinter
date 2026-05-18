@@ -185,8 +185,9 @@ def main():
             cat = 'other'
         categories[cat] = categories.get(cat, 0) + 1
 
-    # Plan progress
+    # Plan progress — try start.json first, then fall back to plan file directly
     plan_progress = None
+    plan_content = ""
     if start_data and start_data.get('plan'):
         p = start_data['plan']
         plan_progress = {
@@ -195,14 +196,79 @@ def main():
             'tasks_done_start': p['tasks_done'],
         }
 
+    # If no start.json, try to read the active plan file for context
+    if not plan_progress:
+        plans_dir = os.path.join(os.path.expanduser('~'), '.claude', 'plans')
+        if os.path.isdir(plans_dir):
+            plan_files = sorted(
+                [f for f in glob.glob(os.path.join(plans_dir, '*.md'))],
+                key=os.path.getmtime, reverse=True
+            )
+            if plan_files:
+                plan_name = os.path.basename(plan_files[0]).replace('.md', '')
+                with open(plan_files[0], 'r', encoding='utf-8') as f:
+                    plan_content = f.read()
+                # Count tasks from plan
+                task_lines = [l for l in plan_content.split('\n')
+                            if l.strip().startswith('- [')]
+                total = len(task_lines)
+                done = sum(1 for l in task_lines if l.strip().startswith('- [x]'))
+                plan_progress = {
+                    'name': plan_name,
+                    'tasks_total': total or 1,
+                    'tasks_done_start': done,
+                }
+
+    # Determine report title — use plan name if meaningful, else git-based
+    if plan_progress and plan_progress['name'] and \
+       plan_progress['name'] not in ('iteration', 'plan', 'untitled'):
+        report_title = plan_progress['name'].replace('-', ' ').replace('_', ' ')
+    elif current_commit:
+        # Use recent commit message as title
+        commit_msg = current_commit.split(' ', 1)[-1] if ' ' in current_commit else current_commit
+        report_title = commit_msg[:80]
+    else:
+        report_title = f'迭代 {now.strftime("%Y-%m-%d %H:%M")}'
+
     # Build markdown report
     lines = []
-    lines.append('# 迭代报告')
+    lines.append(f'# {report_title}')
     lines.append('')
     lines.append(f'**生成时间**: {now.strftime("%Y-%m-%d %H:%M:%S")}')
     lines.append(f'**项目**: {os.path.basename(project_dir)}')
     lines.append(f'**分支**: {current_branch or "N/A"}')
+    if current_commit:
+        lines.append(f'**最新提交**: {current_commit}')
     lines.append('')
+
+    # Plan context summary (if we have plan content)
+    if plan_content.strip():
+        # Extract first meaningful paragraph from plan as context
+        plan_lines = plan_content.strip().split('\n')
+        context_lines = []
+        in_meta = True
+        for pl in plan_lines:
+            ps = pl.strip()
+            if not ps:
+                continue
+            if ps.startswith('# '):
+                in_meta = False
+                continue
+            if in_meta and (ps.startswith('##') or ps.startswith('**') or ps.startswith('---')):
+                continue
+            if ps.startswith('##'):
+                break
+            if len(ps) > 20:
+                context_lines.append(ps)
+                if len(context_lines) >= 3:
+                    break
+        if context_lines:
+            lines.append('## 上下文摘要')
+            lines.append('')
+            for cl in context_lines:
+                lines.append(f'> {cl[:200]}')
+                lines.append('>')
+            lines.append('')
 
     # Section 1: Goal Achievement
     lines.append('## 一、目标达成情况')
@@ -339,9 +405,7 @@ def main():
         f.write(report_md)
 
     # Update INDEX.md
-    index_title = plan_progress['name'] if plan_progress else (
-        f'迭代 {now.strftime("%Y-%m-%d %H:%M")}')
-    _update_index(iteration_dir, report_filename, index_title)
+    _update_index(iteration_dir, report_filename, report_title)
 
     # Clean up start record (consumed by this report)
     if start_data:

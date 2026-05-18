@@ -65,6 +65,7 @@ export function autoFormatLayout(graph, nodeTypes) {
 
   // If no root nodes (all have inDegree > 0, e.g., cycle), assign all to layer 0
   if (queue.length === 0) {
+    console.warn('Workflow layout: graph may contain a cycle — all nodes at layer 0');
     nodes.forEach(n => { layers[String(n.id)] = 0; });
     return;
   }
@@ -148,6 +149,5 @@ export function autoFormatLayout(graph, nodeTypes) {
     });
   }
 
-  // Redraw
-  graph.setDirtyCanvas(true, true);
+  // Redraw handled by caller (LGraphCanvas.setDirty)
 }

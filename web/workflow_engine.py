@@ -27,6 +27,11 @@ from web import inline_nodes
 from web import dag
 
 
+class WorkflowCancelledError(Exception):
+    """Raised when a workflow is cancelled by user request."""
+    pass
+
+
 class WorkflowEngine:
     def __init__(self):
         self.event_queues: dict[str, asyncio.Queue] = {}
@@ -68,6 +73,8 @@ class WorkflowEngine:
 
         # Determine which nodes are before the replay point
         wf_def = wm.get_workflow_definition(workflow_id)
+        if not wf_def:
+            raise ValueError("Workflow definition not found")
         graph = wf_def["graph"]
         nodes = graph.get("nodes", [])
         edges = self._normalize_edges(graph)
@@ -76,16 +83,16 @@ class WorkflowEngine:
         adj, in_degree = self._build_dag(node_map, edges)
 
         # Topological sort to find execution order
-        topsort = self._topsort(node_map, adj, in_degree)
-        if from_node not in topsort:
+        order = self._topsort(node_map, adj, in_degree)
+        if from_node not in order:
             raise ValueError(f"Node {from_node} not found in workflow")
 
-        replay_idx = topsort.index(from_node)
+        replay_idx = order.index(from_node)
 
         # Nodes before the replay point — keep their context
         # Nodes at and after — clear context and re-execute
         preserved_ctx = {}
-        for nid in topsort[:replay_idx]:
+        for nid in order[:replay_idx]:
             if nid in ctx:
                 preserved_ctx[nid] = ctx[nid]
 
@@ -97,7 +104,7 @@ class WorkflowEngine:
                                      finished_at=None, round_num=round_num)
 
         # Reset node runs for nodes at and after replay point
-        for nid in topsort[replay_idx:]:
+        for nid in order[replay_idx:]:
             node_runs = inst.get("node_runs", [])
             for nr in node_runs:
                 if str(nr.get("node_id")) == nid:
@@ -159,9 +166,9 @@ class WorkflowEngine:
 
         node_map = {str(n["id"]): n for n in nodes}
         adj, in_degree = self._build_dag(node_map, edges)
-        topsort = self._topsort(node_map, adj, in_degree)
+        order = self._topsort(node_map, adj, in_degree)
 
-        if topsort is None:
+        if order is None:
             await self._emit(instance_id, "error", {"error": "Workflow contains a cycle"})
             wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time(),
                                         error_message="Workflow contains a cycle")
@@ -190,13 +197,13 @@ class WorkflowEngine:
             ctx["_round"] = round_num
 
         # Determine execution list
-        if start_node and start_node in topsort:
-            exec_list = topsort[topsort.index(start_node):]
+        if start_node and start_node in order:
+            exec_list = order[order.index(start_node):]
         else:
-            exec_list = topsort
+            exec_list = order
 
-        total = len(topsort)
-        offset = topsort.index(exec_list[0]) if exec_list else 0
+        total = len(order)
+        offset = order.index(exec_list[0]) if exec_list else 0
 
         # Pre-create node run records for ALL nodes so they exist even if execution fails early.
         # This ensures every node in the workflow has a record regardless of early termination.
@@ -267,6 +274,16 @@ class WorkflowEngine:
                     "outputs": ctx.get(nid, {}),
                     "round": round_num,
                 })
+            except WorkflowCancelledError:
+                wm.update_node_run(nr["id"], status="cancelled", finished_at=time.time())
+                for later_nid in exec_list[idx + 1:]:
+                    if later_nid in exec_node_runs:
+                        wm.update_node_run(exec_node_runs[later_nid]["id"], status="cancelled",
+                                            finished_at=time.time())
+                wm.update_workflow_instance(instance_id, status="cancelled", finished_at=time.time())
+                await self._emit(instance_id, "cancelled", {"message": "Workflow cancelled"})
+                await self._emit(instance_id, "done", {})
+                return
             except Exception as e:
                 error_msg = str(e)
                 wm.update_node_run(nr["id"], status="failed", error=error_msg, finished_at=time.time())
@@ -435,31 +452,31 @@ class WorkflowEngine:
             "node_id": nid, "task_id": task_id, "percent": 0, "message": f"Started {pipeline_type}...",
         })
 
+        # Block until task completes; scheduler emits events on the queue
         while True:
-            if self.cancel_flags.get(instance_id):
-                await sched.cancel(task_id)
-                raise asyncio.CancelledError("Workflow cancelled")
-            try:
-                msg = await asyncio.wait_for(task_queue.get(), timeout=0.5)
-                if msg["event"] == "done":
-                    break
-                if msg["event"] in ("progress", "preview", "log"):
-                    data = dict(msg["data"])
-                    data["node_id"] = nid
-                    data["task_id"] = task_id
-                    await self._emit(instance_id, f"node_{msg['event']}", data)
-                elif msg["event"] == "error":
-                    task = models.get_task(task_id)
-                    raise RuntimeError(msg["data"].get("error", task.get("result", {}).get("error", "Task failed")))
-            except asyncio.TimeoutError:
-                continue
+            msg = await task_queue.get()
+            if msg["event"] == "done":
+                break
+            if msg["event"] == "error":
+                task = models.get_task(task_id)
+                err = msg["data"].get("error", "")
+                if task and task.get("result"):
+                    err = err or task["result"].get("error", "")
+                raise RuntimeError(err or "Task failed")
+            if msg["event"] in ("progress", "preview", "log"):
+                data = dict(msg["data"])
+                data["node_id"] = nid
+                data["task_id"] = task_id
+                await self._emit(instance_id, f"node_{msg['event']}", data)
 
         task = models.get_task(task_id)
+        if not task:
+            raise RuntimeError(f"Task {task_id} not found after completion")
         if task["status"] == "failed":
             error = task.get("result", {}).get("error", "Task failed")
             raise RuntimeError(error)
         if task["status"] == "cancelled":
-            raise asyncio.CancelledError("Task cancelled")
+            raise WorkflowCancelledError("Task cancelled")
 
         # Map output files to port names using node type output definitions
         ctx[nid] = {}
@@ -527,43 +544,15 @@ class WorkflowEngine:
         else:
             ctx[nid] = {}
 
-    def _resolve_input(self, node_id, port_name, edge_map, ctx):
-        """Resolve an input port value from upstream nodes or external inputs.
-
-        Priority: runtime node_inputs > saved edges > external inputs.
-        """
-        nid = str(node_id)
-
-        # 1. Runtime edge overrides (from run dialog dropdowns)
-        node_inputs = ctx.get("_node_inputs", {})
-        if nid in node_inputs and port_name in node_inputs[nid]:
-            override = node_inputs[nid][port_name]
-            src_node = str(override.get("source_node", ""))
-            src_port = override.get("source_port", "")
-            if src_node and src_port:
-                src_ctx = ctx.get(src_node, {})
-                val = src_ctx.get(src_port)
-                if val is not None:
-                    return val
-
-        # 2. Saved graph edges
-        key = (nid, port_name)
-        if key in edge_map:
-            src_node, src_port = edge_map[key]
-            src_ctx = ctx.get(src_node, {})
-            val = src_ctx.get(src_port)
-            if val is not None:
-                return val
-
-        # 3. External inputs (uploaded files, text inputs)
-        ext = ctx.get("_inputs", {}).get(nid, {})
-        return ext.get(port_name)
-
     async def _monitor_instance(self, instance_id: str, task: asyncio.Task):
         try:
             await task
         except asyncio.CancelledError:
-            pass
+            try:
+                wm.update_workflow_instance(instance_id, status="cancelled",
+                                            finished_at=time.time())
+            except Exception:
+                pass
         except Exception as e:
             error_msg = str(e)
             await self._emit(instance_id, "error", {"error": error_msg})

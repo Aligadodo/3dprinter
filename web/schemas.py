@@ -196,7 +196,7 @@ PIPELINE_TYPES = {
         "accepts": [".glb", ".obj", ".stl", ".gltf", ".3mf", ".ply"],
         "gpu": False,
         "params": [
-            {"name": "operation", "type": "choice", "default": "union",
+            {"name": "bool_op", "type": "choice", "default": "union",
              "choices": ["union", "diff", "intersect"],
              "label": "Operation", "label_zh": "运算",
              "description": "union=merge, diff=subtract A-B, intersect=overlap only",
@@ -213,10 +213,10 @@ PIPELINE_TYPES = {
         "accepts": [".glb", ".obj", ".stl", ".gltf", ".3mf", ".ply"],
         "gpu": False,
         "params": [
-            {"name": "smooth_steps", "type": "int", "default": 3, "min": 0, "max": 20,
+            {"name": "stitch_smooth", "type": "int", "default": 3, "min": 0, "max": 20,
              "label": "Smooth Steps", "label_zh": "平滑次数",
              "description": "Number of HC smoothing iterations", "description_zh": "HC 平滑迭代次数"},
-            {"name": "lambda", "type": "float", "default": 0.1, "min": 0.0, "max": 1.0,
+            {"name": "stitch_lambda", "type": "float", "default": 0.1, "min": 0.0, "max": 1.0,
              "label": "Lambda (λ)", "label_zh": "平滑系数 λ",
              "description": "Smoothing strength (lower = gentler)", "description_zh": "平滑强度（越小越柔和）"},
         ]
@@ -231,13 +231,13 @@ PIPELINE_TYPES = {
         "accepts": [".glb", ".obj", ".stl", ".gltf", ".3mf", ".ply"],
         "gpu": False,
         "params": [
-            {"name": "plane_co", "type": "string", "default": "0,0,0",
+            {"name": "cut_plane_co", "type": "string", "default": "0,0,0",
              "label": "Plane Origin", "label_zh": "平面原点",
              "description": "Cut plane origin: x,y,z", "description_zh": "切割平面原点坐标 X,Y,Z"},
-            {"name": "plane_no", "type": "string", "default": "0,0,1",
+            {"name": "cut_plane_no", "type": "string", "default": "0,0,1",
              "label": "Plane Normal", "label_zh": "平面法向",
              "description": "Cut plane normal direction: nx,ny,nz", "description_zh": "切割平面法向方向 NX,NY,NZ"},
-            {"name": "fill", "type": "bool", "default": True,
+            {"name": "cut_fill", "type": "bool", "default": True,
              "label": "Fill Cut Face", "label_zh": "填充切面",
              "description": "Fill the cut face", "description_zh": "是否填充切割面"},
         ]
@@ -269,17 +269,9 @@ PIPELINE_TYPES = {
         "accepts": [".glb", ".obj", ".stl", ".gltf", ".3mf", ".ply"],
         "gpu": False,
         "params": [
-            {"name": "texture", "type": "image",
-             "label": "Texture Image", "label_zh": "纹理图像",
-             "description": "PNG decoration image to project onto surface", "description_zh": "PNG 装饰图像"},
-            {"name": "displacement", "type": "float", "default": 0.5, "min": 0.0, "max": 10.0,
+            {"name": "deco_displacement", "type": "float", "default": 0.5, "min": 0.0, "max": 10.0,
              "label": "Displacement", "label_zh": "位移强度",
              "description": "Max displacement in mesh units", "description_zh": "最大位移量（Mesh 单位）"},
-            {"name": "color_mode", "type": "choice", "default": "vertex",
-             "choices": ["vertex", "none"],
-             "label": "Color Mode", "label_zh": "颜色模式",
-             "description": "vertex=apply as vertex colors, none=no color",
-             "description_zh": "vertex=作为顶点颜色应用, none=不应用颜色"},
         ]
     },
     "views": {
@@ -342,5 +334,5 @@ PIPELINE_TYPES = {
 
 KNOWN_FILE_TYPES = {
     "image": [".jpg", ".jpeg", ".png", ".webp", ".bmp"],
-    "mesh": [".glb", ".obj", ".stl", ".gltf", ".glb"],
+    "mesh": [".glb", ".obj", ".stl", ".gltf"],
 }

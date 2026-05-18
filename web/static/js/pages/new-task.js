@@ -4,6 +4,8 @@ import { t, getLang } from '../i18n.js';
 import { formatBytes, toast, escHtml, isTypeCompatible } from '../utils.js';
 
 export default async function renderNewTask(main) {
+  selectedWorkflowId = null;
+  window._wfInputFile = null; window._wfInputFiles = {};
   let types = {};
   try {
     const data = await api('GET', '/pipeline-types');
@@ -238,7 +240,7 @@ export default async function renderNewTask(main) {
     const params = {};
     document.querySelectorAll('#param-fields input, #param-fields select').forEach(el => {
       if (el.type === 'checkbox') { if (el.checked) params[el.name] = true; }
-      else if (el.type === 'number') params[el.name] = el.value.includes('.') ? parseFloat(el.value) : parseInt(el.value);
+      else if (el.type === 'number') params[el.name] = el.value.includes('.') ? parseFloat(el.value) : parseInt(el.value, 10);
       else params[el.name] = el.value;
     });
 
@@ -269,7 +271,7 @@ export default async function renderNewTask(main) {
   // ── Workflow form ──
   document.getElementById('workflow-back-btn').addEventListener('click', () => {
     document.getElementById('workflow-form').style.display = 'none';
-    selectedWorkflowId = null; window._wfInputFile = null;
+    selectedWorkflowId = null; window._wfInputFile = null; window._wfInputFiles = {};
     document.querySelector('.nt-sections').scrollIntoView({ behavior: 'smooth' });
   });
 
@@ -288,7 +290,7 @@ export default async function renderNewTask(main) {
       const key = el.dataset.param;
       let val;
       if (el.type === 'checkbox') val = el.checked;
-      else if (el.dataset.type === 'int') val = parseInt(el.value) || 0;
+      else if (el.dataset.type === 'int') val = parseInt(el.value, 10) || 0;
       else if (el.dataset.type === 'float') val = parseFloat(el.value) || 0;
       else val = el.value;
       if (!nodeParams[nid]) nodeParams[nid] = {};
@@ -307,7 +309,17 @@ export default async function renderNewTask(main) {
     });
 
     const formData = new FormData();
-    if (window._wfInputFile) formData.append('file', window._wfInputFile);
+    // Support multiple file_input nodes
+    const wfFiles = window._wfInputFiles || {};
+    for (const [nid, file] of Object.entries(wfFiles)) {
+      formData.append('file', file);
+      if (!inputsDict[nid]) inputsDict[nid] = {};
+      inputsDict[nid].file = file.name;
+    }
+    // Backward compat: single file from non-workflow flow
+    if (window._wfInputFile && Object.keys(wfFiles).length === 0) {
+      formData.append('file', window._wfInputFile);
+    }
     formData.append('inputs', JSON.stringify(inputsDict));
     formData.append('node_params', JSON.stringify(nodeParams));
     formData.append('node_inputs', JSON.stringify(nodeInputs));
@@ -333,7 +345,7 @@ export default async function renderNewTask(main) {
 
 // ── Workflow state ──
 let selectedWorkflowId = null;
-window._wfInputFile = null;
+window._wfInputFile = null; window._wfInputFiles = {};
 
 async function loadWorkflowCards(isZh) {
   const grid = document.getElementById('nt-wf-grid');
@@ -382,7 +394,7 @@ async function loadWorkflowCards(isZh) {
 
 async function selectWorkflow(wfId, wfSummary, isZh) {
   selectedWorkflowId = wfId;
-  window._wfInputFile = null;
+  window._wfInputFile = null; window._wfInputFiles = {};
   document.getElementById('task-params').style.display = 'none';
   document.getElementById('workflow-form').style.display = 'block';
   document.getElementById('wf-form-title').textContent = (wfSummary && wfSummary.name) || wfId;
@@ -415,15 +427,15 @@ async function selectWorkflow(wfId, wfSummary, isZh) {
     html += inputs.map(inp => {
       if (inp.node_type === 'file_input') {
         const accept = (inp.params.accept || '.png,.jpg,.stl').split(',');
-        return `<div class="form-group" style="margin-bottom:16px">
+        return `<div class="form-group wf-file-input-group" style="margin-bottom:16px" data-node-id="${inp.node_id}">
           <label style="font-weight:600">${inp.label} <span style="color:var(--fg2);font-weight:400">(${inp.node_type})</span></label>
-          <div class="drop-zone" id="wf-drop-zone" style="margin-top:8px">
+          <div class="drop-zone wf-drop-zone" style="margin-top:8px" data-node-id="${inp.node_id}">
             <div class="icon">&#128193;</div>
             <div class="text">${t('new.dropHint')}</div>
             <div class="sub">${accept.join(', ')}</div>
-            <input type="file" id="wf-file-input" accept="${accept.join(',')}">
+            <input type="file" class="wf-file-input" data-node-id="${inp.node_id}" accept="${accept.join(',')}">
           </div>
-          <div id="wf-file-chosen" style="display:none;font-size:13px;color:var(--green);margin-top:8px"></div></div>`;
+          <div class="wf-file-chosen" data-node-id="${inp.node_id}" style="display:none;font-size:13px;color:var(--green);margin-top:8px"></div></div>`;
       }
       if (inp.node_type === 'text_input') {
         return `<div class="form-group" style="margin-bottom:16px">
@@ -436,16 +448,18 @@ async function selectWorkflow(wfId, wfSummary, isZh) {
     html += buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh);
     document.getElementById('workflow-inputs').innerHTML = html;
 
-    // Wire file drop zone
-    const wfDrop = document.getElementById('wf-drop-zone');
-    const wfFileInput = document.getElementById('wf-file-input');
-    if (wfDrop && wfFileInput) {
+    // Wire file drop zones (support multiple file_input nodes via classes)
+    window._wfInputFiles = window._wfInputFiles || {};
+    document.querySelectorAll('.wf-drop-zone').forEach(wfDrop => {
+      const nid = wfDrop.dataset.nodeId;
+      const wfFileInput = wfDrop.querySelector('.wf-file-input');
+      if (!wfFileInput) return;
       wfDrop.addEventListener('click', () => wfFileInput.click());
       wfDrop.addEventListener('dragover', e => { e.preventDefault(); wfDrop.classList.add('dragover'); });
       wfDrop.addEventListener('dragleave', () => wfDrop.classList.remove('dragover'));
-      wfDrop.addEventListener('drop', e => { e.preventDefault(); wfDrop.classList.remove('dragover'); if (e.dataTransfer.files.length) { window._wfInputFile = e.dataTransfer.files[0]; updateWFSubmit(); } });
-      wfFileInput.addEventListener('change', () => { if (wfFileInput.files.length) { window._wfInputFile = wfFileInput.files[0]; updateWFSubmit(); } });
-    }
+      wfDrop.addEventListener('drop', e => { e.preventDefault(); wfDrop.classList.remove('dragover'); if (e.dataTransfer.files.length) { window._wfInputFiles[nid] = e.dataTransfer.files[0]; updateWFSubmit(); } });
+      wfFileInput.addEventListener('change', () => { if (wfFileInput.files.length) { window._wfInputFiles[nid] = wfFileInput.files[0]; updateWFSubmit(); } });
+    });
     updateWFSubmit();
   } catch (e) {
     document.getElementById('workflow-inputs').innerHTML = `<p style="color:var(--red)">${t('new.loadFailed')}: ${e.message}</p>`;
@@ -455,15 +469,24 @@ async function selectWorkflow(wfId, wfSummary, isZh) {
 }
 
 function updateWFSubmit() {
-  const wfFileChosen = document.getElementById('wf-file-chosen');
   const submitBtn = document.getElementById('workflow-submit-btn');
-  if (window._wfInputFile && wfFileChosen) {
-    wfFileChosen.style.display = 'block';
-    wfFileChosen.textContent = t('new.fileChosen') + ': ' + window._wfInputFile.name + ' (' + formatBytes(window._wfInputFile.size) + ')';
-  }
+  // Update each file_chosen indicator
+  document.querySelectorAll('.wf-file-chosen').forEach(el => {
+    const nid = el.dataset.nodeId;
+    const file = window._wfInputFiles && window._wfInputFiles[nid];
+    if (file) {
+      el.style.display = 'block';
+      el.textContent = t('new.fileChosen') + ': ' + file.name + ' (' + formatBytes(file.size) + ')';
+    }
+  });
+  // Enable submit if ALL file_input groups have a file selected
   if (submitBtn) {
-    const hasFileInput = document.getElementById('wf-drop-zone') || document.getElementById('wf-file-input');
-    submitBtn.disabled = hasFileInput && !window._wfInputFile;
+    const groups = document.querySelectorAll('.wf-file-input-group');
+    const allReady = groups.length === 0 || Array.from(groups).every(g => {
+      const nid = g.dataset.nodeId;
+      return window._wfInputFiles && window._wfInputFiles[nid];
+    });
+    submitBtn.disabled = !allReady;
   }
 }
 
@@ -532,7 +555,7 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
               const srcPortLabel = (op.label_zh && op.label_zh !== op.label ? op.label_zh + ' ' : '') + (op.label || op.name);
               const optVal = `${other.id}:${opIdx}:${escHtml(op.name)}`;
               const edgeInfo = portEdgeMap[n.id] || {};
-              const curSrc = edgeInfo[pi] || edgeInfo[p.name] || edgeInfo[op.name];
+              const curSrc = edgeInfo[pi] || edgeInfo[p.name];
               let sel = '';
               if (curSrc && String(curSrc.sourceNodeId) === String(other.id) && String(curSrc.portLabel) === String(op.name)) {
                 sel = ' selected';
@@ -637,15 +660,20 @@ function setupText2Img(isZh, handleFile) {
           </div></div>`;
 
       document.getElementById('t2i-use-btn').addEventListener('click', async () => {
-        const relUrl = '/api/files/' + t2iRelUrl;
-        const resp = await fetch(relUrl);
-        const blob = await resp.blob();
-        const fname = result.image_path.replace(/\\/g, '/').split('/').pop() || 'generated.png';
-        handleFile(new File([blob], fname, { type: blob.type || 'image/png' }));
-        document.getElementById('text2img-body').style.display = 'none';
-        document.getElementById('text2img-chevron').textContent = '▶';
-        t2iOpen = false;
-        toast(t('new.fileSelected') + ': ' + fname, 'success');
+        try {
+          const relUrl = '/api/files/' + t2iRelUrl;
+          const resp = await fetch(relUrl);
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const blob = await resp.blob();
+          const fname = result.image_path.replace(/\\/g, '/').split('/').pop() || 'generated.png';
+          handleFile(new File([blob], fname, { type: blob.type || 'image/png' }));
+          document.getElementById('text2img-body').style.display = 'none';
+          document.getElementById('text2img-chevron').textContent = '▶';
+          t2iOpen = false;
+          toast(t('new.fileSelected') + ': ' + fname, 'success');
+        } catch (e) {
+          toast(t('text2img.error') + ': ' + e.message, 'error');
+        }
       });
     } catch (e) {
       statusEl.textContent = t('text2img.error') + ': ' + e.message;

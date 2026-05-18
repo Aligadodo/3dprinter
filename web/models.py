@@ -172,13 +172,37 @@ def create_task(task_id: str, pipeline_type: str, params: dict, input_file: str 
     return _format_task(task)
 
 
+def _task_with_wf(conn, query: str, params: tuple) -> sqlite3.Row | None:
+    """Execute a LEFT JOIN query on tasks + workflow_node_runs, falling back
+    to plain tasks query if the workflow table doesn't exist yet."""
+    try:
+        return conn.execute(query, params).fetchone()
+    except sqlite3.OperationalError:
+        return conn.execute(
+            "SELECT t.*, NULL AS wf_instance_id, NULL AS wf_node_id "
+            "FROM tasks t WHERE t.id = ?", params
+        ).fetchone()
+
+
+def _tasks_with_wf(conn, query: str, params: tuple) -> list[sqlite3.Row]:
+    """Execute a LEFT JOIN query with fallback for uninitialized workflow table."""
+    try:
+        return conn.execute(query, params).fetchall()
+    except sqlite3.OperationalError:
+        return conn.execute(query.replace(
+            "LEFT JOIN workflow_node_runs wnr ON t.id = wnr.task_id",
+            ""
+        ).replace("wnr.instance_id AS wf_instance_id, wnr.node_id AS wf_node_id",
+                   "NULL AS wf_instance_id, NULL AS wf_node_id"), params).fetchall()
+
+
 def get_task(task_id: str) -> dict | None:
     conn = get_db()
-    row = conn.execute(
+    row = _task_with_wf(conn,
         "SELECT t.*, wnr.instance_id AS wf_instance_id, wnr.node_id AS wf_node_id "
         "FROM tasks t LEFT JOIN workflow_node_runs wnr ON t.id = wnr.task_id "
         "WHERE t.id = ?", (task_id,)
-    ).fetchone()
+    )
     if not row:
         conn.close()
         return None
@@ -208,7 +232,7 @@ def list_tasks(status: str = None, pipeline_type: str = None, limit: int = 50, o
     where_clause = (" WHERE " + " AND ".join(conditions)) if conditions else ""
     order_clause = " ORDER BY t.created_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
-    rows = conn.execute(base_query + where_clause + order_clause, params).fetchall()
+    rows = _tasks_with_wf(conn, base_query + where_clause + order_clause, tuple(params))
     tasks = []
     for row in rows:
         task = dict(row)
@@ -300,6 +324,21 @@ def _get_output_files(conn, task_id: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _safe_file_url(abs_path: str) -> str:
+    """Generate a /api/files/ URL for a file, only if it's within PROJECT_ROOT."""
+    if not abs_path:
+        return ""
+    try:
+        norm = os.path.normpath(abs_path)
+    except (TypeError, ValueError):
+        return ""
+    safe_root = os.path.normpath(PROJECT_ROOT)
+    if not norm.startswith(safe_root):
+        return ""  # Path traversal — don't expose
+    rel = os.path.relpath(norm, safe_root).replace("\\", "/")
+    return "/api/files/" + rel
+
+
 def _format_task(task: dict) -> dict:
     task["params"] = json.loads(task.get("params_json", "{}"))
     task["result"] = json.loads(task["result_json"]) if task.get("result_json") else None
@@ -307,18 +346,9 @@ def _format_task(task: dict) -> dict:
     task.pop("result_json", None)
     # Add URL for each output file
     for f in task.get("output_files", []):
-        abs_path = f["path"]
-        try:
-            rel = os.path.relpath(abs_path, PROJECT_ROOT).replace("\\", "/")
-        except ValueError:
-            rel = abs_path.replace("\\", "/")
-        f["url"] = "/api/files/" + rel
-        f["filename"] = os.path.basename(abs_path)
+        f["url"] = _safe_file_url(f["path"])
+        f["filename"] = os.path.basename(f["path"]) if f.get("path") else ""
     # Add input_file URL
     if task.get("input_file"):
-        try:
-            rel = os.path.relpath(task["input_file"], PROJECT_ROOT).replace("\\", "/")
-        except ValueError:
-            rel = task["input_file"].replace("\\", "/")
-        task["input_file_url"] = "/api/files/" + rel
+        task["input_file_url"] = _safe_file_url(task["input_file"])
     return task

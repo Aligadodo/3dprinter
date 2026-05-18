@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
-from web.node_types import NODE_TYPES, CATEGORIES, node_pipeline_map
+from web.node_types import NODE_TYPES, CATEGORIES, PARAM_META, node_pipeline_map, node_input_port_map
 
 
 # ═══════════════════════════════════════════════════════════
@@ -216,3 +216,116 @@ async def test_api_node_types():
 
     for tid in api_ids:
         assert tid in NODE_TYPES, f"API has extra type '{tid}' not in NODE_TYPES"
+
+
+# ═══════════════════════════════════════════════════════════
+# Phase 4: Mesh node verification
+# ═══════════════════════════════════════════════════════════
+
+def test_mesh_boolean_node_registered():
+    """mesh_boolean is registered in NODE_TYPES."""
+    assert "mesh_boolean" in NODE_TYPES
+
+
+def test_mesh_stitch_node_registered():
+    """mesh_stitch is registered in NODE_TYPES."""
+    assert "mesh_stitch" in NODE_TYPES
+
+
+def test_mesh_cut_node_registered():
+    """mesh_cut is registered in NODE_TYPES."""
+    assert "mesh_cut" in NODE_TYPES
+
+
+def test_mesh_decorate_node_registered():
+    """mesh_decorate is registered in NODE_TYPES."""
+    assert "mesh_decorate" in NODE_TYPES
+
+
+def test_mesh_transform_node_registered():
+    """mesh_transform is registered in NODE_TYPES."""
+    assert "mesh_transform" in NODE_TYPES
+
+
+def test_mesh_select_node_registered():
+    """mesh_select is registered in NODE_TYPES."""
+    assert "mesh_select" in NODE_TYPES
+
+
+def test_mesh_align_node_registered():
+    """mesh_align is registered in NODE_TYPES."""
+    assert "mesh_align" in NODE_TYPES
+
+
+def test_mesh_boolean_bool_op_is_choice():
+    """mesh_boolean's bool_op param is a choice type, not bare string."""
+    nt = NODE_TYPES["mesh_boolean"]
+    bool_op = nt.params.get("bool_op", {})
+    assert bool_op.get("type") == "choice"
+    assert "union" in bool_op.get("choices", [])
+    assert "difference" in bool_op.get("choices", [])
+
+
+def test_mesh_stitch_params_are_typed():
+    """mesh_stitch params have proper type definitions."""
+    nt = NODE_TYPES["mesh_stitch"]
+    stitch_smooth = nt.params.get("stitch_smooth", {})
+    assert stitch_smooth.get("type") == "int"
+    assert stitch_smooth.get("min") == 0
+    stitch_lambda = nt.params.get("stitch_lambda", {})
+    assert stitch_lambda.get("type") == "float"
+
+
+def test_mesh_cut_params_are_typed():
+    """mesh_cut params have proper type definitions."""
+    nt = NODE_TYPES["mesh_cut"]
+    cut_fill = nt.params.get("cut_fill", {})
+    assert cut_fill.get("type") == "bool"
+    cut_plane_co = nt.params.get("cut_plane_co", {})
+    assert cut_plane_co.get("type") == "string"
+
+
+def test_param_meta_qualified_key_mesh_simplify_method():
+    """PARAM_META has qualified key 'mesh_simplify:method' with correct label."""
+    meta = PARAM_META.get("mesh_simplify:method", {})
+    assert meta.get("label") == "Method"
+    assert "label_zh" in meta
+
+
+def test_param_meta_qualified_key_image_grayscale_method():
+    """PARAM_META has qualified key 'image_grayscale:method' with correct label."""
+    meta = PARAM_META.get("image_grayscale:method", {})
+    assert meta.get("label") == "Method"
+    assert "label_zh" in meta
+
+
+def test_param_meta_qualified_keys_distinct_from_bare():
+    """The bare 'method' key is NOT the mesh_simplify or image_grayscale version."""
+    # The qualified keys are separate entries from any bare 'method' key
+    bare_method = PARAM_META.get("method", {})
+    qualified = PARAM_META.get("mesh_simplify:method", {})
+    # They should be different dicts (not same object)
+    if bare_method:
+        assert bare_method is not qualified
+
+
+def test_node_input_port_map_includes_mesh_nodes():
+    """node_input_port_map() includes all new mesh node types."""
+    port_map = node_input_port_map()
+    mesh_nodes = {
+        "mesh_boolean": "mesh_a",
+        "mesh_stitch": "mesh",
+        "mesh_cut": "mesh",
+        "mesh_align": "mesh_a",
+        "mesh_decorate": "mesh",
+        "mesh_transform": "mesh",
+        "mesh_select": "mesh",
+        "mesh_simplify": "mesh",
+        "mesh_smooth": "mesh",
+        "mesh_scale": "mesh",
+    }
+    for node_type, expected_port in mesh_nodes.items():
+        assert node_type in port_map, f"node_input_port_map() missing '{node_type}'"
+        assert port_map[node_type] == expected_port, (
+            f"'{node_type}' primary port: expected '{expected_port}', got '{port_map[node_type]}'"
+        )

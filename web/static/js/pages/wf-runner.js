@@ -1,5 +1,5 @@
 /* wf-runner.js — Workflow Runner page (DAG + tabs + node detail + SSE) */
-import { api } from '../api.js';
+import { api, sseConnect } from '../api.js';
 import { t, getLang } from '../i18n.js';
 import { escHtml, toast, getBilingualLabel } from '../utils.js';
 import { renderNodeDetailPanel } from '../components/node-detail.js';
@@ -26,6 +26,43 @@ export function getNodeDisplayLabel(node, nt, graphNodes, ntMap) {
 let wfRunnerGraph = null;
 let wfRunnerCanvas = null;
 let wfSSE = null;
+let _drawPending = false;
+
+function _scheduleDraw() {
+  if (_drawPending || !wfRunnerCanvas) return;
+  _drawPending = true;
+  requestAnimationFrame(() => {
+    _drawPending = false;
+    try { wfRunnerCanvas.setDirty(true, true); wfRunnerCanvas.draw(true, true); } catch(_) {}
+  });
+}
+
+/** Update runner UI to final state (completed/cancelled). */
+function finishRunnerUI(status, nrMap) {
+  const body = document.getElementById('wf-runner-body');
+  const badge = body && body.querySelector('.badge');
+  if (badge) {
+    badge.className = 'badge badge-' + status;
+    badge.textContent = t('wf.runner.' + status);
+  }
+  const fill = body && body.querySelector('.progress-bar .fill');
+  if (fill) fill.style.width = '100%';
+  const ptext = body && body.querySelector('.progress-text');
+  if (ptext) {
+    const cnt = Object.keys(nrMap).length;
+    ptext.textContent = cnt + '/' + cnt + ' ' + t('wf.runner.progress');
+  }
+  const ind = document.getElementById('sse-indicator');
+  if (ind) ind.style.display = 'none';
+  const cancelBtn = document.getElementById('wf-cancel-btn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
+  Object.keys(nrMap).forEach(nid => {
+    if (!nrMap[nid].status || nrMap[nid].status === 'running' || nrMap[nid].status === 'queued') {
+      nrMap[nid].status = status;
+    }
+    updateRunnerNode(nid, { status: status });
+  });
+}
 
 export default async function renderWorkflowRunner(main, hash) {
   const instId = hash.slice(20);
@@ -104,95 +141,54 @@ export default async function renderWorkflowRunner(main, hash) {
 
   // SSE for live updates — engine emits: node_start, node_complete, node_error, node_progress, done, cancelled, workflow_complete
   if (isRunning) {
-    wfSSE = new EventSource(`/api/workflows/instances/${instId}/stream`);
-
     const sseIndicator = document.getElementById('sse-indicator');
     const setSSEState = (s) => { if (sseIndicator) sseIndicator.className = 'sse-indicator sse-' + s; };
-    wfSSE.addEventListener('open', () => setSSEState('connected'));
-    let wfSSEConnected = false;
-    wfSSE.onerror = () => {
-      if (wfSSEConnected) { wfSSEConnected = false; setSSEState('disconnected'); }
-    };
-    wfSSE.addEventListener('open', () => { wfSSEConnected = true; });
 
-    wfSSE.addEventListener('node_start', e => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.node_id) {
-          nrMap[data.node_id] = { ...(nrMap[data.node_id]||{}), node_id: data.node_id, status: 'running', node_type: data.node_type };
-          addOrUpdateRunnerNode(data.node_id, nrMap[data.node_id], wfDef, ntMap);
+    wfSSE = sseConnect(
+      `/api/workflows/instances/${instId}/stream`,
+      ['node_start', 'node_complete', 'node_error', 'node_progress', 'workflow_complete', 'done', 'cancelled'],
+      (evt, data) => {
+        switch (evt) {
+          case 'node_start':
+            if (data.node_id) {
+              nrMap[data.node_id] = { ...(nrMap[data.node_id]||{}), node_id: data.node_id, status: 'running', node_type: data.node_type };
+              addOrUpdateRunnerNode(data.node_id, nrMap[data.node_id], wfDef, ntMap);
+            }
+            break;
+          case 'node_complete':
+            if (data.node_id) {
+              nrMap[data.node_id] = { ...(nrMap[data.node_id]||{}), ...data, status: 'completed' };
+              updateRunnerNode(data.node_id, { status: 'completed' });
+              refreshNodeTab(data.node_id, nrMap, ntMap, inst, instId);
+            }
+            break;
+          case 'node_error':
+            if (data.node_id) {
+              nrMap[data.node_id] = { ...(nrMap[data.node_id]||{}), error: data.error, status: 'failed' };
+              updateRunnerNode(data.node_id, { status: 'failed' });
+              refreshNodeTab(data.node_id, nrMap, ntMap, inst, instId);
+            }
+            break;
+          case 'node_progress':
+            if (data.node_id) updateRunnerNode(data.node_id, { status: 'running' });
+            break;
+          case 'workflow_complete':
+            toast(t('wf.runner.completed'), 'success');
+            finishRunnerUI('completed', nrMap);
+            wfSSE.close();
+            break;
+          case 'done':
+            wfSSE.close();
+            break;
+          case 'cancelled':
+            toast(t('wf.runner.cancelled'), 'success');
+            finishRunnerUI('cancelled', nrMap);
+            wfSSE.close();
+            break;
         }
-      } catch(_) {}
-    });
-    wfSSE.addEventListener('node_complete', e => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.node_id) {
-          nrMap[data.node_id] = { ...(nrMap[data.node_id]||{}), ...data, status: 'completed' };
-          updateRunnerNode(data.node_id, { status: 'completed' });
-          refreshNodeTab(data.node_id, nrMap, ntMap);
-        }
-      } catch(_) {}
-    });
-    wfSSE.addEventListener('node_error', e => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.node_id) {
-          nrMap[data.node_id] = { ...(nrMap[data.node_id]||{}), error: data.error, status: 'failed' };
-          updateRunnerNode(data.node_id, { status: 'failed' });
-          refreshNodeTab(data.node_id, nrMap, ntMap);
-        }
-      } catch(_) {}
-    });
-    wfSSE.addEventListener('node_progress', e => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.node_id) {
-          updateRunnerNode(data.node_id, { status: 'running' });
-        }
-      } catch(_) {}
-    });
-    wfSSE.addEventListener('workflow_complete', () => {
-      toast(t('wf.runner.completed'), 'success');
-      const body = document.getElementById('wf-runner-body');
-      const badge = body && body.querySelector('.badge');
-      if (badge) { badge.className = 'badge badge-completed'; badge.textContent = 'completed'; }
-      const fill = body && body.querySelector('.progress-bar .fill');
-      if (fill) fill.style.width = '100%';
-      const ptext = body && body.querySelector('.progress-text');
-      const totalNodes = (inst.node_runs || []).length;
-      if (ptext) ptext.textContent = `${totalNodes}/${totalNodes} ${t('wf.runner.progress')}`;
-      const ind = document.getElementById('sse-indicator');
-      if (ind) ind.style.display = 'none';
-      const cancelBtn = document.getElementById('wf-cancel-btn');
-      if (cancelBtn) cancelBtn.style.display = 'none';
-      // Mark any remaining nodes as completed in DAG
-      Object.keys(nrMap).forEach(nid => {
-        if (!nrMap[nid].status || nrMap[nid].status === 'running' || nrMap[nid].status === 'queued') {
-          nrMap[nid].status = 'completed';
-        }
-        updateRunnerNode(nid, { status: 'completed' });
-      });
-      wfSSE.close();
-    });
-    wfSSE.addEventListener('done', () => { wfSSE.close(); });
-    wfSSE.addEventListener('cancelled', () => {
-      toast(t('wf.runner.cancelled'), 'success');
-      const body = document.getElementById('wf-runner-body');
-      const badge = body && body.querySelector('.badge');
-      if (badge) { badge.className = 'badge badge-cancelled'; badge.textContent = 'cancelled'; }
-      const ind = document.getElementById('sse-indicator');
-      if (ind) ind.style.display = 'none';
-      const cancelBtn = document.getElementById('wf-cancel-btn');
-      if (cancelBtn) cancelBtn.style.display = 'none';
-      Object.keys(nrMap).forEach(nid => {
-        if (!nrMap[nid].status || nrMap[nid].status === 'running' || nrMap[nid].status === 'queued') {
-          nrMap[nid].status = 'cancelled';
-        }
-        updateRunnerNode(nid, { status: nrMap[nid].status === 'completed' ? 'completed' : 'cancelled' });
-      });
-      wfSSE.close();
-    });
+      },
+      (state) => setSSEState(state)
+    );
   }
 }
 
@@ -451,15 +447,97 @@ function wireRunnerEvents(inst, nrMap, ntMap, instId) {
   });
 }
 
-function refreshNodeTab(nodeId, nrMap, ntMap) {
-  // Re-render the tab content for this node
+function refreshNodeTab(nodeId, nrMap, ntMap, inst, instId) {
   const nr = nrMap[nodeId];
   if (!nr) return;
   const tabContent = document.getElementById('wf-tab-' + nodeId);
   if (!tabContent) return;
-  // Simple status update in overview
-  const overviewCard = document.querySelector(`#wf-tab-overview .wf-overview-card:nth-child(${Object.keys(nrMap).indexOf(String(nodeId))+1})`);
-  // For now, just update the DAG node
+
+  const graphData = inst.workflow_graph || inst.workflow || {};
+  const graphNodes = graphData.nodes || [];
+  const graphEdges = graphData.links
+    ? graphData.links.map(link => {
+        if (Array.isArray(link) && link.length >= 5) {
+          return { source: link[1], sourcePort: link[2], target: link[3], targetPort: link[4] };
+        }
+        return null;
+      }).filter(Boolean)
+    : (graphData.edges || []);
+
+  const graphNodeMap = {};
+  graphNodes.forEach(n => { graphNodeMap[String(n.id)] = n; });
+
+  const upstreamEdges = {};
+  graphEdges.forEach(e => {
+    const tgtId = String(e.target);
+    if (!upstreamEdges[tgtId]) upstreamEdges[tgtId] = [];
+    upstreamEdges[tgtId].push({ sourceId: String(e.source), sourcePort: e.sourcePort, targetPort: e.targetPort });
+  });
+
+  const nid = String(nodeId);
+  const node = graphNodeMap[nid] || {};
+  const nt = ntMap[(node.type||'').replace(/^wf_/, '')] || {};
+
+  const inputs = {};
+  const upstreamInfo = [];
+  const edgesIn = upstreamEdges[nid] || [];
+  edgesIn.forEach(e => {
+    const srcNode = graphNodeMap[e.sourceId] || {};
+    const srcTypeId = (srcNode.type || '').replace(/^wf_/, '');
+    const srcNT = ntMap[srcTypeId] || {};
+    const srcPortName = (srcNT.outputs && srcNT.outputs[e.sourcePort]) ? srcNT.outputs[e.sourcePort].name : e.sourcePort;
+    const srcPortLabel = (srcNT.outputs && srcNT.outputs[e.sourcePort])
+      ? ((srcNT.outputs[e.sourcePort].label_zh && srcNT.outputs[e.sourcePort].label_zh !== srcNT.outputs[e.sourcePort].label)
+        ? srcNT.outputs[e.sourcePort].label_zh + ' ' + srcNT.outputs[e.sourcePort].label
+        : srcNT.outputs[e.sourcePort].label || srcPortName)
+      : srcPortName;
+    const tgtPortName = (nt.inputs && nt.inputs[e.targetPort]) ? nt.inputs[e.targetPort].name : String(e.targetPort);
+    const srcOutputs = (inst.context && inst.context[String(e.sourceId)]) || {};
+    const srcLabel = srcNode.title || (srcNT ? getBilingualLabel(srcNT) : '') || String(e.sourceId);
+    if (srcOutputs[srcPortName]) {
+      inputs[tgtPortName] = srcOutputs[srcPortName];
+      upstreamInfo.push({ targetPort: tgtPortName, sourceLabel: srcLabel, sourcePort: srcPortLabel, resolved: true });
+    } else {
+      upstreamInfo.push({ targetPort: tgtPortName, sourceLabel: srcLabel, sourcePort: srcPortLabel, resolved: false });
+    }
+  });
+
+  const ctxOutputs = (inst.context && inst.context[nid]) || {};
+  const outputs = {};
+  if (ctxOutputs && typeof ctxOutputs === 'object') {
+    Object.entries(ctxOutputs).forEach(([k, v]) => {
+      if (!k.startsWith('_') && typeof v === 'string') outputs[k] = v;
+    });
+  }
+
+  const params = {};
+  if (node.properties && typeof node.properties === 'object') {
+    Object.entries(node.properties).forEach(([k, v]) => { params[k] = { value: v, source: 'editor' }; });
+  }
+
+  tabContent.innerHTML = renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, upstreamEdges: upstreamInfo, taskFiles: nr.output_files || (nr.task && nr.task.output_files) || [], params, showTaskLink: true })
+    + (nr.status === 'completed' && nr.node_id ? `<div class="nd-replay-bar"><button class="btn btn-sm btn-primary" onclick="import('/static/js/pages/wf-runner.js').then(m=>m._replayFrom('${instId}','${nr.node_id}'))">↻ ${t('wf.runner.replay')}</button></div>` : '');
+
+  // Update overview card
+  const overviewCard = document.querySelector(`#wf-tab-overview .wf-overview-card[data-node="${nodeId}"]`);
+  if (overviewCard) {
+    const statusEmoji = nr.status === 'completed' ? '✅' : nr.status === 'running' ? '⚡' : nr.status === 'failed' ? '❌' : '⏳';
+    const statusCls = nr.status === 'completed' ? 'green' : nr.status === 'running' ? 'accent' : nr.status === 'failed' ? 'red' : 'fg2';
+    const dot = overviewCard.querySelector('.ovc-dot');
+    const title = overviewCard.querySelector('.ovc-title');
+    if (dot) dot.style.background = `var(--${statusCls})`;
+    if (title) title.innerHTML = `${statusEmoji} ${escHtml(getNodeDisplayLabel(node, nt, graphNodes, ntMap))}`;
+    const errorEl = overviewCard.querySelector('.ovc-error');
+    if (nr.error) {
+      if (errorEl) errorEl.innerHTML = `⚠ ${escHtml(nr.error)}`;
+      else {
+        const meta = overviewCard.querySelector('.ovc-meta');
+        if (meta) meta.insertAdjacentHTML('afterend', `<div class="ovc-error">⚠ ${escHtml(nr.error)}</div>`);
+      }
+    } else if (errorEl) {
+      errorEl.remove();
+    }
+  }
 }
 
 // ── Runner graph updates ──
@@ -488,8 +566,7 @@ function addOrUpdateRunnerNode(nodeId, nr, wfDef, ntMap) {
   (nt.outputs||[]).forEach((p, i) => node.addOutput(p.label || p.name, p.type || '*'));
   node.size = [220, Math.max(100, 60 + Math.max(nt.inputs?.length||0, nt.outputs?.length||0) * 14)];
   wfRunnerGraph.add(node);
-  // Redraw
-  try { wfRunnerCanvas.setDirty(true, true); wfRunnerCanvas.draw(true, true); } catch(_) {}
+  _scheduleDraw();
 }
 
 function updateRunnerNode(nodeId, updates) {
@@ -506,7 +583,7 @@ function updateRunnerNode(nodeId, updates) {
       });
     }
   });
-  try { wfRunnerCanvas.setDirty(true, true); wfRunnerCanvas.draw(true, true); } catch(_) {}
+  _scheduleDraw();
 }
 
 // ── Exports for onclick handlers ──

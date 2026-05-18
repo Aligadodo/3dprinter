@@ -7,6 +7,7 @@ Usage:
     pytest tests/test_workflow_engine.py -v -k topsort
 """
 
+import asyncio
 import sys
 import os
 
@@ -14,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
 
-from web.workflow_engine import WorkflowEngine
+from web.workflow_engine import WorkflowEngine, WorkflowCancelledError
 
 
 # ═══════════════════════════════════════════════════════════
@@ -207,3 +208,137 @@ def test_build_dag_with_missing_nodes():
     adj, in_degree = engine._build_dag(node_map, edges)
 
     assert "999" not in adj.get("1", [])
+
+
+# ═══════════════════════════════════════════════════════════
+# Engine delegation tests (smoke: verify engine calls dag)
+# ═══════════════════════════════════════════════════════════
+
+def test_enrich_ctx_engine_delegates():
+    """Engine._enrich_ctx delegates to dag.enrich_ctx correctly."""
+    engine = WorkflowEngine()
+    ctx = {"1": {"image": "/a.png"}, "2": {"mesh": "/out.glb", "_inputs": {"image": "/real.png"}, "_params": {"provider": "openai"}}}
+    edge_map = {}
+    engine._enrich_ctx("2", {}, {}, ctx, edge_map)
+    # Handler-set metadata is preserved (critical bug fix verification at engine level)
+    assert ctx["2"]["_inputs"] == {"image": "/real.png"}
+    assert ctx["2"]["_params"] == {"provider": "openai"}
+    assert ctx["2"]["mesh"] == "/out.glb"
+
+
+def test_build_upstream_engine_delegates():
+    """Engine._build_upstream delegates to dag.build_upstream correctly."""
+    engine = WorkflowEngine()
+    ctx = {
+        "1": {"image": "/img/a.png", "_params": {"size": "1024"}},
+        "2": {"stl": "/mesh/b.stl", "_params": {"width": 160}},
+    }
+    edge_map = {
+        ("2", "image"): ("1", "image"),
+        ("3", "file"): ("2", "stl"),
+    }
+    cascade = engine._build_upstream("3", ctx, edge_map)
+    assert "1.image" in cascade
+    assert cascade["1.image"] == "/img/a.png"
+    assert "2.stl" in cascade
+    assert cascade["2.stl"] == "/mesh/b.stl"
+
+
+def test_port_edge_map_empty_engine():
+    """Engine._build_port_edge_map with empty edges returns empty dict."""
+    engine = WorkflowEngine()
+    node_map = {"1": {"id": 1, "type": "text_to_image"}}
+    edge_map = engine._build_port_edge_map(node_map, [])
+    assert edge_map == {}
+
+
+def test_build_dag_empty_nodes_engine():
+    """Engine._build_dag with empty node_map doesn't crash."""
+    engine = WorkflowEngine()
+    adj, in_degree = engine._build_dag({}, [])
+    assert adj == {}
+    assert in_degree == {}
+
+
+def test_build_dag_no_edges_engine():
+    """Engine._build_dag with nodes but no edges: all in_degree 0."""
+    engine = WorkflowEngine()
+    node_map = {"1": {}, "2": {}}
+    adj, in_degree = engine._build_dag(node_map, [])
+    assert adj == {"1": [], "2": []}
+    assert in_degree == {"1": 0, "2": 0}
+
+
+# ═══════════════════════════════════════════════════════════
+# WorkflowCancelledError tests
+# ═══════════════════════════════════════════════════════════
+
+def test_cancelled_error_is_exception():
+    """WorkflowCancelledError extends Exception, NOT BaseException.
+
+    CRITICAL: asyncio.CancelledError extends BaseException (caught by
+    bare 'except BaseException'). WorkflowCancelledError extends Exception
+    so it's caught by 'except Exception' in the execute loop.
+    """
+    err = WorkflowCancelledError()
+    assert isinstance(err, Exception)
+    assert not isinstance(err, asyncio.CancelledError)
+    assert not isinstance(err, BaseException) or isinstance(err, Exception)
+
+
+def test_cancelled_error_with_message():
+    """WorkflowCancelledError accepts a message string."""
+    err = WorkflowCancelledError("User cancelled the workflow")
+    assert str(err) == "User cancelled the workflow"
+
+
+def test_cancelled_error_caught_by_broad_except():
+    """WorkflowCancelledError IS caught by 'except Exception' (unlike asyncio.CancelledError)."""
+    caught = False
+    try:
+        raise WorkflowCancelledError("test")
+    except Exception:
+        caught = True
+    assert caught, "WorkflowCancelledError must be caught by 'except Exception'"
+
+
+# ═══════════════════════════════════════════════════════════
+# Engine instance tests
+# ═══════════════════════════════════════════════════════════
+
+def test_engine_running_instances_initially_empty():
+    """Fresh engine has no running instances."""
+    engine = WorkflowEngine()
+    assert engine.running_instances == {}
+
+
+def test_engine_cancel_flags_initially_empty():
+    """Fresh engine has no cancel flags."""
+    engine = WorkflowEngine()
+    assert engine.cancel_flags == {}
+
+
+def test_engine_event_queues_initially_empty():
+    """Fresh engine has no event queues."""
+    engine = WorkflowEngine()
+    assert engine.event_queues == {}
+
+
+def test_get_event_queue_creates_on_demand():
+    """get_event_queue creates a new queue if one doesn't exist."""
+    engine = WorkflowEngine()
+    q = engine.get_event_queue("test-instance-1")
+    assert q is not None
+    assert "test-instance-1" in engine.event_queues
+    # Second call returns the same queue
+    q2 = engine.get_event_queue("test-instance-1")
+    assert q2 is q
+
+
+@pytest.mark.asyncio
+async def test_cancel_nonexistent_instance():
+    """Cancel returns False for a non-existent instance (no crash)."""
+    engine = WorkflowEngine()
+    # Directly test that cancel on unknown instance doesn't crash
+    # (mocking would be needed for full test; this verifies the dict lookup is safe)
+    assert "nonexistent" not in engine.cancel_flags

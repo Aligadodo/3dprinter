@@ -97,38 +97,38 @@ def render_views(mesh_path, output_dir=None, resolution=1024,
 
     images = {}
     r = pyrender.OffscreenRenderer(resolution, resolution)
+    try:
+        for name in views:
+            scene = pyrender.Scene(bg_color=[1.0, 1.0, 1.0, 1.0])
+            scene.add(pr_mesh)
 
-    for name in views:
-        scene = pyrender.Scene(bg_color=[1.0, 1.0, 1.0, 1.0])
-        scene.add(pr_mesh)
+            # Key light (directional, from upper-front-right)
+            light_pose = np.eye(4)
+            light_pose[:3, 3] = [0.5, 0.8, 1.5]
+            light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=4.0)
+            scene.add(light, pose=light_pose)
 
-        # Key light (directional, from upper-front-right)
-        light_pose = _view_pose('top')
-        light_pose[:3, 3] = [0.5, 0.8, 1.5]  # light from upper-front-right
-        light = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=4.0)
-        scene.add(light, pose=light_pose)
+            # Fill light (weaker, from opposite side)
+            fill_pose = np.eye(4)
+            fill_pose[:3, 3] = [-0.5, -0.3, -1.0]
+            fill = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=1.5)
+            scene.add(fill, pose=fill_pose)
 
-        # Fill light (weaker, from opposite side)
-        fill_pose = np.eye(4)
-        fill_pose[:3, 3] = [-0.5, -0.3, -1.0]
-        fill = pyrender.DirectionalLight(color=[1.0, 1.0, 1.0], intensity=1.5)
-        scene.add(fill, pose=fill_pose)
+            # Orthographic camera
+            camera = pyrender.OrthographicCamera(xmag=1.0, ymag=1.0,
+                                                  znear=0.01, zfar=100.0)
+            scene.add(camera, pose=_view_pose(name, distance=2.2))
 
-        # Orthographic camera
-        camera = pyrender.OrthographicCamera(xmag=1.0, ymag=1.0,
-                                              znear=0.01, zfar=100.0)
-        scene.add(camera, pose=_view_pose(name, distance=2.2))
+            color, _ = r.render(scene)
+            from PIL import Image
+            img = Image.fromarray(color)
 
-        color, _ = r.render(scene)
-        from PIL import Image
-        img = Image.fromarray(color)
-
-        if individual:
-            img_path = os.path.join(out_dir, f"{base}_{name}.png")
-            img.save(img_path)
-        images[name] = img
-
-    r.delete()
+            if individual:
+                img_path = os.path.join(out_dir, f"{base}_{name}.png")
+                img.save(img_path)
+            images[name] = img
+    finally:
+        r.delete()
 
     if individual:
         log.append(f"Saved {len(views)} views to {out_dir}/")

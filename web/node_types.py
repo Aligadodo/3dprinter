@@ -39,7 +39,7 @@ class NodeType:
     def to_dict(self) -> dict:
         params_out = {}
         for key, spec in self.params.items():
-            meta = PARAM_META.get(key, {})
+            meta = PARAM_META.get(f"{self.id}:{key}") or PARAM_META.get(key, {})
             entry = dict(spec) if isinstance(spec, dict) else {"default": spec, "type": "string"}
             entry["label"] = meta.get("label", key)
             entry["label_zh"] = meta.get("label_zh", key)
@@ -551,10 +551,15 @@ PARAM_META: dict[str, dict] = {
         "desc": "Desired number of triangular faces after simplification. Lower = smaller file",
         "desc_zh": "简化后期望的三角面数量，越低文件越小",
     },
-    "method": {
+    "mesh_simplify:method": {
         "label": "Method", "label_zh": "算法",
         "desc": "Simplification algorithm: quadric = best quality, cluster = faster",
         "desc_zh": "简化算法：quadric=二次误差(质量好)，cluster=聚类(速度快)",
+    },
+    "image_grayscale:method": {
+        "label": "Method", "label_zh": "算法",
+        "desc": "Grayscale conversion method: luminosity, average, lightness, or single channel",
+        "desc_zh": "灰度转换算法：luminosity(亮度加权)、average(平均)、lightness(明度)、单通道",
     },
 
     # ── mesh_smooth ──
@@ -775,9 +780,9 @@ _register(NodeType(
     ],
     outputs=[PortSpec("mesh", "mesh", required=True)],
     params={
-        "bool_op": "union",
-        "bool_mesh_a": "",
-        "bool_mesh_b": "",
+        "bool_op": {"type": "choice", "default": "union", "choices": ["union", "difference", "intersection"]},
+        "bool_mesh_a": {"type": "string", "default": ""},
+        "bool_mesh_b": {"type": "string", "default": ""},
     },
     color="#9370db",
 ))
@@ -791,8 +796,8 @@ _register(NodeType(
     inputs=[PortSpec("mesh", "mesh", required=True)],
     outputs=[PortSpec("mesh", "mesh", required=True)],
     params={
-        "stitch_smooth": 3,
-        "stitch_lambda": 0.1,
+        "stitch_smooth": {"type": "int", "default": 3, "min": 0, "max": 20},
+        "stitch_lambda": {"type": "float", "default": 0.1, "min": 0.0, "max": 1.0, "step": 0.01},
     },
     color="#9370db",
 ))
@@ -809,7 +814,7 @@ _register(NodeType(
     ],
     outputs=[PortSpec("mesh", "mesh", required=True)],
     params={
-        "deco_displacement": 0.5,
+        "deco_displacement": {"type": "float", "default": 0.5, "min": 0.0, "max": 10.0, "step": 0.1},
     },
     color="#9370db",
 ))
@@ -823,13 +828,13 @@ _register(NodeType(
     inputs=[PortSpec("mesh", "mesh", required=True)],
     outputs=[PortSpec("mesh", "mesh", required=True)],
     params={
-        "tf_translate": "0,0,0",
-        "tf_rotate_angle": 0,
-        "tf_rotate_axis": "0,0,1",
-        "tf_scale": 1.0,
+        "tf_translate": {"type": "string", "default": "0,0,0"},
+        "tf_rotate_angle": {"type": "float", "default": 0, "min": -360, "max": 360, "step": 1},
+        "tf_rotate_axis": {"type": "string", "default": "0,0,1"},
+        "tf_scale": {"type": "float", "default": 1.0, "min": 0.01, "max": 100, "step": 0.1},
     },
     color="#9370db",
-    inline=True,  # handled inline without subprocess
+    inline=True,
 ))
 
 # ── Mesh Select Node ─────────────────────────────────────────────────────────
@@ -841,7 +846,7 @@ _register(NodeType(
     inputs=[PortSpec("mesh", "mesh", required=True)],
     outputs=[PortSpec("mesh", "mesh", required=True)],
     params={
-        "sel_bbox": "",
+        "sel_bbox": {"type": "string", "default": ""},
     },
     color="#9370db",
     inline=True,
@@ -859,9 +864,9 @@ _register(NodeType(
         PortSpec("mesh_inner", "mesh", required=False, label="Inner", label_zh="内侧"),
     ],
     params={
-        "cut_plane_co": "0,0,0",
-        "cut_plane_no": "0,0,1",
-        "cut_fill": True,
+        "cut_plane_co": {"type": "string", "default": "0,0,0"},
+        "cut_plane_no": {"type": "string", "default": "0,0,1"},
+        "cut_fill": {"type": "bool", "default": True},
     },
     color="#9370db",
 ))
@@ -959,6 +964,13 @@ def node_input_port_map() -> dict[str, str]:
         "mesh_simplify": "mesh",
         "mesh_smooth": "mesh",
         "mesh_scale": "mesh",
+        "mesh_boolean": "mesh_a",
+        "mesh_stitch": "mesh",
+        "mesh_cut": "mesh",
+        "mesh_align": "mesh_a",
+        "mesh_decorate": "mesh",
+        "mesh_transform": "mesh",
+        "mesh_select": "mesh",
     }
 
 

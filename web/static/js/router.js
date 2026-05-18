@@ -18,6 +18,7 @@ const routes = {
   '#/new':        () => import('./pages/new-task.js'),
   '#/browse':     () => import('./pages/file-browse.js'),
   '#/docs':       () => import('./pages/docs.js'),
+  '#/iterations': () => import('./pages/iterations.js'),
   '#/workflows':  () => import('./pages/workflows.js'),
   '#/workflow/new': () => import('./pages/wf-editor.js'),
 };
@@ -32,6 +33,9 @@ function resolveRoute(hash) {
   if (hash.startsWith('#/docs/')) {
     return () => import('./pages/docs.js');
   }
+  if (hash.startsWith('#/iterations/')) {
+    return () => import('./pages/iterations.js');
+  }
   if (hash.startsWith('#/workflow/instance/')) {
     return () => import('./pages/wf-runner.js');
   }
@@ -42,11 +46,14 @@ function resolveRoute(hash) {
 }
 
 // ── Main route function ──
+let _routing = false;
 export async function route() {
+  if (_routing) return;
   let hash = location.hash;
   if (!hash) {
-    // On first load with no hash, set the URL and let hashchange handle it
+    _routing = true;
     location.replace('#/dashboard');
+    _routing = false;
     return;
   }
   const main = document.getElementById('main');

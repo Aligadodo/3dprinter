@@ -25,14 +25,21 @@ def run_stage(name: str, cmd: list) -> dict:
         stderr = r.stderr[:500] if r.stderr else "unknown error"
         stdout = r.stdout[:500] if r.stdout else ""
         return {"error": f"{name} failed", "stderr": stderr, "stdout": stdout}
-    # Extract JSON from stdout (may have warnings mixed in, multi-line)
+    # Extract JSON from stdout (result is always the last JSON object printed)
     out = r.stdout.strip()
-    idx = out.find("{")
+    # Try from the last '{' first — the JSON result is always last
+    idx = out.rfind("{")
     if idx >= 0:
         try:
             return json.loads(out[idx:])
         except json.JSONDecodeError:
-            pass
+            # Fallback: try from first '{' if last didn't work
+            idx2 = out.find("{")
+            if idx2 >= 0 and idx2 != idx:
+                try:
+                    return json.loads(out[idx2:])
+                except json.JSONDecodeError:
+                    pass
     return {"raw_output": r.stdout[:1000]}
 
 

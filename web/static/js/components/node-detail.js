@@ -14,7 +14,14 @@
  *   └──────────────────────────────────┘
  */
 
-import { escHtml, cacheFile, getFile, showFileModal, showCtxMenu } from '../utils.js';
+let _blobUrls = [];
+
+export function _revokeBlobUrls() {
+  _blobUrls.forEach(url => { try { URL.revokeObjectURL(url); } catch(_) {} });
+  _blobUrls = [];
+}
+
+import { escHtml, escJS, cacheFile, getFile, getBilingualLabel, showFileModal, showCtxMenu } from '../utils.js';
 import { t } from '../i18n.js';
 
 // ── URL construction ──
@@ -41,6 +48,7 @@ function fileMeta(filePath) {
   if (!looksLikePath) {
     const blob = new Blob([filePath], {type: 'text/plain;charset=utf-8'});
     const url = URL.createObjectURL(blob);
+    _blobUrls.push(url);
     return { filename: 'text.txt', ext: 'txt', isImage: false, isMesh: false, url, path: '', file_type: '.txt', isText: true };
   }
   const filename = filePath.replace(/\\/g, '/').split('/').pop() || '';
@@ -55,19 +63,12 @@ function fileMeta(filePath) {
 
 // ── Main render ──
 export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, taskFiles, params, showTaskLink, upstreamEdges }) {
+  _revokeBlobUrls();
   const status = (nr && nr.status) || 'queued';
   const isCompleted = status === 'completed';
   const isFailed = status === 'failed';
   const isRunning = status === 'running';
-  // Bilingual label helper
-  const getBl = (n) => {
-    if (!n) return '';
-    const zh = n.label_zh || n.label;
-    const en = n.label;
-    if (!zh || zh === en) return en || '';
-    return zh + ' ' + en;
-  };
-  const nodeLabel = (node && (node.title || node.type)) || (nt && getBl(nt)) || 'Node';
+  const nodeLabel = (node && (node.title || node.type)) || (nt && getBilingualLabel(nt)) || 'Node';
   const nodeColor = (nt && nt.color) || '#888';
   const errorMsg = (nr && nr.error) || null;
 
@@ -160,11 +161,6 @@ export function renderNodeDetailPanel({ nid, node, nr, nt, inputs, outputs, task
   return `<div class="nd-panel">${html}</div>`;
 }
 
-// Escape a value for embedding in a JS string literal inside an HTML attribute.
-// Must run AFTER escHtml — backslashes first, then quotes.
-function escJS(v) {
-  return v.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
 const UTILS = '/static/js/utils.js';
 
 // ── Port entry: thumbnail + filename + file actions ──

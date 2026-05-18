@@ -123,67 +123,73 @@ def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.5):
     verts[n_per_face:, 1] = yv.ravel()
     verts[n_per_face:, 2] = z_back.ravel()
 
-    faces = []
-
-    # Front face triangles
-    for row in range(H - 1):
-        for col in range(W - 1):
-            a = row * W + col
-            b = a + 1
-            c = a + W
-            d = c + 1
-            faces.append([a, b, d])
-            faces.append([a, d, c])
+    # Front face triangles (vectorized)
+    rows = np.arange(H - 1)
+    cols = np.arange(W - 1)
+    a_grid = rows[:, None] * W + cols[None, :]  # (H-1, W-1)
+    a = a_grid.ravel()
+    b = a + 1
+    c = a + W
+    d = c + 1
+    tri1 = np.column_stack([a, b, d])
+    tri2 = np.column_stack([a, d, c])
+    front_faces = np.vstack([tri1, tri2])
 
     # Back face triangles (reverse winding for outward normals)
     offset = n_per_face
-    for row in range(H - 1):
-        for col in range(W - 1):
-            a = offset + row * W + col
-            b = a + 1
-            c = a + W
-            d = c + 1
-            faces.append([a, d, b])
-            faces.append([a, c, d])
+    a_off = a + offset
+    b_off = b + offset
+    c_off = c + offset
+    d_off = d + offset
+    tri1b = np.column_stack([a_off, d_off, b_off])
+    tri2b = np.column_stack([a_off, c_off, d_off])
+    back_faces = np.vstack([tri1b, tri2b])
 
-    # Side walls: bottom edge (y=0)
-    for col in range(W - 1):
-        f0 = 0 * W + col          # front bottom row
-        f1 = 0 * W + col + 1
-        b0 = offset + f0
-        b1 = offset + f1
-        faces.append([f0, b0, b1])
-        faces.append([f0, b1, f1])
+    # Side walls: bottom edge (row=0)
+    b_cols = np.arange(W - 1)
+    f0_b = 0 * W + b_cols
+    f1_b = 0 * W + b_cols + 1
+    b0_b = offset + f0_b
+    b1_b = offset + f1_b
+    sw_bottom = np.vstack([
+        np.column_stack([f0_b, b0_b, b1_b]),
+        np.column_stack([f0_b, b1_b, f1_b])
+    ])
 
-    # Side walls: top edge (y=phys_h, row=H-1)
-    for col in range(W - 1):
-        f0 = (H - 1) * W + col
-        f1 = (H - 1) * W + col + 1
-        b0 = offset + f0
-        b1 = offset + f1
-        faces.append([f0, f1, b1])
-        faces.append([f0, b1, b0])
+    # Side walls: top edge (row=H-1)
+    f0_t = (H - 1) * W + b_cols
+    f1_t = (H - 1) * W + b_cols + 1
+    b0_t = offset + f0_t
+    b1_t = offset + f1_t
+    sw_top = np.vstack([
+        np.column_stack([f0_t, f1_t, b1_t]),
+        np.column_stack([f0_t, b1_t, b0_t])
+    ])
 
-    # Side walls: left edge (x=0)
-    for row in range(H - 1):
-        f0 = row * W + 0
-        f1 = (row + 1) * W + 0
-        b0 = offset + f0
-        b1 = offset + f1
-        faces.append([f0, f1, b1])
-        faces.append([f0, b1, b0])
+    # Side walls: left edge (col=0)
+    l_rows = np.arange(H - 1)
+    f0_l = l_rows * W + 0
+    f1_l = (l_rows + 1) * W + 0
+    b0_l = offset + f0_l
+    b1_l = offset + f1_l
+    sw_left = np.vstack([
+        np.column_stack([f0_l, f1_l, b1_l]),
+        np.column_stack([f0_l, b1_l, b0_l])
+    ])
 
-    # Side walls: right edge (x=phys_w)
-    for row in range(H - 1):
-        f0 = row * W + (W - 1)
-        f1 = (row + 1) * W + (W - 1)
-        b0 = offset + f0
-        b1 = offset + f1
-        faces.append([f0, b0, b1])
-        faces.append([f0, b1, f1])
+    # Side walls: right edge (col=W-1)
+    f0_r = l_rows * W + (W - 1)
+    f1_r = (l_rows + 1) * W + (W - 1)
+    b0_r = offset + f0_r
+    b1_r = offset + f1_r
+    sw_right = np.vstack([
+        np.column_stack([f0_r, b0_r, b1_r]),
+        np.column_stack([f0_r, b1_r, f1_r])
+    ])
 
-    faces = np.array(faces, dtype=np.int32)
-    return verts, faces
+    faces = np.vstack([front_faces, back_faces, sw_bottom, sw_top, sw_left, sw_right]).astype(np.int32)
+    front_face_count = len(front_faces)
+    return verts, faces, front_face_count
 
 
 def _quantize_colors(rgb, num_colors):
@@ -322,7 +328,7 @@ def image_to_relief(image_path, width_mm=160.0, height_mm=120.0,
 
     # Stage 3: Build mesh
     t0 = time.time()
-    verts, faces = _build_relief_mesh(hm, phys_w, phys_h,
+    verts, faces, front_face_count = _build_relief_mesh(hm, phys_w, phys_h,
                                       base_thickness_mm=base_thickness_mm)
     total_thickness = base_thickness_mm + max_depth_mm
     log.append(f"Mesh: {len(verts)} verts, {len(faces)} faces")
@@ -360,7 +366,7 @@ def image_to_relief(image_path, width_mm=160.0, height_mm=120.0,
 
         # Export colored OBJ from front-face portion only (pre-decimation)
         obj_path = os.path.join(out_dir, f"{base}_relief_colored.obj")
-        _export_colored_obj(verts[:H*W], faces[:(H-1)*(W-1)*2],
+        _export_colored_obj(verts[:H*W], faces[:front_face_count],
                            labels, palette, obj_path)
         log.append(f"Colored OBJ: {obj_path}")
 

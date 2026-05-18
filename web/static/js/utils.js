@@ -34,14 +34,21 @@ export function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Escape for embedding in a JS string literal inside an HTML attribute (backslashes first)
-function escJS(v) {
-  return String(v||'').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+// Escape for embedding in a JS string literal inside an HTML attribute.
+// Must handle both HTML-attribute context (", <, >, &) and JS string context (\, ')
+export function escJS(v) {
+  return String(v||'')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
 }
 
 // ── Formatting ──
 export function formatTime(ts) {
-  if (!ts) return '';
+  if (ts == null || ts === '') return '';
   const lang = getLang();
   return new Date(ts * 1000).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US');
 }
@@ -55,7 +62,6 @@ export function formatBytes(n) {
 }
 
 // ── Toast (stacking) ──
-let _toastTimer = null;
 
 export function toast(msg, type) {
   const container = document.getElementById('toast');
@@ -74,12 +80,18 @@ export function toast(msg, type) {
 
 // ── File Cache ──
 const _fileCache = new Map();
+const _FILE_CACHE_MAX = 200;
 let _fileSeq = 0;
 export let modalFileId = null;
 
 export function cacheFile(f) {
   const id = 'f' + (++_fileSeq);
   _fileCache.set(id, f);
+  // Evict oldest entries if over cap (Map iterates in insertion order)
+  while (_fileCache.size > _FILE_CACHE_MAX) {
+    const oldest = _fileCache.keys().next().value;
+    _fileCache.delete(oldest);
+  }
   return id;
 }
 
@@ -100,7 +112,7 @@ export function showCtxMenu(e, file) {
   ctxTarget = file;
   const menu = document.getElementById('ctx-menu');
   const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost' || location.hostname === '::1';
-  const isImg = ['.png','.jpg','.jpeg','.webp','.bmp'].includes((file.file_type||'').toLowerCase());
+  const isImg = ['.png','.jpg','.jpeg','.webp','.bmp','.gif'].includes((file.file_type||'').toLowerCase());
 
   const items = [
     { icon: isImg ? '🖼' : '📄', label: t('ctx.open'), action: 'open' },
@@ -139,7 +151,7 @@ export async function handleCtxAction(action, file) {
 
   switch (action) {
     case 'open':
-      if (['.png','.jpg','.jpeg','.webp','.bmp'].includes((file.file_type||'').toLowerCase())) {
+      if (['.png','.jpg','.jpeg','.webp','.bmp','.gif'].includes((file.file_type||'').toLowerCase())) {
         showFileModal(file);
       } else {
         window.open(fileUrl, '_blank');
@@ -190,7 +202,7 @@ export function showFileModal(fileOrId) {
   if (!file) return;
   modalFileId = typeof fileOrId === 'string' ? fileOrId : cacheFile(file);
 
-  const isImg = ['.png','.jpg','.jpeg','.webp','.bmp'].includes((file.file_type||'').toLowerCase());
+  const isImg = ['.png','.jpg','.jpeg','.webp','.bmp','.gif'].includes((file.file_type||'').toLowerCase());
   const fileUrl = file.url || '#';
   const fileName = escHtml(file.filename || '');
   const absPath = file.path || '';

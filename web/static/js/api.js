@@ -29,10 +29,7 @@ export async function api(method, path, body) {
   return r.json();
 }
 
-export function apiStream(taskId, onEvent, onStatusChange) {
-  const url = `${API}/tasks/${taskId}/stream`;
-  const events = ['status', 'log', 'progress', 'preview', 'complete', 'error', 'cancelled', 'ping'];
-
+export function sseConnect(url, events, onEvent, onStatusChange) {
   let es = null;
   let connected = false;
   let reconnectAttempts = 0;
@@ -59,9 +56,6 @@ export function apiStream(taskId, onEvent, onStatusChange) {
         if (onStatusChange) onStatusChange('disconnected');
         scheduleReconnect();
       }
-      // If never connected (e.g. server down), onerror fires without open first.
-      // Don't schedule reconnect here — the initial connect attempt is still pending.
-      // Only schedule reconnect when we had a connection and lost it.
     };
   }
 
@@ -89,17 +83,29 @@ export function apiStream(taskId, onEvent, onStatusChange) {
   return { close, get es() { return es; } };
 }
 
+export function apiStream(taskId, onEvent, onStatusChange) {
+  return sseConnect(
+    `${API}/tasks/${taskId}/stream`,
+    ['status', 'log', 'progress', 'preview', 'complete', 'error', 'cancelled', 'ping'],
+    onEvent,
+    onStatusChange
+  );
+}
+
 // ── Provider status cache ──
 let _providerStatuses = null;  // {volcengine: {available, api_key_set, ...}, ...}
+let _providerStatusesTime = 0;
 
 export async function fetchProviderStatuses() {
-  if (_providerStatuses) return _providerStatuses;
+  const now = Date.now();
+  if (_providerStatuses && (now - _providerStatusesTime) < 60000) return _providerStatuses;
   try {
     const r = await fetch(API + '/text2img/providers');
     const d = await r.json();
     _providerStatuses = {};
     (d.providers || []).forEach(p => { _providerStatuses[p.id] = p; });
-  } catch(e) { /* Don't cache failures — allow retry next call */ }
+    _providerStatusesTime = now;
+  } catch(e) { console.warn('fetchProviderStatuses failed:', e); }
   return _providerStatuses || {};
 }
 

@@ -84,8 +84,11 @@ def generate_hunyuan3d(image_path: str, base_dir: str = "",
                         transparent background).
     """
     if not base_dir:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        base_dir = os.path.join(base_dir, "混元3D2.1+comfyui便携版+工作流+模型+环境")
+        base_dir = os.environ.get("HUNYUAN3D_HOME", "")
+        if not base_dir:
+            base_dir = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "混元3D2.1+comfyui便携版+工作流+模型+环境")
 
     if not os.path.exists(image_path):
         return {"error": f"Image not found: {image_path}"}

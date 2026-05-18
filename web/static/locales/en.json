@@ -12,7 +12,8 @@
     "apiDocs": "API Docs",
     "workflows": "Workflows",
     "workflowNew": "Workflow Editor",
-    "docs": "Design Docs"
+    "docs": "Design Docs",
+    "iterations": "Docs & Iterations"
   },
   "browse": {
     "title": "Browse Files",
@@ -269,5 +270,18 @@
     "empty": "No documents available",
     "notFound": "Document not found",
     "back": "Back to docs list"
+  },
+  "iterations": {
+    "title": "Docs & Iterations",
+    "all": "All",
+    "iterations": "Iterations",
+    "docs": "Design Docs",
+    "docBadge": "Doc",
+    "iterationBadge": "Iter",
+    "loading": "Loading...",
+    "empty": "No records",
+    "emptyFilter": "No records in this category",
+    "notFound": "Record not found",
+    "back": "Back to list"
   }
 }

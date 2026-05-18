@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config")
 PROVIDERS_CONFIG = os.path.join(CONFIG_DIR, "providers.yaml")
 DOTENV_PATH = os.path.join(CONFIG_DIR, ".env")
+_config_cache = None
+_config_mtime = 0
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "text2img")
 
 
@@ -28,7 +30,7 @@ def _load_dotenv(path: str) -> None:
             key, _, value = line.partition("=")
             key = key.strip()
             value = value.strip().strip('"').strip("'")
-            if key and (key not in os.environ or not os.environ[key]):
+            if key and key not in os.environ:
                 os.environ[key] = value
 
 
@@ -50,14 +52,25 @@ def is_key_configured(api_key: str) -> bool:
 
 
 def load_providers_config() -> list[dict]:
+    # Use mtime-based cache to avoid re-reading YAML on every call
+    try:
+        mtime = os.path.getmtime(PROVIDERS_CONFIG)
+    except OSError:
+        mtime = 0
+    if _config_cache and _config_mtime == mtime:
+        return _config_cache
+
     _load_dotenv(DOTENV_PATH)
     if not os.path.exists(PROVIDERS_CONFIG):
-        return []
-    with open(PROVIDERS_CONFIG, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
-    providers = raw.get("providers", [])
-    for p in providers:
-        p["api_key"] = _expand_env(p.get("api_key", ""))
+        providers = []
+    else:
+        with open(PROVIDERS_CONFIG, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+        providers = raw.get("providers", [])
+        for p in providers:
+            p["api_key"] = _expand_env(p.get("api_key", ""))
+    _config_cache = providers
+    _config_mtime = mtime
     return providers
 
 

@@ -12,7 +12,8 @@
     "apiDocs": "API 文档",
     "workflows": "工作流管理",
     "workflowNew": "工作流编辑器",
-    "docs": "设计文档"
+    "docs": "设计文档",
+    "iterations": "文档与迭代"
   },
   "browse": {
     "title": "文件浏览",
@@ -269,5 +270,18 @@
     "empty": "暂无文档",
     "notFound": "文档未找到",
     "back": "返回文档列表"
+  },
+  "iterations": {
+    "title": "文档与迭代记录",
+    "all": "全部",
+    "iterations": "迭代记录",
+    "docs": "方案文档",
+    "docBadge": "文档",
+    "iterationBadge": "迭代",
+    "loading": "加载中...",
+    "empty": "暂无记录",
+    "emptyFilter": "该分类暂无记录",
+    "notFound": "记录未找到",
+    "back": "返回列表"
   }
 }

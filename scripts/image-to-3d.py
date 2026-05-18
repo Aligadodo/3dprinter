@@ -31,7 +31,7 @@ def generate_3d(image_path: str, output_format: str = "glb",
     log.append(f"GPU: {torch.cuda.get_device_name(0)} ({vram_gb:.1f} GB)")
 
     # Add triposr source to path (project-root/triposr/src/)
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    project_root = os.environ.get("PROJECT_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     src_dir = os.path.join(project_root, "triposr", "src")
     if src_dir not in sys.path:
         sys.path.insert(0, src_dir)

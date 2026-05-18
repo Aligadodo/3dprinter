@@ -97,14 +97,18 @@ def build_dag(node_map: dict, edges: list[dict]):
 def enrich_ctx(nid, resolved_inputs, resolved_params, ctx, edge_map):
     """After node execution, write cascade metadata into ctx[nid].
 
-    Pure function — no I/O, no side effects.
+    Preserves handler-computed _inputs and _params if already set.
+    Only fills defaults when the handler didn't set them.
     """
     if str(nid) not in ctx:
         ctx[str(nid)] = {}
 
     node_ctx = ctx[str(nid)]
-    node_ctx["_inputs"] = dict(resolved_inputs or {})
-    node_ctx["_params"] = dict(resolved_params or {})
+    # Don't overwrite metadata already set by the handler
+    if "_inputs" not in node_ctx:
+        node_ctx["_inputs"] = dict(resolved_inputs or {})
+    if "_params" not in node_ctx:
+        node_ctx["_params"] = dict(resolved_params or {})
 
     # Build upstream: merge all direct upstream node contexts
     upstream = {}
@@ -123,52 +127,19 @@ def enrich_ctx(nid, resolved_inputs, resolved_params, ctx, edge_map):
     node_ctx["_upstream"] = upstream
 
 
-def resolve_input(node_id, port_name, edge_map, ctx):
-    """Resolve an input port value from upstream nodes or external inputs.
-
-    Priority: runtime edge overrides > saved edges > external inputs.
-    Returns: the resolved value or None.
-    """
-    nid = str(node_id)
-
-    # 1. Runtime edge overrides
-    node_inputs = ctx.get("_node_inputs", {})
-    if nid in node_inputs and port_name in node_inputs[nid]:
-        override = node_inputs[nid][port_name]
-        src_node = str(override.get("source_node", ""))
-        src_port = override.get("source_port", "")
-        if src_node and src_port:
-            src_ctx = ctx.get(src_node, {})
-            val = src_ctx.get(src_port)
-            if val is not None:
-                return val
-
-    # 2. Saved graph edges
-    key = (nid, port_name)
-    if key in edge_map:
-        src_node, src_port = edge_map[key]
-        src_ctx = ctx.get(src_node, {})
-        val = src_ctx.get(src_port)
-        if val is not None:
-            return val
-
-    # 3. External inputs
-    ext = ctx.get("_inputs", {}).get(nid, {})
-    return ext.get(port_name)
-
-
 def topsort(node_map: dict, adj: dict, in_degree: dict) -> list[str] | None:
     """Kahn's topological sort. Returns None if graph contains a cycle."""
-    queue = deque([nid for nid, deg in in_degree.items() if deg == 0])
-    topsort = []
+    deg = dict(in_degree)  # copy to avoid mutating caller's dict
+    queue = deque([nid for nid, d in deg.items() if d == 0])
+    order = []
     while queue:
         nid = queue.popleft()
-        topsort.append(nid)
+        order.append(nid)
         for neighbor in adj.get(nid, []):
-            in_degree[neighbor] -= 1
-            if in_degree[neighbor] == 0:
+            deg[neighbor] -= 1
+            if deg[neighbor] == 0:
                 queue.append(neighbor)
-    return topsort if len(topsort) == len(node_map) else None
+    return order if len(order) == len(node_map) else None
 
 
 def build_port_edge_map(node_map: dict, edges: list[dict]) -> dict:
@@ -223,14 +194,14 @@ def build_upstream(nid: str, ctx: dict, edge_map: dict) -> dict:
     visited = set()
 
     # BFS upstream through edge_map
-    queue = []
+    queue = deque()
     for (tgt_id, tgt_port), (src_id, src_port) in edge_map.items():
         if tgt_id == str(nid) and src_id not in visited:
             visited.add(src_id)
             queue.append(str(src_id))
 
     while queue:
-        src_id = queue.pop(0)
+        src_id = queue.popleft()
         src_ctx = ctx.get(src_id, {})
         if not isinstance(src_ctx, dict):
             continue

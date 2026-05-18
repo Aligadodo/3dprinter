@@ -693,11 +693,18 @@ async def get_doc(doc_id: str, lang: str = "zh"):
     """Serve documentation content as HTML (rendered from Markdown)."""
     if lang not in ("zh", "en"):
         lang = "zh"
+    # Block path traversal
+    if ".." in doc_id or "/" in doc_id or "\\" in doc_id:
+        raise HTTPException(400, "Invalid doc_id")
 
-    md_path = os.path.join(DOCS_DIR, f"{doc_id}.{lang}.md")
+    md_path = os.path.normpath(os.path.join(DOCS_DIR, f"{doc_id}.{lang}.md"))
+    if not md_path.startswith(os.path.normpath(DOCS_DIR)):
+        raise HTTPException(403, "Access denied")
     if not os.path.exists(md_path):
         # Fallback to Chinese
-        md_path = os.path.join(DOCS_DIR, f"{doc_id}.zh.md")
+        md_path = os.path.normpath(os.path.join(DOCS_DIR, f"{doc_id}.zh.md"))
+        if not md_path.startswith(os.path.normpath(DOCS_DIR)):
+            raise HTTPException(403, "Access denied")
     if not os.path.exists(md_path):
         raise HTTPException(404, "Document not found")
 
@@ -706,6 +713,232 @@ async def get_doc(doc_id: str, lang: str = "zh"):
 
     html = _md.markdown(md_content, extensions=["tables", "fenced_code", "codehilite"])
     return {"content": html, "lang": lang, "doc_id": doc_id}
+
+
+# ---------------------------------------------------------------------------
+# Iteration records (auto-scanned from docs/iterations/)
+# ---------------------------------------------------------------------------
+
+import re as _re
+
+ITERATIONS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "iterations")
+PROJECT_DOCS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs")
+
+
+def _parse_iteration_meta(fname, content, source="iteration", mtime=0):
+    """Extract metadata from an iteration/docs markdown file.
+    Returns dict with keys: title, datetime, date, summary, tags, branch, changed_files, plan_name, source
+    """
+    # Parse timestamp from filename: YYYY-MM-DD-HHmmss-... or use file mtime
+    ts_match = _re.match(r'^(\d{4}-\d{2}-\d{2})-(\d{2})(\d{2})(\d{2})', fname)
+    if ts_match:
+        date_str = ts_match.group(1)
+        time_str = f"{ts_match.group(2)}:{ts_match.group(3)}:{ts_match.group(4)}"
+        datetime_str = f"{date_str} {time_str}"
+    else:
+        # For docs without timestamp prefix, use file modification time
+        from datetime import datetime as _dt
+        if mtime:
+            dt = _dt.fromtimestamp(mtime)
+            date_str = dt.strftime('%Y-%m-%d')
+            time_str = dt.strftime('%H:%M:%S')
+            datetime_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            date_match = _re.match(r'^(\d{4}-\d{2}-\d{2})', fname)
+            date_str = date_match.group(1) if date_match else fname[:10]
+            time_str = ""
+            datetime_str = date_str
+
+    lines = content.split('\n')
+
+    # Title: first H1
+    title = fname
+    m = _re.search(r'^#\s+(.+)$', content, _re.MULTILINE)
+    if m:
+        title = m.group(1).strip()
+
+    # Extract metadata fields
+    branch = ""
+    plan_name = ""
+    m_branch = _re.search(r'\*\*分支\*\*:\s*(.+)', content)
+    if m_branch:
+        branch = m_branch.group(1).strip()
+    m_plan = _re.search(r'\*\*方案\*\*:\s*(.+)', content)
+    if m_plan:
+        plan_name = m_plan.group(1).strip()
+
+    # Count changed files
+    changed_files = 0
+    m_files = _re.search(r'共修改\s*\*{0,2}(\d+)\*{0,2}\s*个文件', content)
+    if m_files:
+        changed_files = int(m_files.group(1))
+
+    # Tags: auto-detect from content categories
+    tags = []
+    if _re.search(r'前端|frontend|\.js|\.css|\.html', content, _re.IGNORECASE):
+        tags.append('frontend')
+    if _re.search(r'后端|backend|\.py|server', content, _re.IGNORECASE):
+        tags.append('backend')
+    if _re.search(r'测试|test', content, _re.IGNORECASE) and not _re.search(r'测试', title):
+        tags.append('test')
+    if _re.search(r'工作流|workflow', content, _re.IGNORECASE):
+        tags.append('workflow')
+    if _re.search(r'修复|bugfix|fix', content, _re.IGNORECASE):
+        tags.append('bugfix')
+    if _re.search(r'配置|config', content, _re.IGNORECASE):
+        tags.append('config')
+    if '无文件变更' in content or '调研' in content or '设计阶段' in content:
+        tags.append('design')
+    if _re.search(r'复盘|postmortem|retrospective|回顾|复盘', content, _re.IGNORECASE):
+        tags.append('postmortem')
+    if _re.search(r'评估|evaluation|assessment', content, _re.IGNORECASE):
+        tags.append('evaluation')
+    if _re.search(r'架构|architecture|pipeline', content, _re.IGNORECASE):
+        tags.append('architecture')
+    if _re.search(r'指南|guide|setup|环境', content, _re.IGNORECASE):
+        tags.append('guide')
+
+    # Summary: extract first meaningful paragraph.
+    # Reports have structure: H1 → **meta** lines → ## section → content
+    # Skip meta lines (key: value), headings, and short labels; grab first real text.
+    summary = ""
+    past_meta = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Skip H1 title
+        if stripped.startswith('# ') and not stripped.startswith('## '):
+            past_meta = True
+            continue
+        # Skip metadata lines (bold key-value) and horizontal rules
+        if not past_meta:
+            continue
+        if _re.match(r'^\*\*[^*]+\*\*:', stripped):
+            continue
+        if stripped.startswith('---'):
+            continue
+        # Skip section headings
+        if stripped.startswith('## '):
+            continue
+        # Skip sub-headings and metadata-like patterns
+        if stripped.startswith('### ') or stripped.startswith('- **'):
+            continue
+        # Skip "Context:" or "Summary:" labels that prefix real content
+        if _re.match(r'^(Context|Summary|概述|摘要)[:：]?\s*$', stripped, _re.IGNORECASE):
+            continue
+        # Found real content — strip markdown prefixes
+        if len(stripped) > 15:
+            # Strip blockquote markers and list markers
+            clean = _re.sub(r'^>\s*', '', stripped)
+            clean = _re.sub(r'^[-*]\s+', '', clean)
+            summary = clean[:120]
+            if len(clean) > 120:
+                summary += '…'
+            break
+
+    # Fallback summary from structured data if no paragraph found
+    if not summary:
+        parts = []
+        if plan_name:
+            parts.append(f"方案: {plan_name}")
+        if changed_files:
+            parts.append(f"修改 {changed_files} 个文件")
+        if branch and branch != 'N/A':
+            parts.append(f"分支: {branch}")
+        summary = ' / '.join(parts) if parts else None
+
+    return {
+        "title": title,
+        "datetime": datetime_str,
+        "date": date_str,
+        "time": time_str,
+        "summary": summary,
+        "tags": tags,
+        "branch": branch,
+        "changedFiles": changed_files,
+        "planName": plan_name,
+        "source": source,
+    }
+
+
+@app.get("/api/iterations")
+async def list_iterations():
+    """List all iteration records + project docs (docs/iterations/*.md + docs/*.md)"""
+    items = []
+
+    # Scan iteration records
+    if os.path.isdir(ITERATIONS_DIR):
+        for fname in os.listdir(ITERATIONS_DIR):
+            if not fname.endswith('.md') or fname == 'INDEX.md':
+                continue
+            fpath = os.path.join(ITERATIONS_DIR, fname)
+            mtime = os.path.getmtime(fpath)
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            meta = _parse_iteration_meta(fname, content, source="iteration", mtime=mtime)
+            meta["id"] = fname[:-3]
+            meta["mtime"] = mtime
+            items.append(meta)
+
+    # Scan project docs (docs/*.md, excluding iterations/ dir)
+    if os.path.isdir(PROJECT_DOCS_DIR):
+        for fname in os.listdir(PROJECT_DOCS_DIR):
+            if not fname.endswith('.md'):
+                continue
+            fpath = os.path.join(PROJECT_DOCS_DIR, fname)
+            if not os.path.isfile(fpath):
+                continue
+            # Skip files that are in iterations/ — already scanned above
+            rel = os.path.relpath(fpath, ITERATIONS_DIR) if os.path.isdir(ITERATIONS_DIR) else ""
+            if rel and not rel.startswith('..'):
+                continue
+            mtime = os.path.getmtime(fpath)
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            meta = _parse_iteration_meta(fname, content, source="doc", mtime=mtime)
+            # Use filename as id (with path encoding for uniqueness)
+            meta["id"] = fname[:-3]
+            meta["mtime"] = mtime
+            items.append(meta)
+
+    # Sort newest first
+    items.sort(key=lambda x: -x["mtime"])
+    for item in items:
+        del item["mtime"]
+    return JSONResponse(content={"iterations": items})
+
+
+@app.get("/api/iterations/{iter_id}", response_class=JSONResponse)
+async def get_iteration(iter_id: str):
+    """Render a single iteration or doc record as Markdown HTML"""
+    # Block path traversal
+    if ".." in iter_id or "/" in iter_id or "\\" in iter_id:
+        raise HTTPException(400, "Invalid iter_id")
+
+    safe_iters = os.path.normpath(ITERATIONS_DIR)
+    safe_docs = os.path.normpath(PROJECT_DOCS_DIR)
+
+    # Try iterations dir first, then project docs dir
+    md_path = os.path.normpath(os.path.join(ITERATIONS_DIR, f"{iter_id}.md"))
+    if not (md_path.startswith(safe_iters) or md_path.startswith(safe_docs)):
+        raise HTTPException(403, "Access denied")
+    if not os.path.exists(md_path):
+        md_path = os.path.normpath(os.path.join(PROJECT_DOCS_DIR, f"{iter_id}.md"))
+        if not (md_path.startswith(safe_iters) or md_path.startswith(safe_docs)):
+            raise HTTPException(403, "Access denied")
+    if not os.path.exists(md_path):
+        raise HTTPException(404, f"Record not found: {iter_id}")
+    with open(md_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+    html = _md.markdown(md_content, extensions=["tables", "fenced_code", "codehilite"])
+    title = iter_id
+    m = _re.search(r'^#\s+(.+)$', md_content, _re.MULTILINE)
+    if m:
+        title = m.group(1).strip()
+    # Determine source from path
+    source = "iteration" if ITERATIONS_DIR in os.path.dirname(md_path) else "doc"
+    return JSONResponse(content={"content": html, "title": title, "id": iter_id, "source": source})
 
 
 # ---------------------------------------------------------------------------

@@ -22,16 +22,24 @@ def kill_existing(port, host="127.0.0.1"):
     killed = False
     if sys.platform == "win32":
         try:
+            # Use subprocess list form (no shell) and filter in Python
             out = subprocess.check_output(
-                f'netstat -ano | findstr :{port}', shell=True, text=True
+                ['netstat', '-ano'], text=True
             )
+            # Match host:port to avoid killing unrelated processes on same port
+            addr_str = f"{host}:{port}" if host != "0.0.0.0" else f":{port}"
+            alt_str = f"0.0.0.0:{port}" if host == "127.0.0.1" else ""
             pids = set()
-            for line in out.strip().split('\n'):
+            for line in out.split('\n'):
                 line = line.strip()
-                if not line:
+                if 'LISTENING' not in line:
+                    continue
+                if addr_str in line or (alt_str and alt_str in line):
+                    pass
+                else:
                     continue
                 parts = line.split()
-                if len(parts) >= 5 and 'LISTENING' in line:
+                if len(parts) >= 5:
                     pid = parts[-1]
                     if pid != '0':
                         pids.add(pid)
@@ -67,12 +75,12 @@ def kill_existing(port, host="127.0.0.1"):
 def check_deps():
     """Check required packages are installed."""
     missing = []
-    for pkg in ("fastapi", "uvicorn", "python_multipart"):
+    deps = {"fastapi": "fastapi", "uvicorn": "uvicorn", "python_multipart": "python-multipart"}
+    for import_name, pip_name in deps.items():
         try:
-            __import__(pkg)
+            __import__(import_name)
         except ImportError:
-            pkg_name = pkg.replace("_", "-")
-            missing.append(pkg_name)
+            missing.append(pip_name)
 
     if missing:
         print("Missing dependencies:")

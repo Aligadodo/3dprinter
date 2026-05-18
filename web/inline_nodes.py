@@ -6,7 +6,7 @@ from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 
 def _resolve_input_file(nid, node_params, ctx, engine):
     """Find the upstream input image file for an inline node."""
-    # Check context outputs
+    # Check context outputs for this node first
     outputs = ctx.get(str(nid), {})
     for key in ("image", "file", "stl", "mesh", "color_preview"):
         if key in outputs and isinstance(outputs[key], str):
@@ -14,44 +14,27 @@ def _resolve_input_file(nid, node_params, ctx, engine):
             if os.path.isfile(path):
                 return path
 
-    # Try edge map resolution
-    port_edge_map = engine._build_port_edge_map(
-        {str(n["id"]): n for n in []},  # will be built by engine before calling
-        []  # placeholder
-    )
-
     # Fallback: scan all context keys for file paths
     for src_nid, src_outputs in ctx.items():
         if src_nid.startswith("_"):
             continue
         if isinstance(src_outputs, dict):
             for port, path in src_outputs.items():
-                if isinstance(path, str) and os.path.isfile(path) and port in ("image", "file"):
+                if isinstance(path, str) and os.path.isfile(path) and port in ("image", "file", "mesh", "stl"):
                     return path
     return None
 
 
 def _resolve_input(nid, ctx, engine, node_map, edges):
-    """Resolve input image from upstream node via port edge map."""
-    # Use engine's port edge map
+    """Resolve input file from upstream node via port edge map."""
     port_edge_map = engine._build_port_edge_map(node_map, edges)
-    edge_key = (str(nid), "image")
-    if edge_key in port_edge_map:
-        src_nid, src_port = port_edge_map[edge_key]
-        src_outputs = ctx.get(str(src_nid), {})
-        path = src_outputs.get(src_port, "")
-        if isinstance(path, str) and os.path.isfile(path):
-            return path
-
-    # Try any file port
-    edge_key_file = (str(nid), "file")
-    if edge_key_file in port_edge_map:
-        src_nid, src_port = port_edge_map[edge_key_file]
-        src_outputs = ctx.get(str(src_nid), {})
-        path = src_outputs.get(src_port, "")
-        if isinstance(path, str) and os.path.isfile(path):
-            return path
-
+    # Check all ports that connect to this node (image, file, mesh, stl, etc.)
+    for (check_nid, check_port), (src_nid, src_port) in port_edge_map.items():
+        if str(check_nid) == str(nid):
+            src_outputs = ctx.get(str(src_nid), {})
+            path = src_outputs.get(src_port, "")
+            if isinstance(path, str) and os.path.isfile(path):
+                return path
     return None
 
 
@@ -146,9 +129,10 @@ async def run_image_grayscale(nid, node, node_params, ctx, instance_id, node_run
     elif method == "lightness":
         if img.mode == "RGBA":
             img = img.convert("RGB")
-        arr = img.split()
+        import numpy as np
+        arr = [np.array(band, dtype=np.float64) for band in img.split()[:3]]
         gray = Image.fromarray(
-            (sum(a for a in arr[:3]) / 3).astype("uint8"), mode="L"
+            (sum(arr) / 3).astype(np.uint8), mode="L"
         ) if len(arr) >= 3 else img.convert("L")
     elif method in ("red_channel", "green_channel", "blue_channel"):
         ch = {"red_channel": 0, "green_channel": 1, "blue_channel": 2}[method]

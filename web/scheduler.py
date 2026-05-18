@@ -88,6 +88,7 @@ class TaskScheduler:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=SCRIPTS_DIR,
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
             )
 
             stdout_lines = []
@@ -198,6 +199,21 @@ class TaskScheduler:
             },
             "mesh_scale": {
                 "scale": "--scale", "target_width": "--target-width", "uniform": "--uniform",
+            },
+            "mesh_boolean": {
+                "bool_op": "--op",
+            },
+            "mesh_stitch": {
+                "stitch_smooth": "--smooth-steps",
+                "stitch_lambda": "--lambda",
+            },
+            "mesh_cut": {
+                "cut_plane_co": "--plane-co",
+                "cut_plane_no": "--plane-no",
+                "cut_fill": "--fill",
+            },
+            "mesh_decorate": {
+                "deco_displacement": "--displacement",
             },
         }
 

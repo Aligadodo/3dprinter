@@ -36,16 +36,21 @@ def repair_mesh(input_path: str, output_format: str = "stl", scale: float = 1.0,
     keep_mask = mesh.unique_faces() & mesh.nondegenerate_faces()
     mesh.update_faces(keep_mask)
     mesh.remove_unreferenced_vertices()
-    mesh.remove_infinite_values()
+    if hasattr(mesh, "remove_infinite_values"):
+        mesh.remove_infinite_values()
     log.append(f"After clean: {len(mesh.vertices)} verts, {len(mesh.faces)} faces")
 
     # Deep repair via PyMeshFix
     try:
         fix = pymeshfix.MeshFix(mesh.vertices.copy(), mesh.faces.copy())
         fix.repair()
-        # pymeshfix 0.18+ returns pyvista PolyData in .mesh
+        # pymeshfix returns pyvista PolyData in .mesh
         points = fix.mesh.points
-        faces = fix.mesh.faces.reshape(-1, 4)[:, 1:]
+        raw_faces = fix.mesh.faces
+        if raw_faces.ndim == 2 and raw_faces.shape[1] == 4:
+            faces = raw_faces[:, 1:]  # VTK format: (N, 4) with first col = 3
+        else:
+            faces = raw_faces.reshape(-1, 3)  # Already (N, 3) or flat
         mesh = trimesh.Trimesh(vertices=points, faces=faces)
         log.append(f"After repair: {len(mesh.vertices)} verts, {len(mesh.faces)} faces")
         log.append(f"Watertight: {mesh.is_watertight}")
