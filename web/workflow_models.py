@@ -125,6 +125,7 @@ def update_workflow_definition(wf_id: str, name: str = None, graph_json: str = N
         updates.append("description = ?")
         params.append(description)
     params.append(wf_id)
+    assert all(u.split(" =")[0] in {"name", "graph_json", "description", "updated_at"} for u in updates), f"illegal column in: {updates}"
     conn.execute(f"UPDATE workflow_definitions SET {', '.join(updates)} WHERE id = ?", params)
     conn.commit()
     row = conn.execute("SELECT * FROM workflow_definitions WHERE id = ?", (wf_id,)).fetchone()
@@ -213,6 +214,7 @@ def update_workflow_instance(inst_id: str, status: str = None, current_node: str
         return _format_instance(dict(row))
 
     params.append(inst_id)
+    assert all(u.split(" =")[0] in {"status", "current_node", "finished_at", "round_num", "error_message"} for u in updates), f"illegal column in: {updates}"
     conn.execute(f"UPDATE workflow_instances SET {', '.join(updates)} WHERE id = ?", params)
     conn.commit()
     row = conn.execute("SELECT * FROM workflow_instances WHERE id = ?", (inst_id,)).fetchone()
@@ -283,6 +285,7 @@ def update_node_run(node_run_id: int, status: str = None, task_id: str = None,
         params.append(finished_at)
     if updates:
         params.append(node_run_id)
+        assert all(u.split(" =")[0] in {"status", "task_id", "error", "finished_at"} for u in updates), f"illegal column in: {updates}"
         conn.execute(f"UPDATE workflow_node_runs SET {', '.join(updates)} WHERE id = ?", params)
         conn.commit()
     conn.close()

@@ -2,6 +2,8 @@
 
 Sorted by time (newest first).
 
+- [2026-05-18] [lucky singing rocket](2026-05-18-225700-report.md)
+- [2026-05-18] [lucky singing rocket](2026-05-18-225444-report.md)
 - [2026-05-18] [lucky singing rocket](2026-05-18-155703-report.md)
 - [2026-05-18] [dynamic-beaming-zebra](2026-05-18-005853-report.md)
 - [2026-05-16-151137] [3D Model 二创（修改与创意设计）技术方案](2026-05-16-151137-3D-Model-二创-修改与创意设计-技术方案.md)

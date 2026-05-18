@@ -17,9 +17,14 @@ TASKS_DIR = os.path.join(SCRIPT_DIR, "output", "tasks")
 os.makedirs(TASKS_DIR, exist_ok=True)
 
 
+GPU_TASKS = {"triposr", "hunyuan", "views"}
+CPU_MAX = 3
+
+
 class TaskScheduler:
     def __init__(self):
         self.gpu_lock = asyncio.Lock()
+        self.cpu_semaphore = asyncio.Semaphore(CPU_MAX)
         self.running_tasks: dict[str, asyncio.Task] = {}
         self.event_queues: dict[str, asyncio.Queue] = {}
         self.cancel_flags: dict[str, bool] = {}
@@ -66,7 +71,8 @@ class TaskScheduler:
             async with self.gpu_lock:
                 await self._execute(task_id, pipeline_type, pt, params, input_file)
         else:
-            await self._execute(task_id, pipeline_type, pt, params, input_file)
+            async with self.cpu_semaphore:
+                await self._execute(task_id, pipeline_type, pt, params, input_file)
 
     async def _execute(self, task_id: str, pipeline_type: str, pt: dict, params: dict, input_file: str = None):
         """Run the actual subprocess."""
@@ -128,8 +134,23 @@ class TaskScheduler:
             if proc.returncode != 0:
                 stderr_text = "\n".join(stderr_lines)
                 error_msg = stderr_text[-500:] if stderr_text else f"Exit code: {proc.returncode}"
-                models.update_task_status(task_id, "failed", {"error": error_msg, "stderr": stderr_text})
-                await self._emit(task_id, "error", {"error": error_msg, "stage": pipeline_type})
+
+                # Persist full stderr to task directory for debugging
+                stderr_log_path = ""
+                td = self.task_dir(task_id)
+                try:
+                    os.makedirs(td, exist_ok=True)
+                    stderr_log_path = os.path.join(td, "stderr.log")
+                    with open(stderr_log_path, "w", encoding="utf-8") as f:
+                        f.write(stderr_text)
+                except OSError:
+                    stderr_log_path = ""
+
+                error_data = {"error": error_msg, "stderr_tail": error_msg}
+                if stderr_log_path:
+                    error_data["stderr_log"] = stderr_log_path
+                models.update_task_status(task_id, "failed", error_data)
+                await self._emit(task_id, "error", {"error": error_msg, "stage": pipeline_type, "stderr_log": stderr_log_path} if stderr_log_path else {"error": error_msg, "stage": pipeline_type})
                 return
 
             # Parse JSON result from stdout
