@@ -420,6 +420,27 @@ _register(NodeType(
     inline=True,
 ))
 
+_register(NodeType(
+    "image_effect",
+    label="图片特效 Effect",
+    category="process",
+    inputs=[PortSpec("image", "image", required=True)],
+    outputs=[PortSpec("image", "image", required=True)],
+    params={
+        "style": {"type": "choice", "default": "pixelate", "choices": [
+            "pixelate", "posterize", "oil_paint", "watercolor", "pencil_sketch",
+            "cartoon", "ink_wash", "impressionist", "macaron", "sepia",
+            "halftone", "emboss", "neon", "duotone", "charcoal",
+            "vintage_film", "kaleidoscope",
+        ]},
+        "strength": {"type": "float", "default": 0.8, "min": 0.0, "max": 1.0},
+        "detail": {"type": "int", "default": 5, "min": 1, "max": 10},
+        "color_scheme": {"type": "choice", "default": "warm", "choices": ["warm", "cool", "vivid", "muted"]},
+    },
+    color="#e91e63",
+    inline=True,
+))
+
 
 # ---------------------------------------------------------------------------
 # Bilingual param labels and descriptions
@@ -704,6 +725,27 @@ PARAM_META: dict[str, dict] = {
         "label": "BG Color", "label_zh": "替换背景色",
         "desc": "Replace transparent background with a color. Empty = keep transparency. e.g. 'white', '#ffffff', '255,0,0'",
         "desc_zh": "替换透明背景为指定颜色。留空=保持透明。如 'white', '#ffffff', '255,0,0'",
+    },
+    # ── image_effect ──
+    "style": {
+        "label": "Style", "label_zh": "特效风格",
+        "desc": "Select the image effect style to apply. 16 styles across 4 categories (Artistic, Retro, Color, Distortion)",
+        "desc_zh": "选择要应用的图片特效风格，共16种，涵盖艺术模拟、复古故障、色彩处理、变形抽象4大类",
+    },
+    "strength": {
+        "label": "Strength", "label_zh": "混合强度",
+        "desc": "Effect blend strength: 0.0=original image, 1.0=full effect",
+        "desc_zh": "效果混合强度：0.0=原始图片，1.0=完全效果",
+    },
+    "image_effect:detail": {
+        "label": "Detail", "label_zh": "细节级别",
+        "desc": "Effect detail/intensity level (1-10). Meaning varies by style: pixel size for pixelate, color levels for posterize, brush size for paint effects, etc.",
+        "desc_zh": "效果细节/强度级别(1-10)。含义随风格变化：像素风=像素大小，海报化=色彩层数，油画=笔触粗细，网点=网点大小等",
+    },
+    "color_scheme": {
+        "label": "Color Scheme", "label_zh": "配色方案",
+        "desc": "Color palette preset. warm=warm tones, cool=cool tones, vivid=bright saturated, muted=soft subtle. Used by duotone, macaron, sepia, vintage_film, neon",
+        "desc_zh": "配色预设：warm=暖色调，cool=冷色调，vivid=鲜艳明亮，muted=柔和淡雅。适用于双色调、马卡龙、怀旧棕褐、胶片质感、霓虹",
     },
 # ── Mesh Boolean ───────────────────────────────────────────────────
     "bool_op": {

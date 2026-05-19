@@ -1,0 +1,42 @@
+# Image Effect Output Naming Configuration
+# ==========================================
+# Controls how output filenames are generated for each effect style.
+#
+# Pattern variables:
+#   {base}     - input file stem (e.g. "photo" from "photo.png")
+#   {effect}   - short suffix token defined below (e.g. "pixel", "oilpaint")
+#   {strength} - strength parameter value (0.0-1.0)
+#   {detail}   - detail parameter value (1-10)
+#   {style}    - style id (same as effect key)
+#
+# All tokens are optional. Duplicate filenames get _1, _2 suffixes.
+
+default_pattern: "{base}_{effect}"
+
+# Short semantic suffix per effect (filesystem-safe, no spaces)
+suffixes:
+  pixelate:       pixel
+  posterize:      poster
+  oil_paint:      oilpaint
+  watercolor:     wcolor
+  pencil_sketch:  sketch
+  cartoon:        cartoon
+  ink_wash:       inkwash
+  impressionist:  impress
+  macaron:        macaron
+  sepia:          sepia
+  halftone:       halftone
+  emboss:         emboss
+  neon:           neon
+  duotone:        duotone
+  charcoal:       charcoal
+  vintage_film:   vfilm
+  kaleidoscope:   kscope
+
+# Per-effect pattern overrides (takes precedence over default_pattern)
+# Only list effects that need different naming from the default
+overrides:
+  pixelate:       "{base}_{effect}_p{detail}"
+  posterize:      "{base}_{effect}_l{detail}"
+  duotone:        "{base}_{effect}_{color}"
+  kaleidoscope:   "{base}_{effect}_s{detail}"

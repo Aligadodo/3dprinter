@@ -324,6 +324,51 @@ async def run_remove_background(nid, node, node_params, ctx, instance_id, node_r
 
 
 # ═══════════════════════════════════════════
+#  Image Effect (style transfer)
+# ═══════════════════════════════════════════
+
+async def run_image_effect(nid, node, node_params, ctx, instance_id, node_run_id, engine, node_map, edges):
+    input_path = _resolve_input(nid, ctx, engine, node_map, edges)
+    if not input_path:
+        raise ValueError("Image effect: no input image found")
+
+    style = node_params.get("style", "pixelate")
+    strength = float(node_params.get("strength", 0.8))
+    detail = int(node_params.get("detail", 5))
+    color_scheme = node_params.get("color_scheme", "warm")
+
+    from web.image_effects import apply_effect
+    from web.image_effects.naming import effect_output_path
+
+    img = _safe_open(input_path)
+    if img.mode == "RGBA":
+        img = img.convert("RGBA")  # Keep alpha for processing
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+
+    result = apply_effect(style, img, strength=strength, detail=detail, color_scheme=color_scheme)
+
+    # Ensure RGB output
+    if result.mode == "RGBA":
+        bg = Image.new("RGB", result.size, (255, 255, 255))
+        bg.paste(result, mask=result.split()[3])
+        result = bg
+    elif result.mode != "RGB":
+        result = result.convert("RGB")
+
+    work_dir = ctx.get("_work_dir", "")
+    out_path = effect_output_path(
+        input_path, work_dir, style,
+        strength=strength, detail=detail, color_scheme=color_scheme,
+    )
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    result.save(out_path, "PNG")
+
+    ctx[str(nid)] = {"image": out_path}
+    return out_path
+
+
+# ═══════════════════════════════════════════
 #  Mesh Inline Handlers
 # ═══════════════════════════════════════════
 
@@ -456,6 +501,7 @@ INLINE_HANDLERS = {
     "image_adjust": run_image_adjust,
     "image_convert": run_image_convert,
     "remove_background": run_remove_background,
+    "image_effect": run_image_effect,
     "mesh_transform": run_mesh_transform,
     "mesh_select": run_mesh_select,
 }

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片特效节点 — Image Effect Node</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --sidebar-bg: #161b22;
+    --card-bg: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent: #7c3aed;
+    --accent2: #06d6a0;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --code-bg: #0d1117;
+    --inline-code: #30363d;
+    --heading: #f0f6fc;
+    --link: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    display: flex;
+  }
+
+  nav {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 260px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    overflow-y: auto; padding: 20px 0; z-index: 10;
+  }
+  nav .logo {
+    font-size: 1.15rem; font-weight: 700; color: var(--heading);
+    padding: 0 20px 16px; border-bottom: 1px solid var(--border); margin-bottom: 12px;
+  }
+  nav .logo span { color: #e91e63; }
+  nav a {
+    display: block; padding: 6px 20px;
+    color: var(--text-muted); text-decoration: none;
+    font-size: 0.875rem; transition: color .15s, background .15s;
+  }
+  nav a:hover, nav a.active { color: var(--text); background: #1c2333; }
+  nav .section-title {
+    padding: 14px 20px 6px; font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent2);
+  }
+
+  main { margin-left: 260px; padding: 40px 48px; max-width: 1000px; width: 100%; }
+  h1 { font-size: 2rem; color: var(--heading); margin-bottom: 8px; }
+  h2 {
+    font-size: 1.4rem; color: var(--heading); margin: 40px 0 16px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  h3 { font-size: 1.1rem; color: var(--heading); margin: 28px 0 12px; }
+  h4 { font-size: 0.95rem; color: var(--text); margin: 20px 0 8px; }
+  p { margin: 10px 0; }
+  a { color: var(--link); }
+  .subtitle { color: var(--text-muted); font-size: 1rem; margin-bottom: 24px; }
+
+  .card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; margin: 16px 0;
+  }
+  .card.good { border-color: #06d6a044; background: #06d6a00a; }
+  .card.warn { border-color: #f59e0b44; background: #f59e0b0a; }
+  .card.info { border-color: #7c3aed44; background: #7c3aed0a; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.9rem; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--heading); font-weight: 600; background: #1c2333; }
+  td { vertical-align: top; }
+
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 18px; overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem; line-height: 1.55; margin: 12px 0;
+  }
+  code {
+    background: var(--inline-code); padding: 2px 6px; border-radius: 3px;
+    font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85em;
+  }
+  pre code { background: none; padding: 0; }
+
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 0.75rem; font-weight: 600; margin-right: 4px;
+  }
+  .tag-green { background: #06d6a022; color: var(--accent2); }
+  .tag-purple { background: #7c3aed22; color: var(--accent); }
+  .tag-yellow { background: #f59e0b22; color: var(--warn); }
+  .tag-red { background: #ef444422; color: var(--danger); }
+  .tag-pink { background: #e91e6322; color: #e91e63; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+  .style-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px;
+  }
+  .style-card h4 { margin-top: 0; color: #e91e63; }
+  .style-card .zh { color: var(--text-muted); font-size: 0.85rem; }
+
+  @media (max-width: 768px) {
+    nav { display: none; }
+    main { margin-left: 0; padding: 20px; }
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">🎨 Image <span>Effect</span> Node</div>
+
+  <div class="section-title">概述</div>
+  <a href="#overview">节点概述</a>
+  <a href="#quickstart">快速开始</a>
+
+  <div class="section-title">风格目录</div>
+  <a href="#artistic">艺术模拟 (7)</a>
+  <a href="#retro">复古故障 (4)</a>
+  <a href="#color">色彩处理 (4)</a>
+  <a href="#distortion">变形抽象 (2)</a>
+
+  <div class="section-title">参考</div>
+  <a href="#params">参数说明</a>
+  <a href="#naming">文件命名</a>
+  <a href="#extending">扩展开发</a>
+  <a href="#architecture">架构设计</a>
+</nav>
+
+<main>
+
+<h1>🎨 图片特效节点 / Image Effect Node</h1>
+<p class="subtitle">
+  支持 17 种图片风格化特效，涵盖艺术模拟、复古故障、色彩处理、变形抽象 4 大类。
+  纯 PIL+numpy 实现，毫秒级处理，无需 GPU。
+</p>
+
+<!-- ═══════════ OVERVIEW ═══════════ -->
+<h2 id="overview">节点概述</h2>
+
+<div class="card info">
+  <table>
+    <tr><th style="width:140px">属性</th><th>值</th></tr>
+    <tr><td>节点 ID</td><td><code>image_effect</code></td></tr>
+    <tr><td>分类</td><td><span class="tag tag-pink">process</span></td></tr>
+    <tr><td>输入端口</td><td><code>image</code> (image) — 任意 PNG/JPEG 图片</td></tr>
+    <tr><td>输出端口</td><td><code>image</code> (image) — 特效处理后的 PNG 图片</td></tr>
+    <tr><td>执行方式</td><td>inline (PIL + numpy，引擎进程内直接执行)</td></tr>
+    <tr><td>GPU</td><td>不需要</td></tr>
+    <tr><td>处理耗时</td><td>通常 &lt; 1s（取决于输入分辨率）</td></tr>
+    <tr><td>节点颜色</td><td><span style="color:#e91e63">■</span> #e91e63（玫红 = 创意特效类）</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════ QUICKSTART ═══════════ -->
+<h2 id="quickstart">快速开始</h2>
+
+<p>在工作流编辑器中，从左侧面板的 <strong>Process</strong> 分类下拖入 <code>图片特效 Effect</code> 节点，连接到任意图片输出端口即可。</p>
+
+<pre><code><span class="cm"># 典型工作流链路</span>
+<span class="path">file_input</span> → <span class="fn">image_effect</span> → <span class="path">output_file</span>
+
+<span class="cm"># 或与其他处理节点组合</span>
+<span class="path">file_input</span> → <span class="fn">image_effect</span> → <span class="fn">relief</span> → <span class="fn">repair</span> → <span class="path">output_file</span>
+</code></pre>
+
+<div class="card good">
+  <h4>💡 提示</h4>
+  <p>
+    特效节点可以串联多个，实现风格叠加。例如：<code>pixelate → sepia</code> 产生复古像素风效果。
+    通过调节 <code>strength</code> 混合强度，可以在原图和特效之间取得平衡。
+  </p>
+</div>
+
+<!-- ═══════════ ARTISTIC ═══════════ -->
+<h2 id="artistic">艺术模拟 <span class="tag tag-purple">7 种</span></h2>
+<p>模拟传统绘画媒介和艺术风格的视觉效果。</p>
+
+<div class="grid-2">
+
+<div class="style-card">
+  <h4>🖌️ 油画 Oil Paint</h4>
+  <div class="zh">oil_paint</div>
+  <p>局部色彩平均 + 边缘增强 + 饱和度提升。模拟油画颜料的厚重感和笔触融合。</p>
+  <p><strong>detail</strong> → 笔触半径 (1-15px)，值越大笔触越粗犷</p>
+</div>
+
+<div class="style-card">
+  <h4>🎨 水彩 Watercolor</h4>
+  <div class="zh">watercolor</div>
+  <p>高斯柔化 + 色彩减淡 + 边缘加深。呈现水彩颜料的透明感和边界渗色效果。</p>
+  <p><strong>detail</strong> → 渗色扩散半径，值越大边界越模糊</p>
+</div>
+
+<div class="style-card">
+  <h4>✏️ 铅笔素描 Pencil Sketch</h4>
+  <div class="zh">pencil_sketch</div>
+  <p>灰度反转 + 高斯模糊 + Dodge 混合。经典铅笔素描算法，线条细腻有层次。</p>
+  <p><strong>detail</strong> → 线条浓度，值越大线条越深越粗</p>
+</div>
+
+<div class="style-card">
+  <h4>📺 卡通 Cartoon</h4>
+  <div class="zh">cartoon</div>
+  <p>中值平滑 + 色彩量化 + 边缘检测叠加。模拟赛璐珞动画的色块和描边效果。</p>
+  <p><strong>detail</strong> → 色块级别 (2-20色)，值越小色块越少越扁平</p>
+</div>
+
+<div class="style-card">
+  <h4>🖋️ 水墨画 Ink Wash</h4>
+  <div class="zh">ink_wash</div>
+  <p>灰度分层 + 多层阈值抖动 + 留白处理。模拟中国传统水墨的浓淡干湿层次。</p>
+  <p><strong>detail</strong> → 墨色层次数，值越大层次越丰富</p>
+</div>
+
+<div class="style-card">
+  <h4>🌅 印象派 Impressionist</h4>
+  <div class="zh">impressionist</div>
+  <p>多偏移彩色笔触叠加 + 色彩增强。模拟莫奈风格的短笔触和光影颤动。</p>
+  <p><strong>detail</strong> → 笔触大小 (3-24px)，值越大笔触越粗放</p>
+</div>
+
+<div class="style-card">
+  <h4>🧪 炭笔画 Charcoal</h4>
+  <div class="zh">charcoal</div>
+  <p>灰度反转 + 高对比度 + 噪点纹理。模拟炭笔的粗糙颗粒感和深黑线条。</p>
+  <p><strong>detail</strong> → 颗粒粗糙度，值越大纹理越明显</p>
+</div>
+
+</div>
+
+<!-- ═══════════ RETRO ═══════════ -->
+<h2 id="retro">复古故障 <span class="tag tag-yellow">4 种</span></h2>
+<p>模拟老式媒介、早期数字图像和印刷工艺的视觉特征。</p>
+
+<div class="grid-2">
+
+<div class="style-card">
+  <h4>👾 像素风 Pixelate</h4>
+  <div class="zh">pixelate</div>
+  <p>缩小 + 最近邻放大。经典像素艺术风格，模拟 8-bit/16-bit 游戏画面。</p>
+  <p><strong>detail</strong> → 像素尺寸 (2-64px)，值越大马赛克越明显</p>
+</div>
+
+<div class="style-card">
+  <h4>📷 怀旧棕褐 Sepia</h4>
+  <div class="zh">sepia</div>
+  <p>灰度 + 棕褐色调矩阵。模拟 19 世纪蛋白照片的温暖棕褐色调。</p>
+  <p><strong>detail</strong> → 色调深度，值越大越偏暖</p>
+</div>
+
+<div class="style-card">
+  <h4>🔵 网目印刷 Halftone</h4>
+  <div class="zh">halftone</div>
+  <p>灰度映射为可变大小圆点网格。模拟报纸和杂志的 CMYK 网目印刷效果。</p>
+  <p><strong>detail</strong> → 网点大小 (2-22px)，值越大网点越粗</p>
+</div>
+
+<div class="style-card">
+  <h4>📽️ 胶片质感 Vintage Film</h4>
+  <div class="zh">vintage_film</div>
+  <p>偏色 + 颗粒噪点 + 暗角。模拟 35mm 胶片照片的色调偏移和物理纹理。</p>
+  <p><strong>detail</strong> → 颗粒强度，值越大噪点越明显</p>
+</div>
+
+</div>
+
+<!-- ═══════════ COLOR ═══════════ -->
+<h2 id="color">色彩处理 <span class="tag tag-green">4 种</span></h2>
+<p>全局色彩映射和风格化调色板转换。</p>
+
+<div class="grid-2">
+
+<div class="style-card">
+  <h4>🏴 海报化 Posterize</h4>
+  <div class="zh">posterize</div>
+  <p>色彩量化 + 通道色阶压缩。减少颜色数量产生平面海报风格。</p>
+  <p><strong>detail</strong> → 色阶级别 (2-16)，值越小色彩越少</p>
+</div>
+
+<div class="style-card">
+  <h4>🎭 双色调 Duotone</h4>
+  <div class="zh">duotone</div>
+  <p>灰度映射到双色渐变。根据 <strong>color_scheme</strong> 选择配色方案。</p>
+  <p><strong>detail</strong> → 对比度偏移，改变色调过渡曲线的陡峭程度</p>
+</div>
+
+<div class="style-card">
+  <h4>🍬 马卡龙 Macaron</h4>
+  <div class="zh">macaron</div>
+  <p>低对比度 + 粉彩色调偏移 + 柔光模糊。流行的柔和甜美色彩风格。</p>
+  <p><strong>detail</strong> → 柔和强度，值越大色彩越浅越粉</p>
+</div>
+
+<div class="style-card">
+  <h4>💡 霓虹 Neon</h4>
+  <div class="zh">neon</div>
+  <p>高饱和 + 边缘发光 + 暗色背景。模拟霓虹灯管的发光效果。</p>
+  <p><strong>detail</strong> → 发光强度，值越大光晕越强</p>
+</div>
+
+</div>
+
+<!-- ═══════════ DISTORTION ═══════════ -->
+<h2 id="distortion">变形抽象 <span class="tag tag-red">2 种</span></h2>
+<p>几何变换和结构重组效果。</p>
+
+<div class="grid-2">
+
+<div class="style-card">
+  <h4>🗿 浮雕 Emboss</h4>
+  <div class="zh">emboss</div>
+  <p>Emboss 卷积核 + 对比度增强。产生浅浮雕般的立体凹凸效果。</p>
+  <p><strong>detail</strong> → 浮雕深度，值越大凹凸越明显</p>
+</div>
+
+<div class="style-card">
+  <h4>🔮 万花筒 Kaleidoscope</h4>
+  <div class="zh">kaleidoscope</div>
+  <p>扇形镜像拼接。将图像中心区域进行多次镜像反射形成对称图案。</p>
+  <p><strong>detail</strong> → 分段数 (4-22)，值越大图案越复杂</p>
+</div>
+
+</div>
+
+<!-- ═══════════ PARAMS ═══════════ -->
+<h2 id="params">参数说明</h2>
+
+<div class="card">
+  <table>
+    <tr>
+      <th>参数</th><th>类型</th><th>默认值</th><th>说明</th>
+    </tr>
+    <tr>
+      <td><code>style</code></td>
+      <td>choice</td>
+      <td><code>pixelate</code></td>
+      <td>
+        选择特效风格，共 17 个选项。<br>
+        <span class="tag tag-purple">艺术</span> oil_paint, watercolor, pencil_sketch, cartoon, ink_wash, impressionist, charcoal<br>
+        <span class="tag tag-yellow">复古</span> pixelate, sepia, halftone, vintage_film<br>
+        <span class="tag tag-green">色彩</span> posterize, duotone, macaron, neon<br>
+        <span class="tag tag-red">变形</span> emboss, kaleidoscope
+      </td>
+    </tr>
+    <tr>
+      <td><code>strength</code></td>
+      <td>float 0.0–1.0</td>
+      <td><code>0.8</code></td>
+      <td>
+        <strong>通用混合强度</strong>：特效图与原图的 blend 比例。<br>
+        0.0 = 完全原图，1.0 = 完全特效。<br>
+        推荐 0.6–0.9，保留原图细节同时呈现明显效果。
+      </td>
+    </tr>
+    <tr>
+      <td><code>detail</code></td>
+      <td>int 1–10</td>
+      <td><code>5</code></td>
+      <td>
+        <strong>细节/强度级别</strong>。语义随风格变化：<br>
+        pixelate → 像素大小；posterize → 色阶级别；oil_paint → 笔触半径；<br>
+        impressionist → 笔触大小；halftone → 网点大小；kaleidoscope → 分段数<br>
+        其余风格 → 效果处理强度（1=弱，10=强）
+      </td>
+    </tr>
+    <tr>
+      <td><code>color_scheme</code></td>
+      <td>choice</td>
+      <td><code>warm</code></td>
+      <td>
+        <strong>配色方案</strong>，仅对 duotone、macaron、sepia、vintage_film、neon 生效：<br>
+        <code>warm</code> = 暖色调（棕/橙/米），<code>cool</code> = 冷色调（蓝/青/白）<br>
+        <code>vivid</code> = 鲜艳明亮，<code>muted</code> = 柔和淡雅
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- ═══════════ NAMING ═══════════ -->
+<h2 id="naming">文件命名约定</h2>
+
+<p>
+  输出文件使用语义化命名，由配置文件 <code>config/image_effect_naming.yaml</code> 控制。
+  默认模式为 <code>{base}_{effect}.png</code>，部分效果包含额外参数。
+</p>
+
+<pre><code><span class="cm"># 示例</span>
+<span class="path">photo.jpg</span> → pixelate (detail=8)  → <span class="val">photo_pixel_p8.png</span>
+<span class="path">photo.jpg</span> → oil_paint (strength=0.8) → <span class="val">photo_oilpaint.png</span>
+<span class="path">photo.jpg</span> → duotone (color=cool)   → <span class="val">photo_duotone_cool.png</span>
+<span class="path">photo.jpg</span> → macaron               → <span class="val">photo_macaron.png</span>
+<span class="path">photo.jpg</span> → kaleidoscope (detail=7) → <span class="val">photo_kscope_s7.png</span>
+<span class="path">photo.jpg</span> → posterize (detail=3)  → <span class="val">photo_poster_l3.png</span></code></pre>
+
+<div class="card good">
+  <h4>配置文件结构</h4>
+  <p>编辑 <code>config/image_effect_naming.yaml</code> 可以自定义每个效果的文件名后缀和命名模式。</p>
+  <pre><code><span class="cm"># 默认模式</span>
+<span class="kw">default_pattern:</span> <span class="str">"{base}_{effect}"</span>
+
+<span class="cm"># 各效果的后缀标记</span>
+<span class="kw">suffixes:</span>
+  <span class="val">pixelate:</span>       <span class="str">pixel</span>
+  <span class="val">oil_paint:</span>      <span class="str">oilpaint</span>
+  <span class="val">impressionist:</span>  <span class="str">impress</span>
+  ...
+
+<span class="cm"># 特定效果的命名模式覆盖</span>
+<span class="kw">overrides:</span>
+  <span class="val">pixelate:</span>  <span class="str">"{base}_{effect}_p{detail}"</span>
+  <span class="val">duotone:</span>   <span class="str">"{base}_{effect}_{color}"</span></code></pre>
+</div>
+
+<p>变量说明： <code>{base}</code> = 输入文件主名， <code>{effect}</code> = 后缀标记， <code>{strength}</code> = 混合强度， <code>{detail}</code> = 细节级别， <code>{color}</code> = 配色首字母。同名文件自动追加 <code>_1</code>, <code>_2</code>。</p>
+
+<!-- ═══════════ EXTENDING ═══════════ -->
+<h2 id="extending">扩展开发 — 添加新特效</h2>
+
+<p>新增特效只需 3 步，无需修改现有代码：</p>
+
+<div class="card">
+  <h4>Step 1: 创建 Effect 类</h4>
+  <p>在 <code>web/image_effects/</code> 下选择合适模块（或新建），继承 <code>BaseEffect</code> 并用 <code>@register_effect</code> 装饰：</p>
+  <pre><code><span class="kw">from</span> web.image_effects <span class="kw">import</span> register_effect
+<span class="kw">from</span> web.image_effects.base <span class="kw">import</span> BaseEffect
+
+<span class="kw">@register_effect</span>
+<span class="kw">class</span> <span class="fn">MyNewEffect</span>(BaseEffect):
+    <span class="val">name</span> = <span class="str">"my_effect"</span>
+    <span class="val">label</span> = <span class="str">"My Effect"</span>
+    <span class="val">label_zh</span> = <span class="str">"我的特效"</span>
+
+    <span class="kw">def</span> <span class="fn">apply</span>(self, img, strength=0.8, detail=5, color_scheme=<span class="str">"warm"</span>):
+        img = self.to_rgb(img)
+        <span class="cm"># ... 实现你的特效算法 ...</span>
+        <span class="kw">return</span> self.blend(img, result, strength)</code></pre>
+</div>
+
+<div class="card">
+  <h4>Step 2: 注册到 node_types</h4>
+  <p>在 <code>web/node_types.py</code> 的 <code>image_effect</code> 节点 <code>style</code> 参数的 <code>choices</code> 列表中添加你的效果名称。</p>
+</div>
+
+<div class="card">
+  <h4>Step 3: 配置命名后缀</h4>
+  <p>在 <code>config/image_effect_naming.yaml</code> 中添加后缀映射（可选，默认使用效果名称）。</p>
+</div>
+
+<div class="card info">
+  <h4>BaseEffect 接口</h4>
+  <table>
+    <tr><th>方法/属性</th><th>说明</th></tr>
+    <tr><td><code>name: str</code></td><td>效果唯一标识（snake_case）</td></tr>
+    <tr><td><code>label / label_zh</code></td><td>双语显示名称</td></tr>
+    <tr><td><code>apply(img, strength, detail, color_scheme)</code></td><td>核心方法，返回 PIL Image</td></tr>
+    <tr><td><code>blend(original, processed, strength)</code></td><td>静态方法，按比例混合原图与效果</td></tr>
+    <tr><td><code>to_rgb(img, bg_color)</code></td><td>静态方法，安全转换为 RGB 模式</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════ ARCHITECTURE ═══════════ -->
+<h2 id="architecture">架构设计</h2>
+
+<div class="card">
+  <h4>模块结构</h4>
+  <pre><code><span class="path">web/image_effects/</span>
+├── <span class="fn">__init__.py</span>     注册中心 + 调度器 (<span class="fn">get_effect</span>, <span class="fn">list_effects</span>)
+├── <span class="fn">base.py</span>         抽象基类 (<span class="fn">BaseEffect</span>)
+├── <span class="fn">naming.py</span>       文件命名引擎（读取 YAML 配置）
+├── <span class="fn">artistic.py</span>     艺术模拟 (7 个效果)
+├── <span class="fn">retro.py</span>        复古故障 (4 个效果)
+├── <span class="fn">color.py</span>        色彩处理 (4 个效果)
+└── <span class="fn">distortion.py</span>   变形抽象 (2 个效果)
+
+<span class="path">config/</span>
+└── <span class="fn">image_effect_naming.yaml</span>   文件名后缀配置</code></pre>
+</div>
+
+<div class="card">
+  <h4>设计原则</h4>
+  <ul>
+    <li><strong>开闭原则</strong>：新增特效只需添加新类 + 装饰器，不改动现有代码</li>
+    <li><strong>单一职责</strong>：每个模块文件只包含同类效果，避免单文件过大</li>
+    <li><strong>配置驱动</strong>：文件名后缀集中管理，支持按效果自定义命名模式</li>
+    <li><strong>通用参数复用</strong>：4 个参数（style / strength / detail / color_scheme）覆盖全部 17 种效果</li>
+    <li><strong>零额外依赖</strong>：仅使用项目已有的 PIL + numpy</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>数据流</h4>
+  <pre><code><span class="path">输入图片</span>
+    │
+    ▼
+<span class="fn">run_image_effect()</span>          <span class="cm"># inline_nodes.py — 解析参数、加载图片</span>
+    │
+    ▼
+<span class="fn">apply_effect(style, img)</span>     <span class="cm"># __init__.py — 查找并调用效果</span>
+    │
+    ▼
+<span class="fn">Effect.apply(img, ...)</span>      <span class="cm"># 具体效果类 — 核心算法</span>
+    │
+    ▼
+<span class="fn">BaseEffect.blend()</span>           <span class="cm"># 按 strength 混合原图</span>
+    │
+    ▼
+<span class="fn">effect_output_path()</span>        <span class="cm"># naming.py — 生成语义化文件名</span>
+    │
+    ▼
+<span class="path">输出图片</span></code></pre>
+</div>
+
+</main>
+</body>
+</html>
