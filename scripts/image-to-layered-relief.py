@@ -16,6 +16,7 @@ Usage:
 import argparse, sys, os, json, time, struct
 from pathlib import Path
 import numpy as np
+import trimesh
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -113,6 +114,7 @@ def _build_height_map(labels, palette, gray, sorted_indices,
         rgb_c = palette[ci].tolist()
         hex_c = "#{:02x}{:02x}{:02x}".format(*rgb_c)
         area = int((labels == ci).sum())
+        color_name = _rgb_to_color_name(*rgb_c)
 
         # Within-cluster grayscale range for shading
         mask = labels == ci
@@ -126,9 +128,9 @@ def _build_height_map(labels, palette, gray, sorted_indices,
 
         bands.append({
             "order": band_order + 1,
-            "color_name": f"Color {band_order+1}",
-            "color_rgb": rgb_c,
+            "color_name": color_name,
             "color_hex": hex_c,
+            "color_rgb": rgb_c,
             "area_ratio": round(area / (H * W), 3),
             "z_start_mm": round(base_thickness_mm + band_start, 2),
             "z_end_mm": round(base_thickness_mm + band_start + layer_height_mm, 2),
@@ -200,6 +202,46 @@ def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.3):
     return verts, faces
 
 
+def _build_xml_mesh(verts, faces, obj_id=1, obj_uuid=None):
+    """Convert binary mesh data to 3MF XML mesh format.
+
+    Returns UTF-8 encoded XML string in the OPC mesh representation
+    (object with <mesh><vertices>/<triangles>) used by all official
+    Bambu Studio 3MF files — binary STL is NOT used internally.
+    """
+    if obj_uuid is None:
+        import uuid
+        obj_uuid = str(uuid.uuid4()).replace('-', '')[:16].upper()
+        obj_uuid = f"00020000-{obj_uuid[:4]}-{obj_uuid[4:8]}-{obj_uuid[8:12]}-{obj_uuid[12:]}"
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<model unit="millimeter" xml:lang="en-US"',
+        ' xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"',
+        ' xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"',
+        ' xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"',
+        ' requiredextensions="p">',
+        ' <metadata name="BambuStudio:3mfVersion">1</metadata>',
+        ' <resources>',
+        f'  <object id="{obj_id}" p:UUID="{obj_uuid}" type="model">',
+        '   <mesh>',
+        '    <vertices>',
+    ]
+    for x, y, z in verts:
+        lines.append(f'     <vertex x="{x:.6f}" y="{y:.6f}" z="{z:.6f}"/>')
+    lines.append('    </vertices>')
+    lines.append('    <triangles>')
+    for a, b, c in faces:
+        lines.append(f'     <triangle v1="{a}" v2="{b}" v3="{c}"/>')
+    lines.append('    </triangles>')
+    lines.append('   </mesh>')
+    lines.append('  </object>')
+    lines.append(' </resources>')
+    lines.append(' <build/>')
+    lines.append('</model>')
+    return '\n'.join(lines).encode('utf-8')
+
+
 # ═══════════════════════════════════════════════════════════════════
 #  Binary STL export
 # ═══════════════════════════════════════════════════════════════════
@@ -223,6 +265,131 @@ def _export_stl(verts, faces, out_path):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  Human-readable colour naming
+# ═══════════════════════════════════════════════════════════════════
+
+def _rgb_to_color_name(r, g, b):
+    """Map an RGB triplet to a Chinese colour name.
+
+    Uses a tiered hue→ lightness→ value decision tree.
+    Names are approximate — matches within ±15° hue, ±20% lightness.
+    """
+    import math
+
+    # Normalise to [0,1]
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+
+    # Hue in degrees
+    max_c = max(r, g, b)
+    min_c = min(r, g, b)
+    delta = max_c - min_c
+
+    if delta < 0.02:
+        if max_c < 0.2:
+            return "黑色"
+        if max_c < 0.45:
+            return "深灰色"
+        if max_c < 0.7:
+            return "灰色"
+        if max_c > 0.9 and delta < 0.05:
+            return "白色"
+        return "浅灰色"
+
+    if max_c == r:
+        h = 60 * ((g - b) / delta) % 360
+    elif max_c == g:
+        h = 60 * ((b - r) / delta) + 120
+    else:
+        h = 60 * ((r - g) / delta) + 240
+
+    lightness = (max_c + min_c) / 2
+    sat = delta / max_c if max_c > 0 else 0
+
+    # ── Red zone (350°–15°) ──────────────────────────────
+    if h < 15 or h >= 350:
+        if lightness < 0.25:
+            return "深红色"
+        if lightness < 0.45:
+            return "暗红色"
+        if lightness > 0.8 and sat < 0.25:
+            return "浅粉色"
+        if lightness > 0.7:
+            return "粉色"
+        return "红色"
+
+    # ── Orange zone (15°–45°) ───────────────────────────
+    if h < 45:
+        if lightness < 0.3:
+            return "深棕色"
+        if lightness < 0.45:
+            return "棕色"
+        if lightness > 0.8:
+            return "浅橙色"
+        return "橙色"
+
+    # ── Yellow zone (45°–70°) ───────────────────────────
+    if h < 70:
+        if lightness < 0.35:
+            return "深黄绿色"
+        if lightness < 0.5:
+            return "橄榄色"
+        if lightness > 0.82:
+            return "浅黄色"
+        return "黄色"
+
+    # ── Green zone (70°–165°) ───────────────────────────
+    if h < 165:
+        if lightness < 0.25:
+            return "深绿色"
+        if lightness < 0.4:
+            return "暗绿色"
+        if lightness < 0.65:
+            return "绿色"
+        if lightness > 0.8:
+            return "浅绿色"
+        return "黄绿色"
+
+    # ── Cyan zone (165°–200°) ──────────────────────────
+    if h < 200:
+        if lightness < 0.35:
+            return "深青色"
+        if lightness < 0.5:
+            return "青色"
+        return "浅蓝色"
+
+    # ── Blue zone (200°–260°) ──────────────────────────
+    if h < 260:
+        if lightness < 0.25:
+            return "深蓝色"
+        if lightness < 0.4:
+            return "深蓝紫色"
+        if lightness < 0.55:
+            return "蓝色"
+        if lightness > 0.78:
+            return "浅蓝色"
+        return "蓝色"
+
+    # ── Purple zone (260°–290°) ────────────────────────
+    if h < 290:
+        if lightness < 0.3:
+            return "深紫色"
+        if lightness < 0.5:
+            return "紫罗兰色"
+        if lightness > 0.75:
+            return "薰衣草色"
+        return "紫色"
+
+    # ── Pink/magenta zone (290°–350°) ─────────────────
+    if lightness < 0.3:
+        return "深粉紫色"
+    if lightness < 0.55:
+        return "紫红色"
+    if lightness > 0.78:
+        return "浅粉色"
+    return "洋红色"
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  Preview & colour-map export
 # ═══════════════════════════════════════════════════════════════════
 
@@ -233,6 +400,84 @@ def _export_preview(labels, palette, out_path):
     for c in range(len(palette)):
         img_arr[labels == c] = palette[c]
     Image.fromarray(img_arr).save(out_path)
+
+
+def _build_color_config(bands, phys_w, phys_h, total_mm, base_mm,
+                        layer_mm, stl_name, printer, out_dir, base):
+    """Generate color_config.json — human-readable slicer configuration guide.
+
+    Provides Z-height → colour-name mapping with specific setup steps
+    for Bambu Studio manual filament assignment.
+    """
+    import io
+    from PIL import Image
+
+    config = {
+        "version": 1,
+        "printer": printer,
+        "model": {
+            "width_mm": round(phys_w, 1),
+            "height_mm": round(phys_h, 1),
+            "depth_mm": round(total_mm, 2),
+            "base_thickness_mm": base_mm,
+            "layer_height_mm": layer_mm,
+            "stl_file": stl_name,
+        },
+        "colors": [],
+        "steps": {
+            "zh": [
+                "在Bambu Studio中打开导出的3MF文件",
+                "点击右侧「对象设置」中的「耗材」标签",
+                "为每个颜色层段手动分配AMS槽位：",
+            ],
+            "en": [
+                "Open the exported 3MF file in Bambu Studio",
+                "In the right-panel 'Object Settings' click the 'Filament' tab",
+                "Manually assign AMS slots for each colour band:",
+            ],
+        },
+    }
+
+    for b in bands:
+        color_name = b["color_name"]
+        hex_val = b["color_hex"]
+        z_start = b["z_start_mm"]
+        z_end = b["z_end_mm"]
+
+        config["colors"].append({
+            "slot": b["order"],
+            "name": color_name,
+            "hex": hex_val,
+            "rgb": b["color_rgb"],
+            "z_start_mm": z_start,
+            "z_end_mm": z_end,
+            "area_ratio": b["area_ratio"],
+            "filament_note_zh": f"第{b['order']}色层：{z_start:.1f}–{z_end:.1f}mm，{color_name} {hex_val}",
+            "filament_note_en": f"Layer {b['order']}: {z_start:.1f}–{z_end:.1f}mm, {color_name} {hex_val}",
+        })
+
+        config["steps"]["zh"].append(
+            f"  第{b['order']}段（Z {z_start:.1f}–{z_end:.1f}mm）："
+            f"在「{color_name}」槽位选择对应耗材色号{hex_val}"
+        )
+        config["steps"]["en"].append(
+            f"  Band {b['order']} (Z {z_start:.1f}–{z_end:.1f}mm): "
+            f"assign filament colour {hex_val} ({color_name}) to slot {b['order']}"
+        )
+
+    config["steps"]["zh"].extend([
+        "切片时确认「多色模式」或「按层换料」已启用",
+        "在预览窗口验证各段高度与颜色对应关系正确",
+    ])
+    config["steps"]["en"].extend([
+        "Ensure 'Multi-colour mode' or 'Tool-change at height' is enabled before slicing",
+        "Verify in the preview that each band height matches the colour assignment",
+    ])
+
+    path = os.path.join(out_dir, f"{base}_color_config.json")
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+    return path, config
 
 
 def _export_color_map(map_path, bands, phys_w, phys_h, base_mm, layer_mm,
@@ -261,9 +506,9 @@ def _export_color_map(map_path, bands, phys_w, phys_h, base_mm, layer_mm,
 
     for b in bands:
         color_map["instructions"]["zh"].append(
-            f"  Z {b['z_start_mm']:.1f} – {b['z_end_mm']:.1f} mm → 换 {b['color_hex']} ({b['color_name']})")
+            f"  Z {b['z_start_mm']:.1f}–{b['z_end_mm']:.1f} mm → 换 {b['color_name']} {b['color_hex']}")
         color_map["instructions"]["en"].append(
-            f"  Z {b['z_start_mm']:.1f} – {b['z_end_mm']:.1f} mm → change to {b['color_hex']} ({b['color_name']})")
+            f"  Z {b['z_start_mm']:.1f}–{b['z_end_mm']:.1f} mm → change to {b['color_name']} {b['color_hex']}")
 
     with open(map_path, 'w', encoding='utf-8') as f:
         json.dump(color_map, f, ensure_ascii=False, indent=2)
@@ -436,20 +681,37 @@ def _build_defaults(N, profile):
     }
 
 
+def _get_base_3mf_path():
+    """Locate or copy the official Bambu Studio base 3MF for multi-color export.
+
+    Uses the confirmed-working 'test_minimal_swap.3mf' (single-color, opens correctly
+    in Bambu Studio) as the base structure. Copies it to templates/bambu/base.3mf
+    on first call so it's stable across sessions.
+    """
+    tpl_dir = _resolve_template_dir()
+    base_path = os.path.join(tpl_dir, "base.3mf")
+    if not os.path.exists(base_path):
+        src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "output", "test_minimal_swap.3mf")
+        if os.path.exists(src):
+            import shutil
+            shutil.copy2(src, base_path)
+    if not os.path.exists(base_path):
+        raise FileNotFoundError(
+            f"Base 3MF not found at {base_path} or {src}. "
+            "Run pipeline once to generate test_minimal_swap.3mf first.")
+    return base_path
+
+
 def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
                 base_name, printer="P1S", layer_height_mm=0.2):
     """Export a 3MF file with full Bambu Studio multi-color configuration.
 
-    Generates:
-      [Content_Types].xml, _rels/.rels
-      3D/3dmodel.model, 3D/_rels/3dmodel.model.rels
-      3D/Objects/object.model (STL binary)
-      Metadata/project_settings.config (slicer config with N filaments)
-      Metadata/model_settings.config (plate + filament mapping)
-      Metadata/custom_gcode_per_layer.xml (height-based filament changes)
-      Metadata/cut_information.xml, Metadata/filament_sequence.json
+    Uses the official Bambu Studio base structure (Auxiliaries/, proper metadata,
+    thumbnails) and only replaces: the mesh (object_2.model), model_settings.config
+    (face_count), and adds custom_gcode_per_layer.xml (MultiAsSingle filament changes).
     """
-    import zipfile
+    import zipfile, random
 
     tpl_dir = _resolve_template_dir()
     profile = _load_profile(printer, tpl_dir)
@@ -465,9 +727,12 @@ def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
     for gvar, gfile in gcode_files.items():
         gcode_args[gvar] = _load_template(printer, gfile, tpl_dir)
 
-    # --- Read STL binary ---
-    with open(stl_path, 'rb') as f:
-        stl_data = f.read()
+    # --- Read mesh data using trimesh (handles all STL formats + vertex dedup) ---
+    mesh = trimesh.load(stl_path, force='mesh')
+    verts_arr = np.asarray(mesh.vertices, dtype=np.float64)
+    faces_arr = np.asarray(mesh.faces, dtype=np.int32)
+    face_count = len(faces_arr)
+    xml_mesh_bytes = _build_xml_mesh(verts_arr, faces_arr, obj_id=1)
 
     # --- Compute dynamic values ---
     N = len(bands)
@@ -551,9 +816,21 @@ def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
         "CREATION_DATE": now,
     })
 
-    # Render project_settings.config
-    ps_template = _load_template(printer, "project_settings.template", tpl_dir)
-    project_settings = _resolve_template_json(ps_template, vars)
+    # --- Use official base 3MF (with Auxiliaries/thumbnails) ---
+    base_path = _get_base_3mf_path()
+    base_3mf = zipfile.ZipFile(base_path, 'r')
+
+    # Get base model_settings as template (preserve official structure/fields)
+    base_model_settings = base_3mf.read('Metadata/model_settings.config').decode('utf-8')
+
+    # Update face_count in base model_settings
+    model_settings = base_model_settings.replace(
+        'face_count="640032"', f'face_count="{face_count}"', 1)
+    model_settings = model_settings.replace(
+        'mesh_stat face_count="640032"', f'mesh_stat face_count="{face_count}"', 1)
+    # Update name in part metadata
+    model_settings = model_settings.replace(
+        'value="鬼灭_Front_84x150.stl"', f'value="{base_name}.stl"', 1)
 
     # --- Build custom_gcode_per_layer.xml ---
     # MultiAsSingle: at each band's z_end, switch to the NEXT extruder.
@@ -577,131 +854,32 @@ def _export_3mf(out_path, stl_path, bands, phys_w, phys_h, total_mm,
         '</custom_gcodes_per_layer>'
     )
 
-    # --- Build descriptions ---
-    color_desc = ", ".join(
-        f"{b['z_start_mm']:.1f}mm={b['color_hex']}" for b in sorted_bands)
-    desc_text = f"{N}-color relief | {color_desc}"
-    desc_html = "&lt;p&gt;" + desc_text + "&lt;/p&gt;"
-    title = f"{N} color {layer_height_mm:.2f}mm"
+    # --- Build project_settings.config ---
+    ps_template = _load_template(printer, "project_settings.template", tpl_dir)
+    project_settings = _resolve_template_json(ps_template, vars)
 
-    # --- 3D/3dmodel.model ---
-    obj_uuid = "00000002-61cb-4c03-9d28-80fed5dfa1dc"
-    build_uuid = "2c7c17d8-22b5-4d84-8835-1976022ea369"
-    item_uuid = "00000002-b1ec-4553-aec9-835e5b724bb4"
-    # Center model on bed
-    tx = (bed_x - phys_w) / 2
-    ty = (bed_y - phys_h) / 2
-
-    model_xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<model unit="millimeter" xml:lang="en-US"'
-        ' xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"'
-        ' xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"'
-        ' xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"'
-        ' requiredextensions="p">\n'
-        f'  <metadata name="Application">BambuStudio-02.03.00.70</metadata>\n'
-        f'  <metadata name="BambuStudio:3mfVersion">1</metadata>\n'
-        f'  <metadata name="Copyright" />\n'
-        f'  <metadata name="CreationDate">{now}</metadata>\n'
-        f'  <metadata name="Description">{desc_html}</metadata>\n'
-        f'  <metadata name="Designer" />\n'
-        f'  <metadata name="DesignerCover" />\n'
-        f'  <metadata name="DesignerUserId">3178235157</metadata>\n'
-        f'  <metadata name="License" />\n'
-        f'  <metadata name="ModificationDate">{now}</metadata>\n'
-        f'  <metadata name="Origin">original</metadata>\n'
-        f'  <metadata name="Title">{base_name}</metadata>\n'
-        f'  <resources>\n'
-        f'   <object id="2" p:UUID="{obj_uuid}" type="model">\n'
-        f'    <components>\n'
-        f'     <component p:path="/3D/Objects/object.model" objectid="1"'
-        f' p:UUID="00020000-b206-40ff-9872-83e8017abed1"'
-        f' transform="1 0 0 0 1 0 0 0 1 0 0 0" />\n'
-        f'    </components>\n'
-        f'   </object>\n'
-        f'  </resources>\n'
-        f'  <build p:UUID="{build_uuid}">\n'
-        f'   <item objectid="2" p:UUID="{item_uuid}"'
-        f' transform="1 0 0 0 1 0 0 0 1 {tx:.6f} {ty:.6f} {total_mm:.6f}"'
-        f' printable="1" />\n'
-        f'  </build>\n'
-        f'  <metadata name="CopyRight">[]</metadata>\n'
-        f'  <metadata name="ProfileTitle">{title}</metadata>\n'
-        f'  <metadata name="ProfileCover" />\n'
-        f'  <metadata name="ProfileDescription">{desc_html}</metadata>\n'
-        f'  <metadata name="ProfileUserId">3178235157</metadata>\n'
-        f'  <metadata name="ProfileUserName" />\n'
-        f'  <metadata name="DesignRegion">CN</metadata>\n'
-        f'  <metadata name="DesignModelId">{base_name}</metadata>\n'
-        f'  <metadata name="DesignProfileId">1</metadata>\n'
-        f'</model>'
-    )
-
-    # --- Model settings config with filament_maps ---
-    # Compute face count from STL binary (80-byte header + 4-byte triangle count)
-    import struct as _struct
-    face_count = _struct.unpack_from('<I', stl_data, 80)[0] if len(stl_data) > 84 else 0
-    model_settings = f'''<?xml version="1.0" encoding="UTF-8"?>
-<config>
-  <object id="2">
-    <metadata key="name" value="{base_name}.stl"/>
-    <metadata key="extruder" value="1"/>
-    <metadata face_count="{face_count}"/>
-    <part id="1" subtype="normal_part">
-      <metadata key="name" value="{base_name}.stl"/>
-      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>
-      <metadata key="source_object_id" value="0"/>
-      <metadata key="source_volume_id" value="0"/>
-      <metadata key="source_offset_x" value="0"/>
-      <metadata key="source_offset_y" value="0"/>
-      <metadata key="source_offset_z" value="0"/>
-      <mesh_stat face_count="{face_count}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>
-    </part>
-  </object>
-  <plate>
-    <metadata key="plater_id" value="1"/>
-    <metadata key="plater_name" value=""/>
-    <metadata key="locked" value="false"/>
-    <metadata key="filament_map_mode" value="Auto For Flush"/>
-    <metadata key="filament_maps" value="{filament_map_str}"/>
-    <metadata key="filament_volume_maps" value="{" ".join(["0"] * N)}"/>
-    <metadata key="thumbnail_file" value=""/>
-    <model_instance>
-      <metadata key="object_id" value="2"/>
-      <metadata key="instance_id" value="0"/>
-      <metadata key="identify_id" value="1"/>
-    </model_instance>
-  </plate>
-  <assemble>
-    <assemble_item object_id="2" instance_id="0"
-     transform="1 0 0 0 1 0 0 0 1 {tx:.6f} {ty:.6f} {total_mm:.6f}"
-     offset="0 0 0"/>
-  </assemble>
-</config>'''
-
-    # --- Compatibility files ---
-    content_types = '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>\n <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>\n</Types>'
-
-    rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/3dmodel.model" Id="rel-1"/>\n</Relationships>'
-
-    model_rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/Objects/object.model" Id="rel1"/>\n</Relationships>'
-
-    cut_information = '<?xml version="1.0" encoding="UTF-8"?>\n<objects>\n <object id="1">\n  <cut_id id="0" check_sum="1" connectors_cnt="0"/>\n </object>\n</objects>'
-
-    filament_sequence = '{"plate_1":{"nozzle_sequence":[],"optimal_assignment":[],"sequence":[]}}'
-
-    # --- Write ZIP ---
+    # --- Write ZIP using base structure ---
     with zipfile.ZipFile(out_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr('[Content_Types].xml', content_types)
-        zf.writestr('_rels/.rels', rels)
-        zf.writestr('3D/3dmodel.model', model_xml)
-        zf.writestr('3D/_rels/3dmodel.model.rels', model_rels)
-        zf.writestr('3D/Objects/object.model', stl_data)
-        zf.writestr('Metadata/project_settings.config', project_settings)
-        zf.writestr('Metadata/model_settings.config', model_settings)
-        zf.writestr('Metadata/custom_gcode_per_layer.xml', gcode_xml)
-        zf.writestr('Metadata/cut_information.xml', cut_information)
-        zf.writestr('Metadata/filament_sequence.json', filament_sequence)
+        for item in base_3mf.infolist():
+            if item.filename == '3D/Objects/object_2.model':
+                # Replace mesh with our XML mesh
+                zf.writestr(item.filename, xml_mesh_bytes)
+            elif item.filename == 'Metadata/model_settings.config':
+                # Updated face_count + name
+                zf.writestr(item.filename, model_settings.encode('utf-8'))
+            elif item.filename == 'Metadata/custom_gcode_per_layer.xml':
+                # MultiAsSingle filament change events
+                zf.writestr(item.filename, gcode_xml.encode('utf-8'))
+            elif item.filename == 'Metadata/project_settings.config':
+                # Filament colors + flush volumes
+                zf.writestr(item.filename, project_settings.encode('utf-8'))
+            elif item.filename == 'Metadata/filament_sequence.json':
+                # Skip (official base doesn't have this)
+                pass
+            else:
+                # Keep base file as-is (includes Auxiliaries/, slice_info, etc.)
+                zf.writestr(item.filename, base_3mf.read(item.filename))
+    base_3mf.close()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -712,7 +890,7 @@ def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
                             num_colors=4, layer_height_mm=0.4,
                             base_thickness_mm=0.3, edge_smooth=0.5,
                             output_format="stl", pixel_spacing_mm=0.08,
-                            printer="P1S"):
+                            printer="P1S", multi_color_mode="both"):
     log = []
 
     if not os.path.exists(image_path):
@@ -797,13 +975,22 @@ def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
     stl_mb = os.path.getsize(stl_path) / 1024**2
     log.append(f"STL: {stl_name} ({len(verts)} verts, {len(faces)} faces, {stl_mb:.1f} MB) — {time.time()-t0:.1f}s")
 
-    # Stage 8 — Colour map & instructions
+    # Stage 8 — Colour map & optional color_config
     _emit("progress", {"percent": 90, "message": "Writing colour map..."})
     map_path = os.path.join(out_dir, f"{base}_color_map.json")
     color_map = _export_color_map(
         map_path, bands, phys_w, phys_h,
         base_thickness_mm, layer_height_mm, total_mm, stl_name)
     log.append(f"Colour map: {map_path}")
+
+    color_config_path = None
+    if multi_color_mode in ("manual", "both"):
+        _, color_config = _build_color_config(
+            bands, phys_w, phys_h, total_mm,
+            base_thickness_mm, layer_height_mm, stl_name,
+            printer, out_dir, base)
+        color_config_path = os.path.join(out_dir, f"{base}_color_config.json")
+        log.append(f"Color config: {color_config_path}")
 
     # Build result
     result = {
@@ -821,9 +1008,11 @@ def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
         "bands": bands,
         "log": log,
     }
+    if color_config_path:
+        result["color_config"] = color_config_path
 
     # Stage 9 — 3MF export (if requested)
-    if output_format == "3mf":
+    if output_format == "3mf" and multi_color_mode in ("auto", "both"):
         _emit("progress", {"percent": 95, "message": "Exporting 3MF..."})
         mf_path = os.path.join(out_dir, f"{base}_{num_colors}color.3mf")
         try:
@@ -866,6 +1055,11 @@ if __name__ == "__main__":
     parser.add_argument("--printer", type=str, default="P1S",
                         choices=["P1S", "A1"],
                         help="Bambu printer model for 3MF config (default: P1S)")
+    parser.add_argument("--multi-color-mode", type=str, default="both",
+                        choices=["auto", "manual", "both"],
+                        help="Multi-color strategy: auto=full 3MF (no manual setup), "
+                             "manual=3MF + color_config.json (human-guided), "
+                             "both=generate both (default: both)")
     args = parser.parse_args()
 
     # Print input params for the scheduler to log
@@ -890,6 +1084,7 @@ if __name__ == "__main__":
         output_format=args.format,
         pixel_spacing_mm=args.pixel_spacing,
         printer=args.printer,
+        multi_color_mode=args.multi_color_mode,
     )
 
     if "error" in result:

@@ -1,104 +1,151 @@
-# Multi-Color 3MF Export for Bambu Studio
+# Bambu Studio 3MF 格式规范
 
-## Overview
+## 概述
 
-The layered relief pipeline (`image-to-layered-relief.py`) generates 3MF files that are fully compatible with Bambu Studio's multi-color AMS printing. When opened, all filaments are auto-configured with correct colors from the k-means palette, and filament change events are pre-set at each color band's Z-height boundary — no manual configuration needed.
+Bambu Studio 使用 OPC（Open Packaging Conventions）ZIP 格式存储 3MF 文件。内部采用 XML 格式的 mesh（`<mesh><vertices>/<triangles>`），而非二进制 STL。本文档记录从官方导出文件逆向工程得到的完整格式规范。
 
-## How It Works
+**关键发现（2026-05-19）**：Bambu Studio **不识别**二进制 STL 格式的 `object_N.model`。所有官方文件内部均使用 XML mesh 格式。这是之前所有 3MF 解析失败的 Root Cause。
 
-### Architecture
+---
+
+## 文件结构
 
 ```
-image-to-layered-relief.py
-  └── _export_3mf()
-        ├── Loads printer profile (profile.json)
-        ├── Loads project_settings.template (~483 keys for P1S, ~557 for A1)
-        ├── Loads 4 G-code templates (machine start/end, layer change, filament change)
-        ├── Computes dynamic values (filament colors, flush matrix, etc.)
-        ├── _resolve_template_json() — walks JSON dict, replaces {{PLACEHOLDER}} with Python objects
-        ├── Generates custom_gcode_per_layer.xml (MultiAsSingle mode)
-        └── Writes 10-file ZIP archive
+3MF.zip/
+├── [Content_Types].xml              # OPC 内容类型注册
+├── _rels/.rels                      # 根关系（指向 3dmodel.model）
+├── 3D/
+│   ├── 3dmodel.model               # 场景图 + 元数据 + build plate
+│   ├── _rels/3dmodel.model.rels    # 模型→mesh 关系（指向 object_2.model）
+│   └── Objects/
+│       └── object_2.model           # XML mesh 数据（id=1 的 mesh object）
+├── Metadata/
+│   ├── project_settings.config     # 完整 slicer 配置（filament 颜色等）
+│   ├── model_settings.config       # plate 布局 + filament 映射
+│   ├── custom_gcode_per_layer.xml  # Z高度换丝事件（MultiAsSingle）
+│   ├── slice_info.config            # slicer 版本头
+│   ├── cut_information.xml          # 连接器切割信息
+│   ├── filament_sequence.json       # AMS 槽位分配（MultiAsSingle 模式下通常为空）
+│   ├── plate_1.png                  # 缩略图（必须存在）
+│   ├── plate_no_light_1.png
+│   ├── top_1.png
+│   └── pick_1.png
+└── Auxiliaries/                     # 官方缩略图文件夹（Bambu Studio 可正常打开的关键）
+    ├── Model Pictures/
+    │   └── {guid}.webp
+    ├── Profile Pictures/
+    │   └── {guid}.webp
+    └── .thumbnails/
+        ├── thumbnail_3mf.png
+        ├── thumbnail_small.png
+        └── thumbnail_middle.png
 ```
 
-### 3MF Internal Structure
+---
 
-| File | Purpose |
-|------|---------|
-| `[Content_Types].xml` | OPC content type registry |
-| `_rels/.rels` | Root relationships (points to 3dmodel) |
-| `3D/3dmodel.model` | Scene graph, metadata, build plate layout |
-| `3D/Objects/object.model` | Binary STL mesh data |
-| `3D/_rels/3dmodel.model.rels` | Model-to-mesh relationship |
-| `Metadata/project_settings.config` | Full slicer config (filaments, G-code, printer) |
-| `Metadata/model_settings.config` | Plate layout, filament mapping per object |
-| `Metadata/custom_gcode_per_layer.xml` | Z-height-based filament change events |
-| `Metadata/cut_information.xml` | Connector cut info (stub) |
-| `Metadata/filament_sequence.json` | AMS slot assignment (stub) |
+## 核心文件详解
 
-### MultiAsSingle Mode
+### 1. `3D/3dmodel.model` — 场景图
 
-A single mesh is printed with multiple filaments. At each color band's Z-end boundary, a `tool_change` event switches to the next extruder. Extruder 1 is active by default at Z=0.
+顶级 `object id="2"` 包含 `<components>` 引用内部 mesh object。
 
-For N colors, there are N-1 filament change events. Example for 4 colors:
 ```xml
-<custom_gcodes_per_layer>
- <plate>
-  <plate_info id="1"/>
-  <layer top_z="0.70" type="2" extruder="2" color="#263D1E" gcode="tool_change"/>
-  <layer top_z="1.10" type="2" extruder="3" color="#597547" gcode="tool_change"/>
-  <layer top_z="1.50" type="2" extruder="4" color="#9FA28C" gcode="tool_change"/>
-  <mode value="MultiAsSingle"/>
- </plate>
-</custom_gcodes_per_layer>
+<?xml version='1.0' encoding='UTF-8'?>
+<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+       xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+       xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"
+       unit="millimeter" xml:lang="en-US" requiredextensions="p">
+  <metadata name="Application">BambuStudio-02.03.00.70</metadata>
+  <metadata name="BambuStudio:3mfVersion">1</metadata>
+  <metadata name="BambuStudio:CopyRight">[]</metadata>
+  <metadata name="BambuStudio:Copyright">[]</metadata>
+  <metadata name="BambuStudio:Designer">拾光漫行</metadata>
+  <metadata name="BambuStudio:DesignerUserId">3799092001</metadata>
+  <metadata name="BambuStudio:DesignModelId">CN968e8d2b8bb783</metadata>
+  <metadata name="BambuStudio:DesignProfileId">92745964</metadata>
+  <metadata name="BambuStudio:DesignRegion">CN</metadata>
+  <!-- ... more metadata ... -->
+
+  <resources>
+    <object id="2" p:UUID="00000002-61cb-4c03-9d28-80fed5dfa1dc" type="model">
+      <components>
+        <!-- 注意: path 指向 object_2.model，但 objectid="1" -->
+        <component p:path="/3D/Objects/object_2.model" objectid="1"
+                   p:UUID="00020000-b206-40ff-9872-83e8017abed1"
+                   transform="1 0 0 0 1 0 0 0 1 0 0 0" />
+      </components>
+    </object>
+  </resources>
+
+  <build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">
+    <item objectid="2" p:UUID="00000002-b1ec-4553-aec9-835e5b724bb4"
+          transform="1 0 0 0 1 0 0 0 1 128 128 1.16"
+          printable="1" />
+  </build>
+</model>
 ```
 
-### Template System
+**要点：**
+- `object id="2"` 在 3dmodel.model 中引用 `objectid="1"` 的内部 object
+- `p:path="/3D/Objects/object_2.model"` — 存档中的文件名
+- `<item objectid="2">` 引用顶级 object，`transform` 最后三项是 X/Y/Z 位置偏移
+- UUID 前缀规则：`00000002-`（scene graph object）、`00020000-`（inner mesh component）
 
-`scripts/templates/bambu/<printer>/project_settings.template` contains ~483-557 key JSON with `{{PLACEHOLDER}}` markers. The `_resolve_template_json()` function:
+### 2. `3D/Objects/object_2.model` — XML Mesh（关键！）
 
-1. Parses the template as JSON
-2. Walks the resulting dict recursively
-3. Replaces exact `{{KEY}}` strings with Python objects (lists, dicts, strings)
-4. For strings *containing* placeholders (like `"{{BED_SIZE_X}}x0"`), uses regex substitution with `str()` conversion
-5. Re-serializes as valid JSON via `json.dumps`
+**Bambu Studio 使用 XML mesh 格式，不识别二进制 STL。**
 
-### Dynamic Values
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="en-US"
+ xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+ xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"
+ xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+ requiredextensions="p">
+ <metadata name="BambuStudio:3mfVersion">1</metadata>
+ <resources>
+  <!-- 注意：inner mesh object id="1"，不是 "2" -->
+  <object id="1" p:UUID="00020000-81cb-4c03-9d28-80fed5dfa1dc" type="model">
+   <mesh>
+    <vertices>
+     <vertex x="-42.200001" y="-75" z="0.245068"/>
+     <vertex x="-42" y="-74.800003" z="0.230552"/>
+     <!-- ... more vertices ... -->
+    </vertices>
+    <triangles>
+     <triangle v1="0" v2="1" v3="2"/>
+     <triangle v1="1" v2="3" v3="2"/>
+     <!-- ... more triangles ... -->
+    </triangles>
+   </mesh>
+  </object>
+ </resources>
+ <build/>
+</model>
+```
 
-| Value | Source |
-|-------|--------|
-| `filament_colour` | k-means palette from image |
-| `flush_volumes_matrix` | N×N, 280 off-diagonal, 0 diagonal |
-| `filament_self_index` | `list(range(N)) * 2` |
-| `filament_map` | `"1 1 1 1"` for N=4 |
-| `wipe_tower_x/y` | `bed_size - 60 / bed_size - 40` |
-| `printable_area` | Computed from bed dimensions |
+**UUID 前缀：`00020000-`**，这是 inner mesh object 的固定前缀模式。
 
-## Bambu Studio 3MF Format Reference
+### 3. `Metadata/model_settings.config` — 最关键的文件
 
-### Official Sample Analysis
-
-Reference files: `D:/拓竹打印/模型收藏合集/` (大量官方导出文件)
-
-#### `Metadata/model_settings.config` — Critical for Import
-
-The most important file for Bambu Studio to successfully parse a 3MF. All official files share this structure:
+此文件决定 Bambu Studio 能否正确解析模型。多色识别依赖于 `filament_maps` 和 `filament_volume_maps` 字段。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
   <object id="2">
-    <metadata key="name" value="实体1"/>
+    <metadata key="name" value="鬼灭_Front_84x150.stl"/>
     <metadata key="extruder" value="1"/>
-    <metadata face_count="19568"/>           <!-- REQUIRED: triangle count -->
+    <metadata face_count="640032"/>           <!-- 必须与实际 mesh 面数一致 -->
     <part id="1" subtype="normal_part">
-      <metadata key="name" value="实体1"/>
-      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>  <!-- REQUIRED: identity matrix -->
-      <metadata key="source_object_id" value="0"/>
+      <metadata key="name" value="鬼灭_Front_84x150.stl"/>
+      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>  <!-- 4x4 单位矩阵 -->
+      <metadata key="source_object_id" value="0"/>   <!-- 重要：官方用 "0"，不是 "1" -->
       <metadata key="source_volume_id" value="0"/>
-      <metadata key="source_offset_x" value="25"/>   <!-- Position on print bed -->
-      <metadata key="source_offset_y" value="42.5"/>
-      <metadata key="source_offset_z" value="8"/>
-      <mesh_stat face_count="19568"        <!-- REQUIRED: mesh statistics -->
+      <metadata key="source_offset_x" value="0"/>
+      <metadata key="source_offset_y" value="0"/>
+      <metadata key="source_offset_z" value="1.16"/>   <!-- Z 偏移 = 模型高度 -->
+      <mesh_stat face_count="640032"      <!-- 必须与 face_count 一致 -->
                  edges_fixed="0"
                  degenerate_facets="0"
                  facets_removed="0"
@@ -111,191 +158,287 @@ The most important file for Bambu Studio to successfully parse a 3MF. All offici
     <metadata key="plater_name" value=""/>
     <metadata key="locked" value="false"/>
     <metadata key="filament_map_mode" value="Auto For Flush"/>
-    <metadata key="filament_maps" value="1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"/>
-    <metadata key="filament_volume_maps" value="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>  <!-- 16 slots! -->
-    <metadata key="thumbnail_file" value="Metadata/plate_1.png"/>  <!-- Required thumbnails -->
+    <metadata key="filament_maps" value="1 1 1 1"/>   <!-- 多色：必须存在此字段 -->
+    <metadata key="filament_volume_maps" value="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>  <!-- 16 个槽位 -->
+    <metadata key="thumbnail_file" value="Metadata/plate_1.png"/>   <!-- 必须 -->
     <metadata key="thumbnail_no_light_file" value="Metadata/plate_no_light_1.png"/>
     <metadata key="top_file" value="Metadata/top_1.png"/>
     <metadata key="pick_file" value="Metadata/pick_1.png"/>
     <model_instance>
       <metadata key="object_id" value="2"/>
       <metadata key="instance_id" value="0"/>
-      <metadata key="identify_id" value="92"/>
+      <metadata key="identify_id" value="4753"/>
     </model_instance>
   </plate>
   <assemble>
     <assemble_item object_id="2" instance_id="0"
-     transform="1 0 0 0 1 0 0 0 1 128 128 8"
+     transform="1 0 0 0 1 0 0 0 1 101.28 0 2.32"
      offset="0 0 0" />
   </assemble>
 </config>
 ```
 
-**Critical fields (missing = parse error):**
-- `object/metadata[@face_count]` — triangle count, must match actual STL
-- `part/metadata[@matrix]` — 4x4 identity matrix, `1 0 0 0 1 0 0 0 1 0 0 0`
-- `part/mesh_stat[@face_count]` — must equal object face_count
-- `plate/metadata[@filament_volume_maps]` — 16 space-separated zeros `"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"`
+**必填字段（缺失 = 解析失败）：**
 
-#### `3D/3dmodel.model` — Scene Graph
+| 路径 | 值 | 说明 |
+|------|-----|------|
+| `object/metadata[@face_count]` | int | 三角形数量，必须与 mesh 一致 |
+| `part/metadata[@matrix]` | `1 0 0 0 1 0 0 0 1 0 0 0` | 4x4 单位矩阵 |
+| `part/metadata[@source_object_id]` | `"0"` | 官方用 "0"，不要用 "1" |
+| `part/mesh_stat[@face_count]` | int | 必须等于 object face_count |
+| `plate/metadata[@filament_volume_maps]` | 16个空格分隔的0 | `"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"` |
 
-```xml
-<?xml version='1.0' encoding='UTF-8'?>
-<model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
-       xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
-       xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"
-       unit="millimeter" xml:lang="en-US" requiredextensions="p">
-  <!-- Required metadata -->
-  <metadata name="Application">BambuStudio-02.03.00.70</metadata>
-  <metadata name="BambuStudio:3mfVersion">1</metadata>
-  <metadata name="BambuStudio:CopyRight">[]</metadata>  <!-- Note: not "Copyright" -->
-  <metadata name="BambuStudio:Copyright">[]</metadata>
-  <metadata name="BambuStudio:Designer">...</metadata>
-  <metadata name="BambuStudio:DesignerUserId">...</metadata>
-  <metadata name="BambuStudio:DesignModelId">...</metadata>
-  <metadata name="BambuStudio:DesignProfileId">...</metadata>
-  <metadata name="BambuStudio:DesignRegion">CN</metadata>
+### 4. `Metadata/custom_gcode_per_layer.xml` — 换丝事件
 
-  <resources>
-    <object id="2" p:UUID="00000001-61cb-4c03-9d28-80fed5dfa1dc" type="model">
-      <components>
-        <component p:path="/3D/Objects/object_1.model" objectid="1"
-                   p:UUID="00010000-b206-40ff-9872-83e8017abed1"
-                   transform="1 0 0 0 1 0 0 0 1 0 0 0" />
-      </components>
-    </object>
-  </resources>
-  <build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">
-    <item objectid="2" p:UUID="00000002-b1ec-4553-aec9-835e5b724bb4"
-          transform="1 0 0 0 1 0 0 0 1 128 128 8"
-          printable="1" />
-  </build>
-</model>
-```
-
-#### `3D/_rels/3dmodel.model.rels` — Mesh Relationship
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Target="/3D/Objects/object_1.model"
-                Id="rel-1"
-                Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
-</Relationships>
-```
-
-**Important**: `Id` uses format `rel-N` (with hyphen), not `relN`.
-
-#### `Metadata/filament_sequence.json` — AMS Slot Assignment
-
-```json
-{"plate_1":{"sequence":[]}}
-```
-
-For multi-color, this is typically empty for MultiAsSingle mode (colors controlled via `custom_gcode_per_layer.xml`).
-
-#### `Metadata/custom_gcode_per_layer.xml` — Filament Change Events
+MultiAsSingle 模式：单模型多色，在 Z 高度边界处触发换丝。
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <custom_gcodes_per_layer>
-  <plate>
-    <plate_info id="1"/>
-    <layer top_z="0.70" type="2" extruder="2" color="#263D1E" extra="" gcode="tool_change"/>
-    <layer top_z="1.10" type="2" extruder="3" color="#597547" extra="" gcode="tool_change"/>
-    <layer top_z="1.50" type="2" extruder="4" color="#9FA28C" extra="" gcode="tool_change"/>
-    <mode value="MultiAsSingle"/>
-  </plate>
+ <plate>
+  <plate_info id="1"/>
+  <!-- type="2" = 换丝事件；extruder 从 2 开始（1 是默认起始 extruder）-->
+  <layer top_z="0.88" type="2" extruder="2" color="#FF0000" extra="" gcode="tool_change"/>
+  <layer top_z="1.36" type="2" extruder="3" color="#F4EE2A" extra="" gcode="tool_change"/>
+  <layer top_z="1.68" type="2" extruder="4" color="#FFFFFF" extra="" gcode="tool_change"/>
+  <mode value="MultiAsSingle"/>
+ </plate>
 </custom_gcodes_per_layer>
 ```
 
-- `type="2"` = filament change event
-- `extruder` = 2-4 (not 1-indexed from bands, but 1-indexed for actual extruder)
-- Color values are hex RGB uppercase
+- `type="2"` = 换丝事件类型
+- `extruder` 值为 2-4，对应实际 extruder 索引
+- 颜色为hex大写 RGB
+- 最后一行（最高层）不需要换丝事件
+- `extruder="2"` 表示切换到第二个 filament（第一个是 extruder 1，默认激活）
 
-#### `Metadata/slice_info.config` — Slicer Version Header
+### 5. `Metadata/slice_info.config` — Slicer 版本
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
   <header>
     <header_item key="X-BBL-Client-Type" value="slicer"/>
-    <header_item key="X-BBL-Client-Version" value="02.05.00.66"/>
+    <header_item key="X-BBL-Client-Version" value="02.03.00.70"/>
   </header>
 </config>
 ```
 
-#### `[Content_Types].xml` — OPC Content Types
+版本号需与 `3D/3dmodel.model` 中 `Application` 字段匹配。
+
+### 6. `3D/_rels/3dmodel.model.rels` — Mesh 关系
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
-  <Default Extension="png" ContentType="image/png"/>
-  <Default Extension="gcode" ContentType="text/x.gcode"/>
-</Types>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Target="/3D/Objects/object_2.model"
+                Id="rel-1"
+                Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+</Relationships>
 ```
 
-Known extensions: `rels`, `model`, `png`, `gcode`, `config`, `xml`, `json` (our files add these, tolerated).
+**注意**：`Id="rel-1"` 使用带连字符的格式，不是 `rel1`。
 
-#### Binary STL in `3D/Objects/object_N.model`
+### 7. `Metadata/filament_sequence.json` — AMS 槽位分配
 
-- Standard binary STL (little-endian)
-- 80-byte header, 4-byte triangle count, 50-byte triangles
-- NOT compressed inside the 3MF ZIP
+MultiAsSingle 模式下通常为空：
 
-## Key Design Decisions
+```json
+{"plate_1":{"nozzle_sequence":[],"optimal_assignment":[],"sequence":[]}}
+```
 
-- **Template format**: JSON with `{{PLACEHOLDER}}` strings. Parsing as JSON ensures the template itself is always valid, and `json.dumps` handles all escaping correctly.
-- **G-code handling**: Raw G-code files are loaded as-is (with real newline characters) and passed directly to `_resolve_template_json`. The single `json.dumps` call at the end handles JSON escaping once — no manual escaping needed.
-- **Printer profiles**: `profile.json` per printer contains bed dimensions, nozzle diameter, default print/filament profiles. New printers can be added by creating a new directory under `templates/bambu/`.
+官方文件通常**不包含此文件**（在 MultiAsSingle 模式下）。包含空对象占位符也不会出错。
 
-## Known Pitfalls (Fixed)
+---
 
-### G-code double-escaping
+## UUID 命名模式
 
-Originally `_escape_gcode()` pre-escaped newlines via `json.dumps(gcode)[1:-1]`, then `json.dumps` in `_resolve_template_json` escaped them again, producing `\\n` in the JSON output. This made Bambu Studio interpret literal `\n` text instead of newlines in the G-code.
+经官方文件验证的模式：
 
-**Fix**: Removed `_escape_gcode()`. Raw G-code passes through, single `json.dumps` handles all escaping.
+| 角色 | UUID 格式 | 示例 |
+|------|----------|------|
+| Scene graph object (id=2) | `00000002-{12 hex}` | `00000002-61cb-4c03-9d28-80fed5dfa1dc` |
+| Build item | `00000002-{12 hex}` | `00000002-b1ec-4553-aec9-835e5b724bb4` |
+| Inner mesh component | `00020000-{12 hex}` | `00020000-b206-40ff-9872-83e8017abed1` |
+| Inner mesh object (id=1) | `00020000-{12 hex}` | `00020000-81cb-4c03-9d28-80fed5dfa1dc` |
 
-### Compound-string placeholders not resolved
+---
 
-Strings like `"{{BED_SIZE_X}}x0"` in `printable_area` weren't resolved because the old walker only matched strings that were *exactly* a `{{KEY}}`.
+## 多色打印实现方案
 
-**Fix**: Regex-based resolution — exact match returns Python objects, compound strings get string substitution.
+### MultiAsSingle 模式
 
-### Wrong extruder indices in custom_gcode_per_layer.xml
+单模型多色，通过 Z 高度触发的 `tool_change` 事件切换丝材。
 
-Events were generated for all bands (including the last) with `extruder_idx = band["order"]` instead of `band["order"] + 1`, plus an unnecessary initial event at first band's z_start.
+**工作流程：**
+1. Extruder 1 在 Z=0 时默认激活
+2. 每到一个颜色层的 Z 高度边界，触发 `tool_change` 切换到下一个 extruder
+3. 最后（最高）颜色层之后不再需要事件
 
-**Fix**: Iterate `sorted_bands[:-1]` (skip last), use `extruder_idx = band["order"] + 1` to switch to the next filament.
+**对于 N 颜色，有 N-1 个换丝事件：**
 
-### model_settings.config missing critical fields (2026-05-15)
+```
+Band 1 (Z: 0→0.4mm)  → extruder 1 [默认]
+Band 2 (Z: 0.4→0.8mm) → @ Z=0.4 触发 tool_change → extruder 2
+Band 3 (Z: 0.8→1.2mm) → @ Z=0.8 触发 tool_change → extruder 3
+Band 4 (Z: 1.2→1.6mm) → @ Z=1.2 触发 tool_change → extruder 4
+[最高层之后无需事件]
+```
 
-`model_settings.config` was missing `face_count`, `matrix`, `source_offset_*`, and `mesh_stat` that all official Bambu Studio exports include. This caused Bambu Studio to reject/garble the file on open.
+### Filament 颜色配置
 
-**Fix**: Read face_count from binary STL header (offset 80, 4-byte little-endian uint32). Add `matrix` (identity), `source_offset_x/y/z` (0), and `mesh_stat` to part element. Add `filament_volume_maps` (16 zeros for N=4).
+在 `project_settings.config` 中通过 `filament_colour` 数组配置：
 
-## CLI Usage
+```json
+"filament_colour": ["#3E3E80", "#BE3E80", "#3FBE80", "#BFBE80"]
+```
+
+---
+
+## 生成策略（2026-05-19 最终方案）
+
+### 核心思路
+
+使用官方确认可打开的 3MF 文件（`test_minimal_swap.3mf`）作为 base，只替换必要部分：
+
+```
+官方 base.3mf (可正常打开)
+  ├── 保留: Auxiliaries/ (缩略图文件夹，Bambu Studio 识别关键)
+  ├── 保留: slice_info.config, cut_information.xml, _rels/.rels
+  ├── 替换: 3D/Objects/object_2.model ← 我们的 XML mesh
+  ├── 替换: Metadata/model_settings.config ← 更新 face_count
+  └── 添加: Metadata/custom_gcode_per_layer.xml ← MultiAsSingle 换丝事件
+           Metadata/project_settings.config ← filament 颜色配置
+```
+
+### `_get_base_3mf_path()` 函数
+
+首次调用时从 `output/test_minimal_swap.3mf` 复制到 `scripts/templates/bambu/base.3mf`，后续稳定引用此文件。
+
+```python
+def _get_base_3mf_path():
+    """Locate or copy the official Bambu Studio base 3MF for multi-color export."""
+    tpl_dir = _resolve_template_dir()
+    base_path = os.path.join(tpl_dir, "base.3mf")
+    if not os.path.exists(base_path):
+        src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                           "output", "test_minimal_swap.3mf")
+        if os.path.exists(src):
+            shutil.copy2(src, base_path)
+    return base_path
+```
+
+### STL → XML Mesh 转换
+
+```python
+def _build_xml_mesh(verts, faces, obj_id=1, obj_uuid=None):
+    """将顶点/面数组转换为 Bambu Studio XML mesh 格式。"""
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<model unit="millimeter" xml:lang="en-US"',
+        ' xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"',
+        ' xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"',
+        ' xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"',
+        ' requiredextensions="p">',
+        ' <metadata name="BambuStudio:3mfVersion">1</metadata>',
+        ' <resources>',
+        f'  <object id="{obj_id}" p:UUID="{obj_uuid}" type="model">',
+        '   <mesh>',
+        '    <vertices>',
+    ]
+    for x, y, z in verts:
+        lines.append(f'     <vertex x="{x:.6f}" y="{y:.6f}" z="{z:.6f}"/>')
+    lines.append('    </vertices>')
+    lines.append('    <triangles>')
+    for a, b, c in faces:
+        lines.append(f'     <triangle v1="{a}" v2="{b}" v3="{c}"/>')
+    lines.append('    </triangles>')
+    lines.append('   </mesh>')
+    lines.append('  </object>')
+    lines.append(' </resources>')
+    lines.append(' <build/>')
+    lines.append('</model>')
+    return '\n'.join(lines).encode('utf-8')
+```
+
+---
+
+## 已知问题与修复记录
+
+### Root Cause: 二进制 STL 格式不被识别（2026-05-19）
+
+**问题**：Bambu Studio 打开 3MF 报"没有任何几何信息"。
+
+**根因**：之前的实现将二进制 STL 写入 `object_N.model`。Bambu Studio 内部使用 XML mesh 格式，**完全不识别二进制 STL**。
+
+**修复**：使用 trimesh 加载 STL，再用 `_build_xml_mesh()` 生成 XML 格式写入 `object_2.model`。
+
+### model_settings.config 缺失关键字段
+
+**问题**：缺少 `face_count`、`matrix`、`source_offset_*`、`mesh_stat` 等字段。
+
+**修复**：从 trimesh 获取 face_count，全部按照官方格式生成各字段。特别注意 `source_object_id` 应设为 `"0"`（官方值）。
+
+### Auxiliaries 文件夹缺失导致缩略图加载警告
+
+**问题**：文件能打开但提示"包含自定义 Gcode 和打印预设"。
+
+**根因**：缺少官方缩略图文件夹结构。
+
+**修复**：使用官方 base.3mf 作为骨架，其包含完整的 Auxiliaries/ 结构。
+
+### G-code 双转义
+
+**问题**：`json.dumps` 在 `_resolve_template_json` 中双重转义 G-code 中的换行符。
+
+**修复**：移除 `_escape_gcode()` 预处理函数，Raw G-code 直接传入，单次 `json.dumps` 处理所有转义。
+
+### Compound-string 占位符未解析
+
+**问题**：`"{{BED_SIZE_X}}x0"` 类字符串未被解析。
+
+**修复**：精确匹配返回 Python 对象，包含占位符的字符串进行正则替换。
+
+---
+
+## CLI 使用方法
 
 ```bash
-# 4-color P1S
-python scripts/image-to-layered-relief.py photo.jpg --colors 4 --format 3mf --printer P1S
+# 自动模式：生成完整 3MF（Bambu Studio 自动处理 filament 分配）
+python scripts/image-to-layered-relief.py photo.jpg --colors 4 --format 3mf --printer P1S --multi-color-mode auto
 
-# 2-color A1
+# 手动模式：同时生成人类可读的 color_config.json
+python scripts/image-to-layered-relief.py photo.jpg --colors 4 --format 3mf --printer P1S --multi-color-mode manual
+
+# 双模式：同时生成两者
+python scripts/image-to-layered-relief.py photo.jpg --colors 4 --format 3mf --printer P1S --multi-color-mode both
+
+# A1 打印机 2 色
 python scripts/image-to-layered-relief.py photo.jpg --colors 2 --format 3mf --printer A1
 ```
 
-## Web UI
+---
 
-The web interface exposes the `printer` parameter as a choice field (P1S / A1) in the layered relief task form. The `scheduler.py` maps `"printer"` → `"--printer"` CLI flag.
+## 文件输出结构
 
-## Iteration History
+```
+layered_relief/
+├── {name}_color_preview.png        # 量化颜色预览图
+├── {name}_{N}color.stl             # 水密网格 STL
+├── {name}_color_map.json           # Z高度→颜色带映射
+├── {name}_color_config.json        # 人类可读的 filament 分配指南（manual 模式）
+└── {name}_{N}color.3mf             # 完整 Bambu Studio 项目文件
+```
 
-| Date | Change |
-|------|--------|
-| 2026-05-15 | Fix model_settings.config missing face_count, matrix, source_offset, mesh_stat, filament_volume_maps |
-| 2026-05-14 | Fix extruder indices in custom_gcode_per_layer.xml (band order +1, skip last band) |
-| 2026-05-13 | Fix compound-string placeholder resolution in _resolve_template_json |
-| 2026-05-13 | Remove _escape_gcode() to fix G-code double-escaping |
+---
+
+## 版本历史
+
+| 日期 | 变更 |
+|------|------|
+| 2026-05-19 | 发现 Root Cause：XML mesh 格式替代二进制 STL；采用官方 base.3mf 架构；source_object_id=0 |
+| 2026-05-19 | 添加 `--multi-color-mode auto\|manual\|both`；添加中文颜色名称；修复多处字段问题 |
+| 2026-05-15 | 修复 model_settings.config 缺失 face_count、matrix、source_offset、mesh_stat、filament_volume_maps |
+| 2026-05-14 | 修复 custom_gcode_per_layer.xml 中 extruder 索引（band order +1，跳过最后 band） |
+| 2026-05-13 | 修复 compound-string 占位符解析 |
+| 2026-05-13 | 移除 `_escape_gcode()` 修复 G-code 双转义 |

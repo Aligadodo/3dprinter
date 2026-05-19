@@ -172,6 +172,7 @@
   <div class="section-title">建模工具</div>
   <a href="#relief">浮雕生成</a>
   <a href="#lithophane">└ 透光浮雕</a>
+  <a href="#layered-relief">└ 分层彩色浮雕</a>
 
   <div class="section-title">参考</div>
   <a href="#compare">引擎对比</a>
@@ -583,14 +584,38 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
   </table>
 </div>
 
+<h3 id="layered-relief">分层彩层浮雕（多色 AMS）</h3>
+<p>专用多色打印脚本，按亮度分层生成彩色浮雕。可选四种颜色，Z 高度边界自动配置换丝事件，3MF 直连 Bambu Studio。</p>
+<pre><code><span class="cm"># 4色分层浮雕 → 完整 3MF（Bambu AMS 多色打印）</span>
+<span class="fn">python</span> scripts/image-to-layered-relief.py photo.jpg \
+    <span class="opt">--width</span> <span class="val">160</span> \
+    <span class="opt">--height</span> <span class="val">120</span> \
+    <span class="opt">--colors</span> <span class="val">4</span> \
+    <span class="opt">--format</span> <span class="val">3mf</span> \
+    <span class="opt">--printer</span> <span class="val">P1S</span> \
+    <span class="opt">--multi-color-mode</span> <span class="val">auto</span></code></pre>
+
+<table>
+  <tr><th>参数</th><th>默认</th><th>说明</th></tr>
+  <tr><td><code>image</code></td><td>必填</td><td>输入图片</td></tr>
+  <tr><td><code>--width</code></td><td>160</td><td>目标宽度 mm</td></tr>
+  <tr><td><code>--height</code></td><td>120</td><td>目标高度 mm</td></tr>
+  <tr><td><code>--colors</code></td><td>4</td><td>颜色数量 (2-16)</td></tr>
+  <tr><td><code>--layer-height</code></td><td>0.4</td><td>每层高度 mm</td></tr>
+  <tr><td><code>--base-thickness</code></td><td>0.3</td><td>底板厚度 mm</td></tr>
+  <tr><td><code>--printer</code></td><td>P1S</td><td>打印机: P1S / A1</td></tr>
+  <tr><td><code>--format</code></td><td>stl</td><td>输出格式: stl / 3mf</td></tr>
+  <tr><td><code>--multi-color-mode</code></td><td>both</td><td>auto(直接3MF) / manual(+color_config) / both</td></tr>
+</table>
+
 <div class="card">
   <h4>🖨 四色打印工作流 (Bambu AMS)</h4>
   <p>
-    1. 运行 <code>--colors 4</code> 生成彩色 OBJ + 色块预览<br>
-    2. STL 导入 Bambu Studio<br>
-    3. 用 Height Range Modifier 按 Z 高度分配耗材颜色<br>
-    4. 使用 <code>output/relief/...colors.png</code> 作为配色参考
+    1. 运行 <code>--colors 4 --format 3mf --multi-color-mode auto</code> 生成完整 3MF<br>
+    2. 3MF 直接导入 Bambu Studio，自动识别多色和换丝位置<br>
+    3. 无需手动 Height Range Modifier，所有颜色和 Z 高度已预配置
   </p>
+  <p><a href="docs/multi-color-3mf.html" target="_blank">📋 3MF 格式规范详情 →</a></p>
 </div>
 
 <!-- ═══════════ COMPARISON ═══════════ -->
@@ -614,7 +639,7 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
   <tr><td><code>.glb</code></td><td>预览 (Windows 3D Viewer, Blender 等)</td><td>✓</td><td>—</td></tr>
   <tr><td><code>.obj</code></td><td>建模软件导入 (Blender, Maya, ZBrush)</td><td>✓ (mtl)</td><td>—</td></tr>
   <tr><td><code>.stl</code></td><td>3D 打印切片 (Bambu Studio, Cura, PrusaSlicer)</td><td>✗</td><td>✓ (需修复)</td></tr>
-  <tr><td><code>.3mf</code></td><td>现代打印格式 (Bambu 推荐)</td><td>✓</td><td>✓ (需修复)</td></tr>
+  <tr><td><code>.3mf</code></td><td>现代打印格式 (Bambu 推荐，多色 AMS)</td><td>✓</td><td>✓</td></tr>
 </table>
 <div class="card">
   <h4>推荐工作流</h4>

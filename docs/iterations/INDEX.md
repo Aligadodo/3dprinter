@@ -2,6 +2,10 @@
 
 Sorted by time (newest first).
 
+- [2026-05-19] [lucky singing rocket](2026-05-19-084055-report.md)
+- [2026-05-19] [lucky singing rocket](2026-05-19-083522-report.md)
+- [2026-05-19] [lucky singing rocket](2026-05-19-004343-report.md)
+- [2026-05-18] [lucky singing rocket](2026-05-18-235708-report.md)
 - [2026-05-18] [lucky singing rocket](2026-05-18-225700-report.md)
 - [2026-05-18] [lucky singing rocket](2026-05-18-225444-report.md)
 - [2026-05-18] [lucky singing rocket](2026-05-18-155703-report.md)

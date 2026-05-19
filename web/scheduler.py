@@ -197,6 +197,7 @@ class TaskScheduler:
                 "layer_height": "--layer-height", "base_thickness": "--base-thickness",
                 "edge_smooth": "--edge-smooth", "pixel_spacing": "--pixel-spacing",
                 "format": "--format", "printer": "--printer",
+                "multi_color_mode": "--multi-color-mode",
             },
             "triposr": {
                 "format": "--format", "resolution": "--resolution",

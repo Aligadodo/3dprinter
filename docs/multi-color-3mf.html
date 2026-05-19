@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bambu Studio 3MF 格式规范</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --tag-purple: #8b5cf6;
+}
+body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 24px; line-height: 1.7; }
+h1 { color: var(--accent); border-bottom: 2px solid var(--border); padding-bottom: 12px; }
+h2 { color: var(--accent); margin-top: 40px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+h3 { color: #79c0ff; margin-top: 28px; }
+code { background: var(--surface); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+pre { background: var(--surface); padding: 16px; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border); font-size: 0.85em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 0.9em; }
+th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; }
+th { background: var(--surface); color: var(--accent); }
+tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+.keyword { color: #ff7b72; }
+.string { color: #a5d6ff; }
+.comment { color: var(--text-muted); font-style: italic; }
+.highlight { background: rgba(88,166,255,0.1); padding: 2px 6px; border-radius: 4px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 16px 0; }
+.card.danger { border-color: #f85149; background: rgba(248,81,73,0.1); }
+.card.good { border-color: #3fb950; background: rgba(63,185,80,0.1); }
+.back { display: inline-block; margin-bottom: 20px; color: var(--accent); text-decoration: none; font-size: 0.9em; }
+.back:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<a href="index.html" class="back">← 返回首页</a>
+<h1>Bambu Studio 3MF 格式规范</h1>
+
+<div class="card danger">
+<strong>关键发现（2026-05-19）</strong>：Bambu Studio 使用 XML mesh 格式存储网格，<strong>不识别二进制 STL</strong>。
+之前所有 3MF 解析失败的 Root Cause：将二进制 STL 写入 <code>object_N.model</code>。
+</div>
+
+<h2>文件结构总览</h2>
+
+<pre><code>3MF.zip/
+├── [Content_Types].xml              OPC 内容类型注册
+├── _rels/.rels                     根关系（指向 3dmodel.model）
+├── 3D/
+│   ├── 3dmodel.model              场景图 + 元数据 + build plate
+│   ├── _rels/3dmodel.model.rels   模型→mesh 关系（指向 object_2.model）
+│   └── Objects/
+│       └── object_2.model          XML mesh 数据（注意：不是二进制 STL）
+├── Metadata/
+│   ├── project_settings.config    完整 slicer 配置（filament 颜色等）
+│   ├── model_settings.config      plate 布局 + filament 映射
+│   ├── custom_gcode_per_layer.xml Z高度换丝事件（MultiAsSingle）
+│   ├── slice_info.config           slicer 版本头
+│   ├── cut_information.xml         连接器切割信息
+│   ├── filament_sequence.json      AMS 槽位分配（MultiAsSingle 模式下通常为空）
+│   ├── plate_1.png / plate_no_light_1.png / top_1.png / pick_1.png  缩略图
+└── Auxiliaries/                    官方缩略图文件夹（Bambu Studio 可正常打开的关键）
+    ├── Model Pictures/{guid}.webp
+    ├── Profile Pictures/{guid}.webp
+    └── .thumbnails/
+        ├── thumbnail_3mf.png
+        ├── thumbnail_small.png
+        └── thumbnail_middle.png
+</code></pre>
+
+<h2>核心文件详解</h2>
+
+<h3>1. 3D/3dmodel.model — 场景图</h3>
+
+<pre><code>&lt;?xml version='1.0' encoding='UTF-8'?&gt;
+&lt;model xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+       xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+       xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"
+       unit="millimeter" xml:lang="en-US" requiredextensions="p"&gt;
+  &lt;metadata name="Application"&gt;BambuStudio-02.03.00.70&lt;/metadata&gt;
+  &lt;metadata name="BambuStudio:3mfVersion"&gt;1&lt;/metadata&gt;
+  &lt;!-- UUID 前缀: 00000002- 用于 scene graph object --&gt;
+  &lt;resources&gt;
+    &lt;object id="2" p:UUID="00000002-61cb-4c03-9d28-80fed5dfa1dc" type="model"&gt;
+      &lt;components&gt;
+        &lt;component p:path="/3D/Objects/object_2.model" objectid="1"
+                   p:UUID="00020000-b206-40ff-9872-83e8017abed1"
+                   transform="1 0 0 0 1 0 0 0 1 0 0 0" /&gt;
+      &lt;/components&gt;
+    &lt;/object&gt;
+  &lt;/resources&gt;
+  &lt;build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369"&gt;
+    &lt;item objectid="2" p:UUID="00000002-b1ec-4553-aec9-835e5b724bb4"
+          transform="1 0 0 0 1 0 0 0 1 128 128 1.16" printable="1" /&gt;
+  &lt;/build&gt;
+&lt;/model&gt;</code></pre>
+
+<h3>2. 3D/Objects/object_2.model — XML Mesh（关键！）</h3>
+
+<p><strong>Bambu Studio 使用 XML mesh 格式，不识别二进制 STL。</strong></p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;model unit="millimeter" xml:lang="en-US"
+ xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
+ xmlns:BambuStudio="http://schemas.bambulab.com/package/2021"
+ xmlns:p="http://schemas.microsoft.com/3dmanufacturing/production/2015/06"
+ requiredextensions="p"&gt;
+ &lt;metadata name="BambuStudio:3mfVersion"&gt;1&lt;/metadata&gt;
+ &lt;resources&gt;
+  &lt;!-- inner mesh object id="1"，UUID 前缀 00020000- --&gt;
+  &lt;object id="1" p:UUID="00020000-81cb-4c03-9d28-80fed5dfa1dc" type="model"&gt;
+   &lt;mesh&gt;
+    &lt;vertices&gt;
+     &lt;vertex x="-42.200001" y="-75" z="0.245068"/&gt;
+     &lt;vertex x="-42" y="-74.800003" z="0.230552"/&gt;
+     &lt;!-- ... more vertices ... --&gt;
+    &lt;/vertices&gt;
+    &lt;triangles&gt;
+     &lt;triangle v1="0" v2="1" v3="2"/&gt;
+     &lt;triangle v1="1" v2="3" v3="2"/&gt;
+     &lt;!-- ... more triangles ... --&gt;
+    &lt;/triangles&gt;
+   &lt;/mesh&gt;
+  &lt;/object&gt;
+ &lt;/resources&gt;
+ &lt;build/&gt;
+&lt;/model&gt;</code></pre>
+
+<h3>3. Metadata/model_settings.config — 最关键的文件</h3>
+
+<p>此文件决定 Bambu Studio 能否正确解析模型。多色识别依赖于 <code>filament_maps</code> 和 <code>filament_volume_maps</code> 字段。</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config&gt;
+  &lt;object id="2"&gt;
+    &lt;metadata key="name" value="鬼灭_Front_84x150.stl"/&gt;
+    &lt;metadata key="extruder" value="1"/&gt;
+    &lt;metadata face_count="640032"/&gt;           &lt;span class="comment"&gt;&lt;!-- 必须与实际 mesh 面数一致 --&gt;&lt;/span&gt;
+    &lt;part id="1" subtype="normal_part"&gt;
+      &lt;metadata key="name" value="鬼灭_Front_84x150.stl"/&gt;
+      &lt;metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/&gt;  &lt;span class="comment"&gt;&lt;!-- 4x4 单位矩阵 --&gt;&lt;/span&gt;
+      &lt;metadata key="source_object_id" value="0"/&gt;   &lt;span class="comment"&gt;&lt;!-- 重要：官方用 "0"，不是 "1" --&gt;&lt;/span&gt;
+      &lt;metadata key="source_volume_id" value="0"/&gt;
+      &lt;metadata key="source_offset_x" value="0"/&gt;
+      &lt;metadata key="source_offset_y" value="0"/&gt;
+      &lt;metadata key="source_offset_z" value="1.16"/&gt;   &lt;span class="comment"&gt;&lt;!-- Z 偏移 = 模型高度 --&gt;&lt;/span&gt;
+      &lt;mesh_stat face_count="640032"
+                 edges_fixed="0" degenerate_facets="0" facets_removed="0"
+                 facets_reversed="0" backwards_edges="0"/&gt;
+    &lt;/part&gt;
+  &lt;/object&gt;
+  &lt;plate&gt;
+    &lt;metadata key="filament_map_mode" value="Auto For Flush"/&gt;
+    &lt;metadata key="filament_maps" value="1 1 1 1"/&gt;   &lt;span class="comment"&gt;&lt;!-- 多色必须存在此字段 --&gt;&lt;/span&gt;
+    &lt;metadata key="filament_volume_maps" value="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/&gt;  &lt;span class="comment"&gt;&lt;!-- 16 个槽位 --&gt;&lt;/span&gt;
+    &lt;!-- ... thumbnails ... --&gt;
+  &lt;/plate&gt;
+  &lt;assemble&gt;
+    &lt;assemble_item object_id="2" instance_id="0"
+     transform="1 0 0 0 1 0 0 0 1 101.28 0 2.32" offset="0 0 0" /&gt;
+  &lt;/assemble&gt;
+&lt;/config&gt;</code></pre>
+
+<table>
+  <tr><th>必填字段</th><th>值</th><th>说明</th></tr>
+  <tr><td><code>object/metadata[@face_count]</code></td><td>int</td><td>三角形数量，必须与 mesh 一致</td></tr>
+  <tr><td><code>part/metadata[@matrix]</code></td><td><code>1 0 0 0 1 0 0 0 1 0 0 0</code></td><td>4x4 单位矩阵</td></tr>
+  <tr><td><code>part/metadata[@source_object_id]</code></td><td><code>"0"</code></td><td>官方用 "0"，不要用 "1"</td></tr>
+  <tr><td><code>part/mesh_stat[@face_count]</code></td><td>int</td><td>必须等于 object face_count</td></tr>
+  <tr><td><code>plate/metadata[@filament_volume_maps]</code></td><td>16个空格分隔的0</td><td><code>"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"</code></td></tr>
+</table>
+
+<h3>4. Metadata/custom_gcode_per_layer.xml — 换丝事件</h3>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;custom_gcodes_per_layer&gt;
+ &lt;plate&gt;
+  &lt;plate_info id="1"/&gt;
+  &lt;!-- type="2" = 换丝事件；extruder 从 2 开始 --&gt;
+  &lt;layer top_z="0.88" type="2" extruder="2" color="#FF0000" extra="" gcode="tool_change"/&gt;
+  &lt;layer top_z="1.36" type="2" extruder="3" color="#F4EE2A" extra="" gcode="tool_change"/&gt;
+  &lt;layer top_z="1.68" type="2" extruder="4" color="#FFFFFF" extra="" gcode="tool_change"/&gt;
+  &lt;mode value="MultiAsSingle"/&gt;
+ &lt;/plate&gt;
+&lt;/custom_gcodes_per_layer&gt;</code></pre>
+
+<h3>5. Metadata/slice_info.config — Slicer 版本</h3>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;config&gt;
+  &lt;header&gt;
+    &lt;header_item key="X-BBL-Client-Type" value="slicer"/&gt;
+    &lt;header_item key="X-BBL-Client-Version" value="02.03.00.70"/&gt;
+  &lt;/header&gt;
+&lt;/config&gt;</code></pre>
+
+<h2>UUID 命名模式</h2>
+
+<table>
+  <tr><th>角色</th><th>UUID 格式</th><th>示例</th></tr>
+  <tr><td>Scene graph object (id=2)</td><td><code>00000002-{12 hex}</code></td><td><code>00000002-61cb-4c03-9d28-80fed5dfa1dc</code></td></tr>
+  <tr><td>Build item</td><td><code>00000002-{12 hex}</code></td><td><code>00000002-b1ec-4553-aec9-835e5b724bb4</code></td></tr>
+  <tr><td>Inner mesh component</td><td><code>00020000-{12 hex}</code></td><td><code>00020000-b206-40ff-9872-83e8017abed1</code></td></tr>
+  <tr><td>Inner mesh object (id=1)</td><td><code>00020000-{12 hex}</code></td><td><code>00020000-81cb-4c03-9d28-80fed5dfa1dc</code></td></tr>
+</table>
+
+<h2>多色打印实现方案</h2>
+
+<h3>MultiAsSingle 模式</h3>
+
+<p>单模型多色，通过 Z 高度触发的 <code>tool_change</code> 事件切换丝材。</p>
+
+<pre><code>Band 1 (Z: 0→0.4mm)  → extruder 1 [默认激活]
+Band 2 (Z: 0.4→0.8mm) → @ Z=0.4 触发 tool_change → extruder 2
+Band 3 (Z: 0.8→1.2mm) → @ Z=0.8 触发 tool_change → extruder 3
+Band 4 (Z: 1.2→1.6mm) → @ Z=1.2 触发 tool_change → extruder 4
+[最高层之后无需事件]
+</code></pre>
+
+<p>对于 N 颜色，有 N-1 个换丝事件。<code>extruder</code> 值从 2 开始（1 是默认起始 extruder）。</p>
+
+<h2>生成策略</h2>
+
+<p>使用官方确认可打开的 3MF 文件（<code>test_minimal_swap.3mf</code>）作为 base，只替换必要部分：</p>
+
+<pre><code>官方 base.3mf (可正常打开)
+  ├── 保留: Auxiliaries/ (缩略图文件夹，Bambu Studio 识别关键)
+  ├── 保留: slice_info.config, cut_information.xml, _rels/.rels
+  ├── 替换: 3D/Objects/object_2.model ← 我们的 XML mesh
+  ├── 替换: Metadata/model_settings.config ← 更新 face_count
+  └── 添加: Metadata/custom_gcode_per_layer.xml ← MultiAsSingle 换丝事件
+           Metadata/project_settings.config ← filament 颜色配置
+</code></pre>
+
+<h2>已知问题与修复记录</h2>
+
+<div class="card danger">
+<h4>Root Cause: 二进制 STL 格式不被识别（2026-05-19）</h4>
+<p><strong>问题</strong>：Bambu Studio 打开 3MF 报"没有任何几何信息"。</p>
+<p><strong>根因</strong>：将二进制 STL 写入 <code>object_N.model</code>。Bambu Studio 内部使用 XML mesh 格式，<strong>完全不识别二进制 STL</strong>。</p>
+<p><strong>修复</strong>：使用 trimesh 加载 STL，再用 <code>_build_xml_mesh()</code> 生成 XML 格式写入 <code>object_2.model</code>。</p>
+</div>
+
+<div class="card">
+<h4>model_settings.config 缺失关键字段</h4>
+<p><strong>修复</strong>：从 trimesh 获取 face_count，全部按照官方格式生成各字段。特别注意 <code>source_object_id</code> 应设为 <code>"0"</code>（官方值）。</p>
+</div>
+
+<div class="card">
+<h4>Auxiliaries 文件夹缺失</h4>
+<p><strong>问题</strong>：文件能打开但提示"包含自定义 Gcode 和打印预设"。</p>
+<p><strong>修复</strong>：使用官方 base.3mf 作为骨架，其包含完整的 Auxiliaries/ 结构。</p>
+</div>
+
+<div class="card">
+<h4>G-code 双转义</h4>
+<p><strong>问题</strong>：<code>json.dumps</code> 在 <code>_resolve_template_json</code> 中双重转义 G-code 中的换行符。</p>
+<p><strong>修复</strong>：移除 <code>_escape_gcode()</code> 预处理函数，Raw G-code 直接传入，单次 <code>json.dumps</code> 处理所有转义。</p>
+</div>
+
+<div class="card good">
+<h4>source_object_id 应为 "0"（2026-05-19）</h4>
+<p>官方文件中所有 <code>source_object_id</code> 值为 <code>"0"</code>。之前错误地使用了 <code>"1"</code>，现在已修正。</p>
+</div>
+
+<h2>CLI 使用方法</h2>
+
+<pre><code># 自动模式：生成完整 3MF（Bambu Studio 自动处理 filament 分配）
+python scripts/image-to-layered-relief.py photo.jpg \
+    --colors 4 --format 3mf --printer P1S --multi-color-mode auto
+
+# 手动模式：同时生成人类可读的 color_config.json
+python scripts/image-to-layered-relief.py photo.jpg \
+    --colors 4 --format 3mf --printer P1S --multi-color-mode manual
+
+# 双模式：同时生成两者
+python scripts/image-to-layered-relief.py photo.jpg \
+    --colors 4 --format 3mf --printer P1S --multi-color-mode both
+
+# A1 打印机 2 色
+python scripts/image-to-layered-relief.py photo.jpg \
+    --colors 2 --format 3mf --printer A1</code></pre>
+
+<h2>版本历史</h2>
+
+<table>
+  <tr><th>日期</th><th>变更</th></tr>
+  <tr><td>2026-05-19</td><td>发现 Root Cause：XML mesh 格式替代二进制 STL；采用官方 base.3mf 架构；source_object_id=0</td></tr>
+  <tr><td>2026-05-19</td><td>添加 <code>--multi-color-mode auto|manual|both</code>；添加中文颜色名称；修复多处字段问题</td></tr>
+  <tr><td>2026-05-15</td><td>修复 model_settings.config 缺失 face_count、matrix、source_offset、mesh_stat、filament_volume_maps</td></tr>
+  <tr><td>2026-05-14</td><td>修复 custom_gcode_per_layer.xml 中 extruder 索引</td></tr>
+  <tr><td>2026-05-13</td><td>修复 compound-string 占位符解析；移除 <code>_escape_gcode()</code> 修复 G-code 双转义</td></tr>
+</table>
+
+</body>
+</html>

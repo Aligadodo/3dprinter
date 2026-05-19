@@ -84,6 +84,10 @@ PIPELINE_TYPES = {
              "label": "Output Format", "label_zh": "输出格式", "description": "STL + colour map, or Bambu Studio 3MF", "description_zh": "STL + 换色说明，或 Bambu Studio 兼容 3MF"},
             {"name": "printer", "type": "choice", "default": "P1S", "choices": ["P1S", "A1"],
              "label": "Printer", "label_zh": "打印机型号", "description": "Bambu printer for 3MF slicer config", "description_zh": "用于 3MF 切片配置的打印机型号（P1S / A1）"},
+            {"name": "multi_color_mode", "type": "choice", "default": "both",
+             "choices": ["auto", "manual", "both"],
+             "label": "Multi-Color Mode", "label_zh": "多色模式",
+             "description": "auto=full 3MF (Bambu auto-assigns filaments), manual=3MF+color_config.json (human-guided), both=generate both", "description_zh": "auto=完整3MF（拓竹自动配色），manual=3MF+color_config.json（人工配置），both=同时生成两种"},
         ]
     },
     "triposr": {
