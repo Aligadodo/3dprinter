@@ -21,7 +21,7 @@ export function _revokeBlobUrls() {
   _blobUrls = [];
 }
 
-import { escHtml, escJS, cacheFile, getFile, getBilingualLabel, showFileModal, showCtxMenu } from '../utils.js';
+import { escHtml, escJS, cacheFile, getFile, getBilingualLabel, showFileModal, showCtxMenu, choiceLabel } from '../utils.js';
 import { t } from '../i18n.js';
 
 // ── URL construction ──
@@ -224,7 +224,7 @@ function renderParams(runtimeParams, nodeProps, typeParams) {
   if (typeParams && typeof typeParams === 'object') {
     Object.entries(typeParams).forEach(([key, spec]) => {
       const val = typeof spec === 'object' && spec !== null ? spec : { value: spec };
-      merged[key] = { value: val.default !== undefined ? val.default : val.value, source: 'default', label: val.label || key, type: val.type };
+      merged[key] = { value: val.default !== undefined ? val.default : val.value, source: 'default', label: val.label || key, type: val.type, choices: val.choices, choices_zh: val.choices_zh };
     });
   }
   if (nodeProps && typeof nodeProps === 'object') {
@@ -252,6 +252,7 @@ function renderParams(runtimeParams, nodeProps, typeParams) {
   entries.forEach(([key, p]) => {
     let display = p.value;
     if (typeof display === 'boolean') display = display ? '✓ true' : '✗ false';
+    else if (p.type === 'choice' && p.choices) display = choiceLabel(p.value, p.choices, p.choices_zh);
     if (display == null || display === '') display = '-';
     const srcLabel = { editor: 'editor', runtime: 'runtime', default: 'default' }[p.source] || p.source;
     const srcCls = 'nd-src-' + (p.source || 'default');

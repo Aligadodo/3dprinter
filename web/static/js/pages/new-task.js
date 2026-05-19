@@ -1,7 +1,7 @@
 /* new-task.js — New task creation page (pipeline + file upload + workflow) */
 import { api, fetchProviderStatuses, providerChoiceLabel } from '../api.js';
 import { t, getLang } from '../i18n.js';
-import { formatBytes, toast, escHtml, isTypeCompatible } from '../utils.js';
+import { formatBytes, toast, escHtml, isTypeCompatible, choiceLabel } from '../utils.js';
 
 export default async function renderNewTask(main) {
   selectedWorkflowId = null;
@@ -120,7 +120,7 @@ export default async function renderNewTask(main) {
         const reqStar = p.required ? '<span class="required">*</span>' : '';
         const titleAttr = pdesc ? ` title="${pdesc}"` : '';
         if (p.type === 'bool') return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><input type="checkbox" name="${p.name}" ${p.default ? 'checked' : ''}></span><div class="field-error"></div></div>`;
-        if (p.type === 'choice') return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><select name="${p.name}">${(p.choices||[]).map(c => `<option value="${c}" ${c===p.default?'selected':''}>${c.toUpperCase()}</option>`).join('')}</select></span><div class="field-error"></div></div>`;
+        if (p.type === 'choice') return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><select name="${p.name}">${(p.choices||[]).map(c => `<option value="${c}" ${c===p.default?'selected':''}>${choiceLabel(c, p.choices, p.choices_zh)}</option>`).join('')}</select></span><div class="field-error"></div></div>`;
         const min = p.min != null ? `min="${p.min}"` : '';
         const max = p.max != null ? `max="${p.max}"` : '';
         return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><input type="${p.type==='int'?'number':p.type}" name="${p.name}" value="${p.default||''}" ${min} ${max} step="${p.type==='float'?'any':'1'}"></span><div class="field-error" id="err-${p.name}"></div></div>`;
@@ -578,7 +578,7 @@ function buildProcessNodeParamsHtml(wfGraph, ntDefs, isZh) {
       html += `<div class="form-row"><label class="form-label"${titleAttr}>${paramLabel}</label><span class="form-value">`;
       if (spec.type === 'bool') html += `<input type="checkbox" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="bool" ${val ? 'checked' : ''}>`;
       else if (spec.type === 'choice') {
-        html += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice">${(spec.choices||[]).map(c => { const display = key==='provider'?providerChoiceLabel(c):c; return `<option value="${c}" ${String(c)===String(val)?'selected':''}>${display}</option>`; }).join('')}</select>`;
+        html += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice">${(spec.choices||[]).map(c => { const display = key==='provider'?providerChoiceLabel(c):choiceLabel(c, spec.choices, spec.choices_zh); return `<option value="${c}" ${String(c)===String(val)?'selected':''}>${display}</option>`; }).join('')}</select>`;
       } else if (spec.type === 'int') html += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="int" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="1">`;
       else if (spec.type === 'float') html += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="float" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="any">`;
       else html += `<input type="text" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="text" value="${String(val||'')}">`;

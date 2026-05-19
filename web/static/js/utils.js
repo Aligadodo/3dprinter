@@ -15,6 +15,18 @@ export function getBilingualLabel(nt) {
   return zh + ' ' + en;
 }
 
+// ── Choice label helper ──
+/** Return locale-aware label for a choice value.
+ *  Uses choices_zh when lang=zh, otherwise formats the raw key as English. */
+export function choiceLabel(value, choices, choicesZh) {
+  const idx = choices ? choices.indexOf(value) : -1;
+  const zh = (idx >= 0 && choicesZh && idx < choicesZh.length) ? choicesZh[idx] : '';
+  const en = String(value || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const lang = getLang();
+  if (lang === 'zh' && zh) return zh;
+  return en;
+}
+
 // ── Lenient type compatibility ──
 export function isTypeCompatible(srcType, tgtType) {
   if (!srcType || !tgtType) return true;

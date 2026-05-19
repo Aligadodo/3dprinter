@@ -1,7 +1,7 @@
 /* wf-editor.js — Workflow Editor (LiteGraph DAG editor) */
 import { api } from '../api.js';
 import { t, getLang } from '../i18n.js';
-import { toast, escHtml, getBilingualLabel, isTypeCompatible } from '../utils.js';
+import { toast, escHtml, getBilingualLabel, isTypeCompatible, choiceLabel } from '../utils.js';
 import { validateWorkflow } from '../lib/workflow-validator.js';
 import { autoFormatLayout } from '../lib/workflow-layout.js';
 import { clearGraph } from '../lib/litegraph-adapter.js';
@@ -562,7 +562,7 @@ function renderInspector(node) {
       if (spec.type === 'bool') {
         html += `<div><input type="checkbox" id="${fieldId}" ${val ? 'checked' : ''} onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=this.checked;wfCanvas.setDirty(true,true)}"></div>`;
       } else if (spec.type === 'choice') {
-        html += `<select id="${fieldId}" class="wf-insp-select" onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=this.value;wfCanvas.setDirty(true,true)}">${(spec.choices||[]).map(c => `<option value="${c}" ${String(c)===String(val)?'selected':''}>${c.toUpperCase()}</option>`).join('')}</select>`;
+        html += `<select id="${fieldId}" class="wf-insp-select" onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=this.value;wfCanvas.setDirty(true,true)}">${(spec.choices||[]).map(c => `<option value="${c}" ${String(c)===String(val)?'selected':''}>${choiceLabel(c, spec.choices, spec.choices_zh)}</option>`).join('')}</select>`;
       } else if (spec.type === 'int') {
         html += `<input type="number" id="${fieldId}" class="wf-insp-input" value="${val}" step="1" onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=parseInt(this.value)||0;wfCanvas.setDirty(true,true)}">`;
       } else if (spec.type === 'float') {
@@ -816,7 +816,7 @@ async function showRunParamsDialog(wfId) {
         bodyHTML += `<div class="form-group" style="margin-bottom:6px"><label style="font-size:11px">${paramLabel}</label>`;
         if (spec.type === 'bool') bodyHTML += `<div><input type="checkbox" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="bool" ${val ? 'checked' : ''}></div>`;
         else if (spec.type === 'choice') {
-          bodyHTML += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">${(spec.choices||[]).map(c => `<option value="${c}" ${String(c)===String(val)?'selected':''}>${c.toUpperCase()}</option>`).join('')}</select>`;
+          bodyHTML += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">${(spec.choices||[]).map(c => `<option value="${c}" ${String(c)===String(val)?'selected':''}>${choiceLabel(c, spec.choices, spec.choices_zh)}</option>`).join('')}</select>`;
         } else if (spec.type === 'int') bodyHTML += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="int" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="1" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
         else if (spec.type === 'float') bodyHTML += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="float" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="any" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
         else bodyHTML += `<input type="text" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="text" value="${String(val||'')}" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
