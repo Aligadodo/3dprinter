@@ -283,7 +283,6 @@ def test_cancelled_error_is_exception():
     err = WorkflowCancelledError()
     assert isinstance(err, Exception)
     assert not isinstance(err, asyncio.CancelledError)
-    assert not isinstance(err, BaseException) or isinstance(err, Exception)
 
 
 def test_cancelled_error_with_message():

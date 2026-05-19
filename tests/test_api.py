@@ -346,7 +346,7 @@ async def test_workflow_execution(api_url):
                     assert response.status_code == 200
                     async for chunk in response.aiter_bytes():
                         break
-        except Exception:
+        except (httpx.ConnectError, httpx.TimeoutException, httpx.RemoteProtocolError):
             pass  # SSE may timeout in test environment
 
         # Cleanup
@@ -592,7 +592,7 @@ def main():
                 httpx.get(f"{SERVER_URL}/", timeout=2)
                 print("Server is ready!")
                 break
-            except Exception:
+            except (httpx.ConnectError, httpx.TimeoutException):
                 time.sleep(0.5)
         else:
             print("Server failed to start")
