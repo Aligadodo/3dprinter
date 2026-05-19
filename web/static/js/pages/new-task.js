@@ -313,8 +313,7 @@ export default async function renderNewTask(main) {
     const wfFiles = window._wfInputFiles || {};
     for (const [nid, file] of Object.entries(wfFiles)) {
       formData.append('file', file);
-      if (!inputsDict[nid]) inputsDict[nid] = {};
-      inputsDict[nid].file = file.name;
+      // Let server assign the actual saved path — don't put bare filename in inputs
     }
     // Backward compat: single file from non-workflow flow
     if (window._wfInputFile && Object.keys(wfFiles).length === 0) {

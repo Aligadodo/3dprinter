@@ -645,7 +645,7 @@ async def run_workflow(
         file_input_nodes = [str(n["id"]) for n in graph.get("nodes", [])
                           if n.get("type") in ("file_input", "wf_file_input")]
         for fnid in file_input_nodes:
-            if fnid not in inputs_dict or "file" not in inputs_dict.get(fnid, {}):
+            if fnid not in inputs_dict or "file" not in inputs_dict.get(fnid, {}) or not os.path.isabs(inputs_dict.get(fnid, {}).get("file", "")):
                 inputs_dict.setdefault(fnid, {})["file"] = file_path
                 break
 
