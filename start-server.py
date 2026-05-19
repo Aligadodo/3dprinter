@@ -75,7 +75,31 @@ def kill_existing(port, host="127.0.0.1"):
 def check_deps():
     """Check required packages are installed."""
     missing = []
-    deps = {"fastapi": "fastapi", "uvicorn": "uvicorn", "python_multipart": "python-multipart"}
+    deps = {
+        # Web server
+        "fastapi": "fastapi",
+        "uvicorn": "uvicorn",
+        "python_multipart": "python-multipart",
+        "yaml": "PyYAML",
+        "httpx": "httpx",
+        "markdown": "Markdown",
+        "PIL": "Pillow",
+        "numpy": "numpy",
+        # Mesh processing (relief, repair, simplify, views, boolean, stitch)
+        "scipy": "scipy",
+        "trimesh": "trimesh",
+        "sklearn": "scikit-learn",
+        "fast_simplification": "fast_simplification",
+        "pymeshfix": "pymeshfix",
+        "pyrender": "pyrender",
+        "manifold3d": "manifold3d",
+        "pymeshlab": "pymeshlab",
+        # AI 3D generation (TripoSR)
+        "torch": "torch",
+        "rembg": "rembg[gpu]",
+        "huggingface_hub": "huggingface-hub",
+        "omegaconf": "omegaconf",
+    }
     for import_name, pip_name in deps.items():
         try:
             __import__(import_name)
