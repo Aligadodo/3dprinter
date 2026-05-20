@@ -92,10 +92,10 @@ python scripts/image-to-3d.py render.png --no-bg-remove
 ### `hunyuan-to-3d.py` — Hunyuan3D-2.1 Generation
 
 ```bash
-# Quick preview (6GB, ~1h)
+# Quick preview (~10min)
 python scripts/hunyuan-to-3d.py photo.jpg --steps 10 --resolution 128
 
-# Quality (8GB+, ~15min)
+# Quality (~30min)
 python scripts/hunyuan-to-3d.py photo.jpg --steps 25 --resolution 256
 ```
 
@@ -172,7 +172,7 @@ python scripts/mesh-to-views.py model.stl --resolution 2048 --no-grid
 ### Image → 3D (AI Generation)
 | Feature | TripoSR | Hunyuan3D-2.1 |
 |---------|---------|---------------|
-| Speed | ~2s | ~67-287s/step |
+| Speed | ~2s | ~67s/step (16GB), ~287s/step (6GB thermal throttle) |
 | VRAM | 3.5 GB | 6.86 GB |
 | Texture | Vertex color | Geometry-only (WIP) |
 | Watertight | Sometimes | Yes |
