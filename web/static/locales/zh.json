@@ -19,7 +19,14 @@
     "title": "文件浏览",
     "loading": "加载中...",
     "error": "加载失败",
-    "empty": "暂无已完成任务的输出文件"
+    "empty": "暂无已完成任务的输出文件",
+    "downloading": "已触发 {n} 个文件下载",
+    "copiedPaths": "已复制 {n} 个路径",
+    "selectedFiles": "已选 {n} 个文件",
+    "downloadSelected": "下载选中",
+    "copySelectedPaths": "复制路径",
+    "clearSelection": "取消选择",
+    "selectFile": "选择"
   },
   "lang": { "zh": "中", "en": "EN" },
   "dash": {
@@ -37,7 +44,8 @@
     "workflow": "工作流",
     "workflowTask": "此任务属于工作流运行",
     "filterStatus": "状态筛选",
-    "filterType": "类型筛选"
+    "filterType": "类型筛选",
+    "loadMore": "加载更多"
   },
   "new": {
     "title": "新建任务",
@@ -79,7 +87,12 @@
     "dropHint": "点击或拖拽上传文件",
     "loadFailed": "加载失败",
     "fileChosen": "已选择文件",
-    "nodesCount": "个节点"
+    "nodesCount": "个节点",
+    "fieldRequired": "此项为必填",
+    "minValue": "最小值为 {min}",
+    "maxValue": "最大值为 {max}",
+    "fixFormErrors": "请修正表单错误",
+    "selectedCount": "已选 {n} 项"
   },
   "detail": {
     "title": "任务详情",
@@ -214,6 +227,15 @@
       "round": "轮次"
     },
     "format": "格式化",
+    "formatTitle": "自动排列节点",
+    "templates": "模板",
+    "searchNodes": "搜索节点...",
+    "runParams": "运行参数",
+    "inputNodes": "输入节点",
+    "noFileChosen": "未选择文件",
+    "chooseFile": "选择文件",
+    "nodeParams": "节点参数",
+    "outOf": " / ",
     "validation": {
       "title": "工作流校验",
       "errors": "错误 (必须修复)",
@@ -225,7 +247,9 @@
       "inputNoConsumer": "输入节点 \"{label}\" 没有下游消费者",
       "requiredPortUnconnected": "必要端口 \"{port}\" 在 \"{label}\" 上未连接",
       "outputNoInput": "输出节点 \"{label}\" 没有输入",
-      "isolatedNode": "节点 \"{label}\" 孤立 (无连接)"
+      "isolatedNode": "节点 \"{label}\" 孤立 (无连接)",
+      "fixErrorsHint": "请修复以上错误后再保存",
+      "close": "关闭"
     }
   },
   "node": {
@@ -251,7 +275,11 @@
     "done": "生成完成！图片已保存，可用于后续任务。",
     "error": "生成失败",
     "useAsInput": "用作输入",
-    "unavailableSuffix": " (不可用)"
+    "unavailableSuffix": " (不可用)",
+    "loadingProviders": "加载中...",
+    "noProviders": "没有可用的服务商",
+    "noProvidersHint": "请在 config/providers.yaml 中配置 API 密钥以启用文生图功能。",
+    "promptRequired": "请输入提示词"
   },
   "inspector": {
     "title": "节点属性",

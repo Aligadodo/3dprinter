@@ -82,7 +82,7 @@ _register(NodeType(
     ],
     params={
         "provider": {"type": "choice", "default": "volcengine", "choices": ["volcengine", "zhipu", "openai", "stability"]},
-        "size": {"type": "choice", "default": "2048x2048", "choices": ["1024x1024", "2048x2048", "4096x4096", "1440x720", "720x1440"]},
+        "size": {"type": "choice", "default": "1024x1024", "choices": ["1024x1024", "2048x2048", "4096x4096", "1792x1024", "1024x1792", "768x1344", "1152x864"]},
     },
     color="#e67e22",
 ))
@@ -99,13 +99,13 @@ _register(NodeType(
         PortSpec("color_preview", "image", required=False),
     ],
     params={
-        "width": {"type": "float", "default": 160.0},
-        "height": {"type": "float", "default": 120.0},
-        "max_depth": {"type": "float", "default": 3.0},
-        "base_thickness": {"type": "float", "default": 0.5},
-        "detail": {"type": "float", "default": 0.25},
-        "colors": {"type": "int", "default": 0},
-        "pixel_spacing": {"type": "float", "default": 0.08},
+        "width": {"type": "float", "default": 160.0, "min": 20, "max": 500},
+        "height": {"type": "float", "default": 120.0, "min": 20, "max": 500},
+        "max_depth": {"type": "float", "default": 3.0, "min": 0.5, "max": 10.0},
+        "base_thickness": {"type": "float", "default": 0.5, "min": 0.2, "max": 5.0},
+        "detail": {"type": "float", "default": 0.25, "min": 0.0, "max": 1.0},
+        "colors": {"type": "int", "default": 0, "min": 0, "max": 4},
+        "pixel_spacing": {"type": "float", "default": 0.08, "min": 0.05, "max": 0.5},
     },
     color="#3498db",
 ))
@@ -122,12 +122,12 @@ _register(NodeType(
         PortSpec("color_preview", "image", required=False),
     ],
     params={
-        "width": {"type": "float", "default": 160.0},
-        "height": {"type": "float", "default": 120.0},
-        "max_depth": {"type": "float", "default": 2.0},
-        "base_thickness": {"type": "float", "default": 0.6},
-        "detail": {"type": "float", "default": 0.15},
-        "colors": {"type": "int", "default": 0},
+        "width": {"type": "float", "default": 160.0, "min": 20, "max": 500},
+        "height": {"type": "float", "default": 120.0, "min": 20, "max": 500},
+        "max_depth": {"type": "float", "default": 2.0, "min": 0.5, "max": 5.0},
+        "base_thickness": {"type": "float", "default": 0.6, "min": 0.3, "max": 3.0},
+        "detail": {"type": "float", "default": 0.15, "min": 0.0, "max": 1.0},
+        "colors": {"type": "int", "default": 0, "min": 0, "max": 4},
     },
     color="#2ecc71",
 ))
@@ -146,15 +146,16 @@ _register(NodeType(
         PortSpec("color_preview", "image", required=False),
     ],
     params={
-        "width": {"type": "float", "default": 160.0},
-        "height": {"type": "float", "default": 120.0},
-        "colors": {"type": "int", "default": 4},
-        "layer_height": {"type": "float", "default": 0.4},
-        "base_thickness": {"type": "float", "default": 0.3},
-        "edge_smooth": {"type": "float", "default": 0.5},
-        "pixel_spacing": {"type": "float", "default": 0.08},
+        "width": {"type": "float", "default": 160.0, "min": 20, "max": 500},
+        "height": {"type": "float", "default": 120.0, "min": 20, "max": 500},
+        "colors": {"type": "int", "default": 4, "min": 2, "max": 16},
+        "layer_height": {"type": "float", "default": 0.4, "min": 0.2, "max": 1.0},
+        "base_thickness": {"type": "float", "default": 0.3, "min": 0.2, "max": 1.0},
+        "edge_smooth": {"type": "float", "default": 0.5, "min": 0.0, "max": 1.0},
+        "pixel_spacing": {"type": "float", "default": 0.08, "min": 0.05, "max": 0.5},
         "format": {"type": "choice", "default": "stl", "choices": ["stl", "3mf"]},
         "printer": {"type": "choice", "default": "P1S", "choices": ["P1S", "A1"]},
+        "multi_color_mode": {"type": "choice", "default": "both", "choices": ["auto", "manual", "both"]},
     },
     color="#9b59b6",
 ))
@@ -172,8 +173,9 @@ _register(NodeType(
     ],
     params={
         "format": {"type": "choice", "default": "glb", "choices": ["glb", "obj"]},
-        "resolution": {"type": "int", "default": 256},
-        "foreground_ratio": {"type": "float", "default": 0.85},
+        "resolution": {"type": "int", "default": 256, "min": 64, "max": 384},
+        "foreground_ratio": {"type": "float", "default": 0.85, "min": 0.7, "max": 0.95},
+        "no_bg_remove": {"type": "bool", "default": False},
         "auto_prep": {"type": "bool", "default": True},
     },
     color="#e74c3c",
@@ -193,10 +195,11 @@ _register(NodeType(
     ],
     params={
         "mode": {"type": "choice", "default": "geometry", "choices": ["geometry", "full"]},
-        "steps": {"type": "int", "default": 15},
-        "resolution": {"type": "int", "default": 256},
-        "seed": {"type": "int", "default": 42},
+        "steps": {"type": "int", "default": 15, "min": 5, "max": 50},
+        "resolution": {"type": "int", "default": 256, "min": 128, "max": 384},
+        "seed": {"type": "int", "default": 42, "min": 0, "max": 2147483647},
         "format": {"type": "choice", "default": "glb", "choices": ["glb", "obj", "stl"]},
+        "skip_bg_remove": {"type": "bool", "default": False},
         "auto_prep": {"type": "bool", "default": True},
     },
     color="#c0392b",
@@ -215,7 +218,7 @@ _register(NodeType(
         PortSpec("views_dir", "dir", required=False),
     ],
     params={
-        "resolution": {"type": "int", "default": 1024},
+        "resolution": {"type": "int", "default": 1024, "min": 256, "max": 4096},
         "no_grid": {"type": "bool", "default": False},
     },
     color="#1abc9c",
@@ -233,7 +236,7 @@ _register(NodeType(
     ],
     params={
         "output_format": {"type": "choice", "default": "stl", "choices": ["stl", "obj", "3mf"]},
-        "scale": {"type": "float", "default": 1.0},
+        "scale": {"type": "float", "default": 1.0, "min": 0.1, "max": 10.0},
     },
     color="#f39c12",
 ))
@@ -752,21 +755,34 @@ PARAM_META: dict[str, dict] = {
         "desc": "Color palette preset. warm=warm tones, cool=cool tones, vivid=bright saturated, muted=soft subtle. Used by duotone, macaron, sepia, vintage_film, neon",
         "desc_zh": "配色预设：warm=暖色调，cool=冷色调，vivid=鲜艳明亮，muted=柔和淡雅。适用于双色调、马卡龙、怀旧棕褐、胶片质感、霓虹",
     },
+    # ── multi_color_mode (layered_relief) ──
+    "multi_color_mode": {
+        "label": "Multi-Color Mode", "label_zh": "多色模式",
+        "desc": "auto=full 3MF (Bambu auto-assigns filaments), manual=3MF+color_config.json, both=generate both",
+        "desc_zh": "auto=完整3MF（拓竹自动配色），manual=3MF+color_config.json（人工配置），both=同时生成两种",
+    },
+    # ── no_bg_remove / skip_bg_remove ──
+    "no_bg_remove": {
+        "label": "Skip BG Remove", "label_zh": "跳过背景移除",
+        "desc": "Skip background removal (use if input already has transparent background)",
+        "desc_zh": "跳过背景移除（如果输入图片已去背景）",
+    },
+    "skip_bg_remove": {
+        "label": "Skip BG Remove", "label_zh": "跳过背景移除",
+        "desc": "Skip background removal (use if input already has transparent background)",
+        "desc_zh": "跳过背景移除（如果输入图片已去背景）",
+    },
+    # ── mesh_align:method ──
+    "mesh_align:method": {
+        "label": "Method", "label_zh": "方法",
+        "desc": "surface=local frame alignment, icp=iterative closest point",
+        "desc_zh": "surface=局部坐标系对齐, icp=迭代最近点",
+    },
 # ── Mesh Boolean ───────────────────────────────────────────────────
     "bool_op": {
         "label": "Boolean Op", "label_zh": "布尔运算",
         "desc": "Boolean operation: union (merge), diff (subtract), intersect (overlap)",
         "desc_zh": "布尔运算: union(合并)/diff(减去)/intersect(交集)",
-    },
-    "bool_mesh_a": {
-        "label": "Mesh A", "label_zh": "Mesh A",
-        "desc": "First mesh input (the base)",
-        "desc_zh": "第一个输入 Mesh（被操作的主体）",
-    },
-    "bool_mesh_b": {
-        "label": "Mesh B", "label_zh": "Mesh B",
-        "desc": "Second mesh input (the tool)",
-        "desc_zh": "第二个输入 Mesh（用于操作）",
     },
     # ── Mesh Stitch ─────────────────────────────────────────────────
     "stitch_smooth": {
@@ -827,9 +843,7 @@ _register(NodeType(
     ],
     outputs=[PortSpec("mesh", "mesh", required=True)],
     params={
-        "bool_op": {"type": "choice", "default": "union", "choices": ["union", "difference", "intersection"]},
-        "bool_mesh_a": {"type": "string", "default": ""},
-        "bool_mesh_b": {"type": "string", "default": ""},
+        "bool_op": {"type": "choice", "default": "union", "choices": ["union", "diff", "intersect"]},
     },
     color="#9370db",
 ))
@@ -929,7 +943,9 @@ _register(NodeType(
         PortSpec("mesh_b", "mesh", required=True, label="Source", label_zh="源"),
     ],
     outputs=[PortSpec("mesh_aligned", "mesh", required=True)],
-    params={},
+    params={
+        "method": {"type": "choice", "default": "surface", "choices": ["surface", "icp"]},
+    },
     color="#9370db",
 ))
 

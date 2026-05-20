@@ -357,6 +357,12 @@ async def text2img_generate(request: Request):
     if not prov:
         raise HTTPException(400, f"Provider '{provider_id}' not found or not enabled")
 
+    # Validate & fallback size against provider's supported sizes
+    supported_sizes = prov.config.get("sizes", [])
+    if size and supported_sizes and size not in supported_sizes:
+        fallback = prov.default_size
+        size = fallback
+
     try:
         result = await prov.generate(prompt, size)
     except Exception as e:

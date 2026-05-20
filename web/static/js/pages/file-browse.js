@@ -1,6 +1,6 @@
 /* file-browse.js — Browse completed task output files */
 import { api } from '../api.js';
-import { t, getLang } from '../i18n.js';
+import { t } from '../i18n.js';
 import { formatTime, toast, getFile, cacheFile } from '../utils.js';
 import { showFileModal, showCtxMenu } from '../utils.js';
 
@@ -35,7 +35,6 @@ export default async function renderBrowse(main) {
     return;
   }
 
-  const isZh = getLang() === 'zh';
   let selected = new Set();
 
   function updateBatchBar() {
@@ -73,23 +72,23 @@ export default async function renderBrowse(main) {
         a.click();
       }
     });
-    toast(isZh ? `已触发 ${selected.size} 个文件下载` : `Downloading ${selected.size} files`, 'success');
+    toast(t('browse.downloading').replace('{n}', selected.size), 'success');
   };
 
   window._bfCopyPaths = () => {
     const paths = files.filter(f => selected.has(f._fid)).map(f => f.path || '').filter(Boolean).join('\n');
     navigator.clipboard.writeText(paths).then(() => {
-      toast(isZh ? `已复制 ${selected.size} 个路径` : `Copied ${selected.size} paths`, 'success');
+      toast(t('browse.copiedPaths').replace('{n}', selected.size), 'success');
     }).catch(() => toast('Copy failed', 'error'));
   };
 
   content.innerHTML = `
     <div class="batch-bar" id="batch-bar" style="display:none">
-      <span>${isZh?'已选':'Selected'} <strong id="batch-count">0</strong> ${isZh?'个文件':'files'}</span>
+      <span>${t('browse.selectedFiles').replace('{n}', '<strong id="batch-count">0</strong>')}</span>
       <span style="flex:1"></span>
-      <button class="btn btn-sm" onclick="window._bfDownloadSelected()">${isZh?'下载选中':'Download'}</button>
-      <button class="btn btn-sm" onclick="window._bfCopyPaths()">${isZh?'复制路径':'Copy paths'}</button>
-      <button class="btn btn-sm" onclick="window._bfClearSelection()">${isZh?'取消选择':'Clear'}</button>
+      <button class="btn btn-sm" onclick="window._bfDownloadSelected()">${t('browse.downloadSelected')}</button>
+      <button class="btn btn-sm" onclick="window._bfCopyPaths()">${t('browse.copySelectedPaths')}</button>
+      <button class="btn btn-sm" onclick="window._bfClearSelection()">${t('browse.clearSelection')}</button>
     </div>
     <div class="browse-grid">
       ${files.map(f => {
@@ -100,7 +99,7 @@ export default async function renderBrowse(main) {
         const fid = cacheFile(f);
         f._fid = fid;
         return `<div class="browse-card file-card" data-fid="${fid}" style="position:relative">
-            <input type="checkbox" class="bf-checkbox" value="${fid}" onclick="event.stopPropagation()" onchange="window._bfToggleSelect('${fid}',this.checked)" title="${isZh?'选择':'Select'}">
+            <input type="checkbox" class="bf-checkbox" value="${fid}" onclick="event.stopPropagation()" onchange="window._bfToggleSelect('${fid}',this.checked)" title="${t('browse.selectFile')}">
             <div onclick="import('/static/js/utils.js').then(m=>m.showFileModal('${fid}'))" oncontextmenu="import('/static/js/utils.js').then(m=>m.showCtxMenu(event,m.getFile('${fid}')))">
               ${isImg ? `<img src="${fileUrl}" alt="${fileName}" loading="lazy">`
                 : `<div style="height:140px;display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--fg2)">&#128736;</div>`}

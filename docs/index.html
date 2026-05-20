@@ -173,6 +173,10 @@
   <a href="#relief">浮雕生成</a>
   <a href="#lithophane">└ 透光浮雕</a>
   <a href="#layered-relief">└ 分层彩色浮雕</a>
+  <a href="#modeling-tools">网格工具完整列表</a>
+
+  <div class="section-title">工作流</div>
+  <a href="#workflow-system">工作流系统</a>
 
   <div class="section-title">参考</div>
   <a href="#compare">引擎对比</a>
@@ -196,8 +200,8 @@
 <pre><code><span class="fn">python</span> scripts/image-to-3d.py photo.jpg --format glb</code></pre>
 </div>
 <div class="card warn">
-<h4>Hunyuan3D-2.1 高精度（6GB: ~1h, 8GB+: ~10min）</h4>
-<pre><code><span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg --steps 10 --resolution 128</code></pre>
+<h4>Hunyuan3D-2.1 高精度（16GB: ~28min @25步）</h4>
+<pre><code><span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg --steps 25 --resolution 256</code></pre>
 </div>
 
 <!-- ────── WEB PLATFORM ────── -->
@@ -265,39 +269,55 @@
   <tr><th></th><th>TripoSR</th><th>Hunyuan3D-2.1</th></tr>
   <tr>
     <td>GPU</td>
-    <td>NVIDIA 4GB+<br><span class="tag tag-green">RTX 3060 ✓</span></td>
-    <td>NVIDIA 8GB+ 推荐<br><span class="tag tag-yellow">6GB 可用但慢</span></td>
+    <td>NVIDIA 4GB+<br><span class="tag tag-green">RTX 5070 Ti ✓</span></td>
+    <td>NVIDIA 8GB+ 推荐<br><span class="tag tag-green">16GB 全速运行</span></td>
   </tr>
   <tr><td>RAM</td><td>8GB+</td><td>32GB+ 推荐 (64GB 充足)</td></tr>
   <tr><td>磁盘</td><td>~3GB (模型权重)</td><td>~50GB (含所有模型)</td></tr>
   <tr><td>OS</td><td>Win/Mac/Linux</td><td>Windows (ComfyUI 便携版)</td></tr>
   <tr><td>Python</td><td>3.10+</td><td>使用内嵌 Python 3.12</td></tr>
 </table>
-<div class="card warn">
-  <h4>⚠ RTX 3060 Laptop (6GB) 实测</h4>
-  <p>Hunyuan3D-2.1 模型加载后占用 6.86 GB VRAM，超出 6GB 约 0.9GB。<br>
-  溢出部分使用共享 GPU 内存，导致推理速度从 ~30s/步 下降到 67-287s/步。<br>
-  <strong>建议：</strong>使用 <code>--steps 10</code> 预览效果，挂机过夜跑高质量。</p>
+<div class="card good">
+  <h4>✅ RTX 5070 Ti (16GB) 实测</h4>
+  <p>Hunyuan3D-2.1 模型加载后占用约 7 GB VRAM，16GB 显存绰绰有余。<br>
+  推理速度约 67s/步，<code>--steps 25</code> 高质量模式约 28 分钟完成。<br>
+  <strong>日常使用：</strong><code>--steps 25 --resolution 256</code> 平衡质量与速度。</p>
 </div>
 
 <!-- ────── DIRECTORY ────── -->
 <h2 id="directory">📁 目录结构</h2>
 <pre><code>3dprint/
 ├── scripts/
-│   ├── image-to-3d.py       <span class="cm"># TripoSR 单图→3D</span>
+│   ├── image-to-3d.py       <span class="cm"># TripoSR 单图→3D (~2s)</span>
 │   ├── hunyuan-to-3d.py     <span class="cm"># Hunyuan3D-2.1 单图→3D</span>
 │   ├── image-to-relief.py   <span class="cm"># 图像→浮雕/lithophane</span>
+│   ├── image-to-layered-relief.py <span class="cm"># 多层套色浮雕 (AMS 多色)</span>
+│   ├── text-to-image.py     <span class="cm"># 文本→图片 (云AI)</span>
 │   ├── mesh-repair.py       <span class="cm"># 网格修复 (水密+去重+填洞)</span>
 │   ├── mesh-to-views.py     <span class="cm"># 六视图正交渲染</span>
+│   ├── mesh-simplify.py     <span class="cm"># 二次误差减面</span>
+│   ├── mesh-smooth.py       <span class="cm"># Taubin 平滑</span>
+│   ├── mesh-scale.py        <span class="cm"># 统一缩放</span>
+│   ├── mesh-cut.py          <span class="cm"># 平面切割 (trimesh)</span>
+│   ├── mesh-boolean.py      <span class="cm"># CSG 布尔运算 (union/diff/intersect)</span>
+│   ├── mesh-align.py        <span class="cm"># 网格对齐 (PCA + Rodrigues)</span>
+│   ├── mesh-stitch.py       <span class="cm"># HC Laplacian 修复+平滑</span>
+│   ├── mesh-decorate.py     <span class="cm"># UV 位移贴图+顶点着色</span>
+│   ├── model-prep.py        <span class="cm"># 组合 simplify+repair+scale+ground</span>
 │   └── pipeline.py          <span class="cm"># 端到端流水线</span>
+├── web/                      <span class="cm"># Web 管理平台</span>
+│   ├── server.py             <span class="cm"># FastAPI 应用</span>
+│   ├── static/               <span class="cm"># 前端 SPA (ES modules)</span>
+│   └── ...                   <span class="cm"># scheduler, workflow_engine, etc.</span>
 ├── models/                   <span class="cm"># TripoSR 权重 (model.ckpt 1.6GB)</span>
 ├── triposr/src/              <span class="cm"># TripoSR 推理代码</span>
-├── config/                   <span class="cm"># 模型配置文件</span>
+├── config/                   <span class="cm"># 模型/提供商配置</span>
 ├── output/                   <span class="cm"># 生成输出</span>
 │   ├── lithophane/           <span class="cm"># 透光浮雕 STL</span>
 │   ├── relief/               <span class="cm"># 普通浮雕 STL</span>
 │   └── views/                <span class="cm"># 六视图 PNG</span>
 ├── docs/                     <span class="cm"># 使用指南 (index.html)</span>
+├── tests/                    <span class="cm"># 测试套件 (E2E + 单元 + 集成)</span>
 └── 混元3D2.1+comfyui便携版+.../ <span class="cm"># Hunyuan3D-2.1 ComfyUI 整合包</span>
     └── extracted/ComfyUI_windows_portable/
         ├── python_embeded/   <span class="cm"># 内嵌 Python 环境</span>
@@ -371,12 +391,12 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
 </div>
 
 <h3 id="hunyuan-usage">基本用法</h3>
-<pre><code><span class="cm"># 快速预览 (6GB 卡推荐, ~1h)</span>
+<pre><code><span class="cm"># 快速预览 (16GB 卡约 11min)</span>
 <span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg \
     <span class="opt">--steps</span> <span class="val">10</span> \
     <span class="opt">--resolution</span> <span class="val">128</span>
 
-<span class="cm"># 高质量 (8GB+ 卡推荐, 约 15min)</span>
+<span class="cm"># 高质量 (推荐, 约 28min)</span>
 <span class="fn">python</span> scripts/hunyuan-to-3d.py photo.jpg \
     <span class="opt">--steps</span> <span class="val">25</span> \
     <span class="opt">--resolution</span> <span class="val">256</span>
@@ -534,6 +554,113 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
   <tr><td><code>--base-dir</code></td><td>自动检测</td><td>[Hunyuan] 整合包路径</td></tr>
 </table>
 
+<!-- ═══════════ MODELING TOOLS ═══════════ -->
+<h2 id="modeling-tools">🔨 建模工具完整列表</h2>
+<p>除了 AI 生成和浮雕工具，项目提供了一套完整的网格后处理工具，覆盖切割、布尔、对齐、减面、平滑等常见需求。</p>
+
+<h3>网格操作</h3>
+<table>
+  <tr><th>脚本</th><th>功能</th><th>核心算法</th></tr>
+  <tr><td><code>mesh-cut.py</code></td><td>平面切割网格</td><td>trimesh slice_plane + cap</td></tr>
+  <tr><td><code>mesh-boolean.py</code></td><td>CSG 布尔运算</td><td>manifold3d (union/diff/intersect)</td></tr>
+  <tr><td><code>mesh-align.py</code></td><td>将 mesh B 对齐到 mesh A</td><td>PCA 边界框 + Rodrigues 旋转</td></tr>
+  <tr><td><code>mesh-stitch.py</code></td><td>修复非流形网格</td><td>pymeshlab HC Laplacian</td></tr>
+  <tr><td><code>mesh-decorate.py</code></td><td>UV 位移贴图 + 顶点着色</td><td>PNG → UV displacement map</td></tr>
+</table>
+
+<h3>网格优化</h3>
+<table>
+  <tr><th>脚本</th><th>功能</th><th>核心算法</th></tr>
+  <tr><td><code>mesh-simplify.py</code></td><td>减面到目标面数</td><td>Quadric Error Metric Decimation</td></tr>
+  <tr><td><code>mesh-smooth.py</code></td><td>平滑网格（不收缩）</td><td>Taubin λ/μ 滤波</td></tr>
+  <tr><td><code>mesh-scale.py</code></td><td>统一缩放 / 目标宽度</td><td>trimesh 仿射变换</td></tr>
+</table>
+
+<h3>组合工具</h3>
+<table>
+  <tr><th>脚本</th><th>功能</th></tr>
+  <tr><td><code>model-prep.py</code></td><td>组合简化+修复+缩放+落地 — 一键准备打印</td></tr>
+  <tr><td><code>pipeline.py</code></td><td>端到端：图片 → 3D 生成 → 修复 → STL</td></tr>
+</table>
+
+<div class="card">
+  <h4>使用示例</h4>
+  <pre><code><span class="cm"># 平面切割</span>
+<span class="fn">python</span> scripts/mesh-cut.py model.stl --plane-co 0,0,10 --plane-no 0,0,1
+
+<span class="cm"># 布尔差集</span>
+<span class="fn">python</span> scripts/mesh-boolean.py model.stl cutter.stl --op difference
+
+<span class="cm"># 减面到 5000 面</span>
+<span class="fn">python</span> scripts/mesh-simplify.py model.stl --target 5000
+
+<span class="cm"># 平滑 + 缩放 + 修复 一键</span>
+<span class="fn">python</span> scripts/model-prep.py model.stl --target-faces 10000 --scale 0.5</code></pre>
+</div>
+
+<!-- ═══════════ WORKFLOW SYSTEM ═══════════ -->
+<h2 id="workflow-system">🔀 工作流系统</h2>
+<p>工作流系统允许将多个处理步骤串联成 DAG（有向无环图），一键运行完整流水线。基于 LiteGraph.js 的可视化编辑器，支持拖拽连线、参数配置、模板和运行时监控。</p>
+
+<h3>节点类型（25+）</h3>
+<table>
+  <tr><th>分类</th><th>节点</th><th>说明</th></tr>
+  <tr><td rowspan="2">输入</td><td>file_input</td><td>文件输入节点（图片/STL/GLB）</td></tr>
+  <tr><td>text_input</td><td>文本输入节点（用于文生图）</td></tr>
+  <tr><td rowspan="6">生成</td><td>triposr</td><td>TripoSR 快速 3D 生成</td></tr>
+  <tr><td>hunyuan</td><td>Hunyuan3D-2.1 高质量生成</td></tr>
+  <tr><td>relief</td><td>标准浮雕生成</td></tr>
+  <tr><td>layered_relief</td><td>多层套色浮雕（AMS 多色）</td></tr>
+  <tr><td>lithophane</td><td>透光浮雕生成</td></tr>
+  <tr><td>text_to_image</td><td>云端文生图（4 家 AI 提供商）</td></tr>
+  <tr><td rowspan="7">处理</td><td>resize</td><td>图片缩放</td></tr>
+  <tr><td>crop</td><td>图片裁剪</td></tr>
+  <tr><td>grayscale</td><td>灰度转换</td></tr>
+  <tr><td>adjust</td><td>亮度/对比度/饱和度调整</td></tr>
+  <tr><td>convert</td><td>图片格式转换</td></tr>
+  <tr><td>remove_background</td><td>AI 背景去除</td></tr>
+  <tr><td>effects</td><td>16 种图片特效（像素化/油画/水墨…）</td></tr>
+  <tr><td rowspan="2">输出</td><td>output_file</td><td>输出文件节点</td></tr>
+  <tr><td>views</td><td>六视图渲染</td></tr>
+  <tr><td rowspan="9">高级 Mesh</td><td>repair</td><td>网格防水修复</td></tr>
+  <tr><td>simplify</td><td>网格减面</td></tr>
+  <tr><td>smooth</td><td>网格平滑</td></tr>
+  <tr><td>scale</td><td>网格缩放</td></tr>
+  <tr><td>boolean</td><td>布尔运算</td></tr>
+  <tr><td>cut</td><td>平面切割</td></tr>
+  <tr><td>stitch</td><td>HC Laplacian 修复</td></tr>
+  <tr><td>decorate</td><td>UV 贴图+着色</td></tr>
+  <tr><td>align</td><td>网格对齐</td></tr>
+</table>
+
+<h3>内置模板</h3>
+<table>
+  <tr><th>模板</th><th>流程</th><th>适用场景</th></tr>
+  <tr><td>基础流程</td><td>文件输入 → 浮雕</td><td>快速生成浮雕</td></tr>
+  <tr><td>文生图流程</td><td>文本 → 文生图 → 浮雕</td><td>从文字描述生成浮雕</td></tr>
+  <tr><td>进阶流程</td><td>文件输入 → 套色浮雕 → 修复</td><td>AMS 多色打印准备</td></tr>
+  <tr><td>完整流程</td><td>文件输入 → 3D → 打印准备 → 六视图</td><td>端到端 AI 3D 打印</td></tr>
+</table>
+
+<h3>执行引擎</h3>
+<ul>
+  <li><strong>拓扑排序：</strong>Kahn 算法自动解析节点执行顺序</li>
+  <li><strong>端口数据流：</strong>上游输出文件路径自动传递给下游输入端口</li>
+  <li><strong>GPU 锁：</strong>asyncio.Lock 确保 GPU 节点串行执行</li>
+  <li><strong>CPU 并发：</strong>Semaphore(3) 控制 CPU 节点并行度</li>
+  <li><strong>内联节点：</strong>图片处理节点在引擎进程内直接执行（PIL），无需启动子进程</li>
+  <li><strong>Replay：</strong>支持从任意节点重放，保留上游已完成结果</li>
+  <li><strong>SSE 实时推送：</strong>节点级进度事件（node_start/node_complete/node_error/node_progress）</li>
+</ul>
+
+<h3>快速上手</h3>
+<pre><code><span class="cm"># 1. 启动 Web 平台</span>
+<span class="fn">python start-server.py</span>
+
+<span class="cm"># 2. 浏览器访问 http://127.0.0.1:8080</span>
+<span class="cm"># 3. 点击「工作流编辑器」→ 选择模板或拖拽节点</span>
+<span class="cm"># 4. 连线 → 配置参数 → 保存 → 运行</span></code></pre>
+
 <!-- ═══════════ RELIEF ═══════════ -->
 <h2 id="relief">🏔 浮雕生成 — 图像转浮雕</h2>
 <p>从图像直接生成3D可打印的浮雕，支持<strong>立体浮雕</strong>和<strong>透光浮雕（lithophane）</strong>两种模式，可选单色或四色打印。</p>
@@ -623,8 +750,8 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
 <h2 id="compare">📊 引擎对比</h2>
 <table>
   <tr><th>特性</th><th>TripoSR</th><th>Hunyuan3D-2.1</th></tr>
-  <tr><td>速度</td><td>~2s 推理</td><td>~67-287s/步</td></tr>
-  <tr><td>VRAM</td><td>~3.5 GB</td><td>8GB 推荐 (6GB 会溢出)</td></tr>
+  <tr><td>速度</td><td>~2s 推理</td><td>~67s/步 (16GB)</td></tr>
+  <tr><td>VRAM</td><td>~3.5 GB</td><td>~7 GB (16GB 全速)</td></tr>
   <tr><td>纹理</td><td>顶点色 (内置)</td><td>geometry-only (纹理开发中)</td></tr>
   <tr><td>几何精度</td><td>中 (背面糊)</td><td>高 (细节完整)</td></tr>
   <tr><td>水密性</td><td>需后修复</td><td>直接水密 ✓</td></tr>
@@ -666,16 +793,16 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
   Hunyuan3D-2.1 比 TripoSR 更能推测背面形状，但仍有局限。</p>
 </div>
 
-<div class="card danger">
-  <h4>3. RTX 3060 6GB 不要同时开浏览器</h4>
-  <p>Chrome/Edge 等浏览器占用 1-2GB VRAM (硬件加速)。<br>
-  跑 Hunyuan3D-2.1 前关闭浏览器可避免额外的 VRAM 争抢。</p>
+<div class="card warn">
+  <h4>3. 16GB 显存可同时运行浏览器</h4>
+  <p>RTX 5070 Ti 16GB 绰绰有余，Hunyuan3D-2.1 占 ~7GB。<br>
+  浏览器等应用不会影响推理速度。</p>
 </div>
 
-<div class="card warn">
-  <h4>4. 散热是 RTX 3060 Laptop 的死穴</h4>
-  <p>笔记本 GPU 热降频严重：运行时间越长越慢。<br>
-  首次运行建议 <code>--steps 5</code> 验证流程，确认无误后再挂机长跑。</p>
+<div class="card">
+  <h4>4. 首次运行建议低参数验证</h4>
+  <p>首次运行建议 <code>--steps 5 --resolution 128</code> 验证流程。<br>
+  确认无误后再跑 <code>--steps 25</code> 高质量模式。</p>
 </div>
 
 <div class="card">
@@ -700,7 +827,7 @@ Hunyuan3D 脚本<strong>使用整合包自带的内嵌 Python</strong>（<code>p
 <hr style="border-color:var(--border); margin: 48px 0 12px;">
 <p style="color:var(--text-muted); font-size:0.8rem; text-align:center;">
   3D Print Pipeline &copy; 2026 — 基于 TripoSR (MIT) 和 Hunyuan3D-2.1 (腾讯非商用协议)<br>
-  文档更新: 2026-05-12
+  文档更新: 2026-05-20
 </p>
 
 </main>

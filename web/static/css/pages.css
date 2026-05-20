@@ -6,11 +6,6 @@
 .dash-header{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .dash-header h3{margin:0}
 
-/* ── New Task ── */
-.new-task-steps{counter-reset:step}
-.new-task-step{counter-increment:step;margin-bottom:var(--space-xl)}
-.new-task-step::before{content:"Step " counter(step);font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px}
-
 /* ── Task Detail ── */
 .detail-section{margin-bottom:var(--space-xl)}
 .detail-section h4{display:flex;align-items:center;gap:6px}

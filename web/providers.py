@@ -52,6 +52,7 @@ def is_key_configured(api_key: str) -> bool:
 
 
 def load_providers_config() -> list[dict]:
+    global _config_cache, _config_mtime
     # Use mtime-based cache to avoid re-reading YAML on every call
     try:
         mtime = os.path.getmtime(PROVIDERS_CONFIG)
@@ -139,7 +140,15 @@ class OpenAICompatImageProvider(BaseProvider):
                 },
                 json=body,
             )
-            resp.raise_for_status()
+            if resp.is_error:
+                detail = ""
+                try:
+                    err_data = resp.json()
+                    detail = err_data.get("error", {}).get("message", "")
+                except Exception:
+                    pass
+                msg = f"API error {resp.status_code}: {detail or resp.text[:300]}"
+                raise RuntimeError(msg)
             data = resp.json()
 
         return await self._parse_response(data, w, h)

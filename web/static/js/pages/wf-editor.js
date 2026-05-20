@@ -42,7 +42,7 @@ export default async function renderWorkflowEditor(main, hash) {
       <input id="wf-name-input" placeholder="${t('wf.name')}" style="display:none;flex:1;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:13px;font-family:var(--font);max-width:300px">
       <button class="btn btn-sm" id="wf-save-btn">💾 ${t('wf.save')}</button>
       <button class="btn btn-sm btn-primary" id="wf-run-btn">▶ ${t('wf.run')}</button>
-      <button class="btn btn-sm" id="wf-format-btn" title="${getLang()==='zh'?'自动排列节点':'Auto-arrange nodes'}">🔧 ${getLang()==='zh'?'格式化':'Format'}</button>
+      <button class="btn btn-sm" id="wf-format-btn" title="${t('wf.formatTitle')}">🔧 ${t('wf.format')}</button>
       <button class="btn btn-sm btn-danger" id="wf-delete-btn" ${!wfId?'style="display:none"':''}>${t('wf.delete')}</button>
     </div>
     <div class="wf-layout">
@@ -84,14 +84,14 @@ export default async function renderWorkflowEditor(main, hash) {
   const palette = document.getElementById('wf-palette');
   palette.innerHTML = `
     <div style="margin-bottom:12px">
-      <div style="font-size:10px;color:var(--fg2);text-transform:uppercase;margin-bottom:6px">${getLang()==='zh'?'模板':'Templates'}</div>
+      <div style="font-size:10px;color:var(--fg2);text-transform:uppercase;margin-bottom:6px">${t('wf.templates')}</div>
       <button class="btn btn-xs" style="width:100%;margin-bottom:4px" onclick="window._wfTemplate && window._wfTemplate('basic')">${t('wf.template.basic')}</button>
       <button class="btn btn-xs" style="width:100%;margin-bottom:4px" onclick="window._wfTemplate && window._wfTemplate('text2img')">${t('wf.template.text2img')}</button>
       <button class="btn btn-xs" style="width:100%;margin-bottom:4px" onclick="window._wfTemplate && window._wfTemplate('advanced')">${t('wf.template.advanced')}</button>
       <button class="btn btn-xs" style="width:100%" onclick="window._wfTemplate && window._wfTemplate('full')">${t('wf.template.full')}</button>
     </div>
     <div id="node-search-wrap" style="margin-bottom:10px">
-      <input id="node-search" type="text" placeholder="${getLang()==='zh'?'搜索节点...':'Search nodes...'}" style="width:100%;box-sizing:border-box;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);color:var(--fg);font-size:12px"/>
+      <input id="node-search" type="text" placeholder="${t('wf.searchNodes')}" style="width:100%;box-sizing:border-box;padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg2);color:var(--fg);font-size:12px"/>
     </div>
     ${catOrder.filter(c => cats[c]).map(c => `
       <div class="cat-section${catCollapsed[c] ? ' collapsed' : ''}" data-cat="${c}">
@@ -453,8 +453,6 @@ function renderInspector(node) {
   _inspSelectedNode = node;
   const panel = document.getElementById('wf-inspector');
   if (!panel) return;
-  const isZh = getLang() === 'zh';
-
   // Resolve _wfTypeId: loaded nodes lose custom props via configure()
   const typeId = node._wfTypeId || (node.type || '').replace(/^wf_/, '');
   const nt = (window._wfNodeTypes || []).find(n => n.id === typeId);
@@ -666,8 +664,6 @@ function wfLog(msg) {
 }
 
 async function showRunParamsDialog(wfId) {
-  const isZh = getLang() === 'zh';
-
   // Build overlay with loading state
   const overlay = document.createElement('div');
   overlay.className = 'run-params-overlay';
@@ -677,7 +673,7 @@ async function showRunParamsDialog(wfId) {
       <div class="rp-body" id="rp-body"><p style="color:var(--fg2);text-align:center;padding:20px">${t('wf.loading')}</p></div>
       <div class="rp-footer" style="display:none" id="rp-footer">
         <button class="btn btn-primary" id="rp-confirm">▶ ${t('wf.run')}</button>
-        <button class="btn" id="rp-cancel">${isZh?'取消':'Cancel'}</button>
+        <button class="btn" id="rp-cancel">${t('wf.validation.cancel')}</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -727,7 +723,7 @@ async function showRunParamsDialog(wfId) {
 
   // Input nodes section
   if (inputs.length > 0) {
-    bodyHTML += `<div style="margin-bottom:16px"><h4 style="margin-bottom:8px">${isZh?'输入节点':'Input Nodes'}</h4>`;
+    bodyHTML += `<div style="margin-bottom:16px"><h4 style="margin-bottom:8px">${t('wf.inputNodes')}</h4>`;
     inputs.forEach(inp => {
       if (inp.node_type === 'file_input') {
         const accept = (inp.params.accept || '.png,.jpg,.stl').split(',');
@@ -735,7 +731,7 @@ async function showRunParamsDialog(wfId) {
           <label style="font-weight:600">${inp.label} <span style="color:var(--fg2);font-weight:400">(${inp.node_type})</span></label>
           <div class="drop-zone" id="rp-drop-zone" style="margin-top:6px">
             <div class="icon">&#128193;</div>
-            <div class="text">${isZh?'点击或拖拽上传文件':'Click or drag to upload file'}</div>
+            <div class="text">${t('new.dropHint')}</div>
             <div class="sub">${accept.join(', ')}</div>
             <input type="file" id="rp-file-input" accept="${accept.join(',')}">
           </div>
@@ -748,7 +744,7 @@ async function showRunParamsDialog(wfId) {
     });
     bodyHTML += `</div>`;
   } else {
-    bodyHTML += `<p style="color:var(--fg2);font-size:13px;margin-bottom:16px">${isZh?'此工作流无需外部输入，可直接运行':'This workflow needs no external input'}</p>`;
+    bodyHTML += `<p style="color:var(--fg2);font-size:13px;margin-bottom:16px">${t('new.noExternalInput')}</p>`;
   }
 
   // Process node param overrides
@@ -844,7 +840,7 @@ async function showRunParamsDialog(wfId) {
     const el = document.getElementById('rp-file-chosen');
     if (el && wfInputFile) {
       el.style.display = 'block';
-      el.textContent = `${isZh?'已选择':'File'}: ${wfInputFile.name}`;
+      el.textContent = `${t('new.fileChosen')}: ${wfInputFile.name}`;
     }
   }
 
@@ -903,17 +899,16 @@ async function showRunParamsDialog(wfId) {
 /** Show validation results in a modal. Returns true if user consents to save (or just dismisses warnings). */
 function showValidationModal(validation) {
   return new Promise(resolve => {
-    const isZh = getLang() === 'zh';
     const hasErrors = validation.errors.length > 0;
 
     const overlay = document.createElement('div');
     overlay.className = 'wf-valid-overlay';
     let html = `<div class="wf-valid-modal">
-      <div class="wf-valid-header"><h3>${isZh ? '工作流校验' : 'Workflow Validation'}</h3><button class="wf-valid-close">&times;</button></div>
+      <div class="wf-valid-header"><h3>${t('wf.validation.title')}</h3><button class="wf-valid-close">&times;</button></div>
       <div class="wf-valid-body">`;
 
     if (hasErrors) {
-      html += `<div class="wf-valid-section"><div class="wf-valid-section-title wf-valid-error-title">${isZh ? '错误 (必须修复)' : 'Errors (must fix)'}</div>`;
+      html += `<div class="wf-valid-section"><div class="wf-valid-section-title wf-valid-error-title">${t('wf.validation.errors')}</div>`;
       validation.errors.forEach(e => {
         html += `<div class="wf-valid-item wf-valid-error">❌ ${escHtml(e.message)}</div>`;
       });
@@ -921,7 +916,7 @@ function showValidationModal(validation) {
     }
 
     if (validation.warnings.length > 0) {
-      html += `<div class="wf-valid-section"><div class="wf-valid-section-title wf-valid-warn-title">${isZh ? '警告' : 'Warnings'}</div>`;
+      html += `<div class="wf-valid-section"><div class="wf-valid-section-title wf-valid-warn-title">${t('wf.validation.warnings')}</div>`;
       validation.warnings.forEach(w => {
         html += `<div class="wf-valid-item wf-valid-warn">⚠ ${escHtml(w.message)}</div>`;
       });
@@ -930,11 +925,11 @@ function showValidationModal(validation) {
 
     html += `</div><div class="wf-valid-footer">`;
     if (hasErrors) {
-      html += `<span style="font-size:12px;color:var(--fg2)">${isZh ? '请修复以上错误后再保存' : 'Please fix the errors above before saving'}</span>`;
-      html += `<button class="btn" id="wf-valid-close-btn">${isZh ? '关闭' : 'Close'}</button>`;
+      html += `<span style="font-size:12px;color:var(--fg2)">${t('wf.validation.fixErrorsHint')}</span>`;
+      html += `<button class="btn" id="wf-valid-close-btn">${t('wf.validation.close')}</button>`;
     } else {
-      html += `<button class="btn btn-primary" id="wf-valid-save-btn">${isZh ? '仍要保存' : 'Save Anyway'}</button>`;
-      html += `<button class="btn" id="wf-valid-cancel-btn">${isZh ? '取消' : 'Cancel'}</button>`;
+      html += `<button class="btn btn-primary" id="wf-valid-save-btn">${t('wf.validation.saveAnyway')}</button>`;
+      html += `<button class="btn" id="wf-valid-cancel-btn">${t('wf.validation.cancel')}</button>`;
     }
     html += `</div></div>`;
     overlay.innerHTML = html;

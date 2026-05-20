@@ -94,6 +94,7 @@ def check_deps():
         "pyrender": "pyrender",
         "manifold3d": "manifold3d",
         "pymeshlab": "pymeshlab",
+        "shapely": "shapely",
         # AI 3D generation (TripoSR)
         "torch": "torch",
         "rembg": "rembg[gpu]",

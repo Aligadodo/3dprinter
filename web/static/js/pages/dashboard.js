@@ -185,7 +185,7 @@ export default async function renderDashboard(main) {
           </a>`;
         }).join('')}
       </div>
-      ${tasks.length >= taskLimit ? `<div style="text-align:center;margin-top:12px"><button class="btn btn-sm" id="load-more-btn">${getLang()==='zh'?'加载更多':'Load more'} (${tasks.length})</button></div>` : ''}
+      ${tasks.length >= taskLimit ? `<div style="text-align:center;margin-top:12px"><button class="btn btn-sm" id="load-more-btn">${t('dash.loadMore')} (${tasks.length})</button></div>` : ''}
     `;
 
     // Wire filter change events

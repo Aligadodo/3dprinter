@@ -228,6 +228,98 @@ def build_upstream(nid: str, ctx: dict, edge_map: dict) -> dict:
     return cascade
 
 
+# ── Port type compatibility ────────────────────────────────────────────────
+
+# Cross-type compatibility rules. Rules are checked in order; first match wins.
+# Each rule: (src_type, tgt_type) — matches when actual src==rule_src AND actual tgt==rule_tgt.
+# Rules are directional: src→tgt.
+_PORT_COMPAT_RULES = [
+    ("file",   "image"),
+    ("file",   "stl"),
+    ("file",   "mesh"),
+    ("string", "image"),
+    ("stl",    "mesh"),
+    ("mesh",   "stl"),
+    ("json",   "string"),
+    ("json",   "json"),
+    ("dir",    "any"),
+]
+
+_WILDCARD_TYPES = {"*", "any"}
+
+def _port_types_compatible(src_type: str, tgt_type: str) -> bool:
+    """Check if two port types are compatible."""
+    if not src_type or not tgt_type:
+        return True
+    if src_type == tgt_type:
+        return True
+    # Explicit wildcard ports accept/produce anything
+    if src_type in _WILDCARD_TYPES or tgt_type in _WILDCARD_TYPES:
+        return True
+    for rule_src, rule_tgt in _PORT_COMPAT_RULES:
+        if rule_src == src_type and rule_tgt == tgt_type:
+            return True
+    return False
+
+
+def validate_port_compatibility(node_map: dict, edges: list[dict]) -> list[str]:
+    """Validate that all edges connect compatible port types.
+
+    Returns a list of error messages (empty = all good).
+    """
+    errors = []
+    for e in edges:
+        src_nid = str(e.get("source") or e.get("source_node"))
+        tgt_nid = str(e.get("target") or e.get("target_node"))
+        src_slot = e.get("source_port", 0)
+        tgt_slot = e.get("target_port", 0)
+
+        src_node = node_map.get(src_nid, {})
+        tgt_node = node_map.get(tgt_nid, {})
+
+        src_type = src_node.get("type", "")
+        tgt_type = tgt_node.get("type", "")
+
+        src_nt = nt.get_node_type(src_type)
+        tgt_nt = nt.get_node_type(tgt_type)
+
+        src_port_type = None
+        src_port_name = str(src_slot)
+        if src_nt and isinstance(src_slot, int) and src_slot < len(src_nt.outputs):
+            src_port_type = src_nt.outputs[src_slot].type
+            src_port_name = src_nt.outputs[src_slot].name
+        elif src_nt and isinstance(src_slot, str):
+            for op in src_nt.outputs:
+                if op.name == src_slot:
+                    src_port_type = op.type
+                    break
+            src_port_name = src_slot
+
+        tgt_port_type = None
+        tgt_port_name = str(tgt_slot)
+        if tgt_nt and isinstance(tgt_slot, int) and tgt_slot < len(tgt_nt.inputs):
+            tgt_port_type = tgt_nt.inputs[tgt_slot].type
+            tgt_port_name = tgt_nt.inputs[tgt_slot].name
+        elif tgt_nt and isinstance(tgt_slot, str):
+            for ip in tgt_nt.inputs:
+                if ip.name == tgt_slot:
+                    tgt_port_type = ip.type
+                    break
+            tgt_port_name = tgt_slot
+
+        if src_port_type and tgt_port_type:
+            if not _port_types_compatible(src_port_type, tgt_port_type):
+                src_label = src_node.get("title") or src_type or src_nid
+                tgt_label = tgt_node.get("title") or tgt_type or tgt_nid
+                errors.append(
+                    f"Port type mismatch: '{src_label}' (#{src_nid}) output "
+                    f"'{src_port_name}' [{src_port_type}] → '{tgt_label}' (#{tgt_nid}) "
+                    f"input '{tgt_port_name}' [{tgt_port_type}]"
+                )
+
+    return errors
+
+
 def resolve_input(node_id: str, port_name: str, edge_map: dict, ctx: dict):
     """Resolve an input port value from upstream nodes or external inputs.
 

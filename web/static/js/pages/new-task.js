@@ -196,7 +196,7 @@ export default async function renderNewTask(main) {
     // Required check
     if (p && p.required && !el.value && el.type !== 'checkbox') {
       group.classList.add('invalid');
-      if (errEl) errEl.textContent = (getLang()==='zh'?'此项为必填':'This field is required');
+      if (errEl) errEl.textContent = t('new.fieldRequired');
       return false;
     }
     // Number range
@@ -204,12 +204,12 @@ export default async function renderNewTask(main) {
       const v = parseFloat(el.value);
       if (p && p.min != null && v < p.min) {
         group.classList.add('invalid');
-        if (errEl) errEl.textContent = (getLang()==='zh'?`最小值为 ${p.min}`:`Minimum is ${p.min}`);
+        if (errEl) errEl.textContent = t('new.minValue').replace('{min}', p.min);
         return false;
       }
       if (p && p.max != null && v > p.max) {
         group.classList.add('invalid');
-        if (errEl) errEl.textContent = (getLang()==='zh'?`最大值为 ${p.max}`:`Maximum is ${p.max}`);
+        if (errEl) errEl.textContent = t('new.maxValue').replace('{max}', p.max);
         return false;
       }
     }
@@ -236,7 +236,7 @@ export default async function renderNewTask(main) {
 
   // ── Submit pipeline task ──
   document.getElementById('submit-btn').addEventListener('click', async () => {
-    if (!validateAll()) { toast(getLang()==='zh'?'请修正表单错误':'Please fix form errors', 'error'); return; }
+    if (!validateAll()) { toast(t('new.fixFormErrors'), 'error'); return; }
     const params = {};
     document.querySelectorAll('#param-fields input, #param-fields select').forEach(el => {
       if (el.type === 'checkbox') { if (el.checked) params[el.name] = true; }
@@ -604,20 +604,18 @@ function buildText2ImgPanel(isZh) {
         <div class="form-group" style="flex:1">
           <label>${t('text2img.provider')}</label>
           <select id="text2img-provider" style="width:100%;padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:13px;font-family:var(--font)">
-            <option value="openai">OpenAI DALL-E 3</option>
-            <option value="stability">Stability AI</option>
+            <option value="">${t('text2img.loadingProviders')}</option>
           </select>
         </div>
         <div class="form-group" style="flex:1">
           <label>${t('text2img.size')}</label>
           <select id="text2img-size" style="width:100%;padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:13px;font-family:var(--font)">
-            <option value="1024x1024">1024×1024</option>
-            <option value="1792x1024">1792×1024</option>
-            <option value="1024x1792">1024×1792</option>
+            <option value="">—</option>
           </select>
         </div>
       </div>
-      <button class="btn btn-primary btn-sm" id="text2img-generate">${t('text2img.generate')}</button>
+      <div id="text2img-provider-msg" style="font-size:11px;color:var(--red);margin-bottom:8px;display:none"></div>
+      <button class="btn btn-primary btn-sm" id="text2img-generate" disabled>${t('text2img.generate')}</button>
       <span id="text2img-status" style="font-size:12px;color:var(--accent);margin-left:8px;display:none"></span>
       <div id="text2img-result" style="margin-top:8px"></div>
     </div>
@@ -626,15 +624,68 @@ function buildText2ImgPanel(isZh) {
 
 function setupText2Img(isZh, handleFile) {
   let t2iOpen = false;
+  let t2iProviders = [];  // cached provider list from API
+
   document.getElementById('text2img-toggle').addEventListener('click', () => {
     t2iOpen = !t2iOpen;
     document.getElementById('text2img-body').style.display = t2iOpen ? 'block' : 'none';
     document.getElementById('text2img-chevron').textContent = t2iOpen ? '▼' : '▶';
+    // Load providers on first open
+    if (t2iOpen && t2iProviders.length === 0) loadText2ImgProviders();
   });
+
+  async function loadText2ImgProviders() {
+    const provSel = document.getElementById('text2img-provider');
+    const sizeSel = document.getElementById('text2img-size');
+    const msgEl = document.getElementById('text2img-provider-msg');
+    try {
+      await fetchProviderStatuses();
+      const data = await api('GET', '/text2img/providers');
+      t2iProviders = (data.providers || []).filter(p => p.available);
+      if (t2iProviders.length === 0) {
+        provSel.innerHTML = `<option value="">${t('text2img.noProviders')}</option>`;
+        msgEl.textContent = t('text2img.noProvidersHint');
+        msgEl.style.display = 'block';
+        return;
+      }
+      msgEl.style.display = 'none';
+      provSel.innerHTML = t2iProviders.map(p =>
+        `<option value="${p.id}">${escHtml(p.name)}</option>`
+      ).join('');
+      // Select first available provider and populate sizes
+      if (t2iProviders.length > 0) {
+        provSel.value = t2iProviders[0].id;
+        updateText2ImgSizes();
+      }
+    } catch (e) {
+      provSel.innerHTML = `<option value="">${t('text2img.error')}</option>`;
+    }
+  }
+
+  function updateText2ImgSizes() {
+    const provSel = document.getElementById('text2img-provider');
+    const sizeSel = document.getElementById('text2img-size');
+    const genBtn = document.getElementById('text2img-generate');
+    const providerId = provSel.value;
+    const prov = t2iProviders.find(p => p.id === providerId);
+    const sizes = prov ? (prov.sizes || [prov.default_size]) : [];
+    if (sizes.length === 0) {
+      sizeSel.innerHTML = `<option value="">—</option>`;
+      genBtn.disabled = true;
+      return;
+    }
+    sizeSel.innerHTML = sizes.map(s => {
+      const [w, h] = s.split('x');
+      return `<option value="${s}" ${s === prov.default_size ? 'selected' : ''}>${w}×${h}</option>`;
+    }).join('');
+    genBtn.disabled = false;
+  }
+
+  document.getElementById('text2img-provider').addEventListener('change', updateText2ImgSizes);
 
   document.getElementById('text2img-generate').addEventListener('click', async () => {
     const prompt = document.getElementById('text2img-prompt').value.trim();
-    if (!prompt) { toast('Please enter a prompt', 'error'); return; }
+    if (!prompt) { toast(t('text2img.promptRequired'), 'error'); return; }
     const provider = document.getElementById('text2img-provider').value;
     const size = document.getElementById('text2img-size').value;
     const statusEl = document.getElementById('text2img-status');

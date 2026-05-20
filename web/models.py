@@ -76,6 +76,7 @@ def make_task_dir_name(task_id: str, pipeline_type: str, input_filename: str = "
     type_abbr = {
         "relief": "rlf", "lithophane": "lith", "layered_relief": "layr",
         "triposr": "tri", "hunyuan": "hun", "views": "view", "repair": "rep",
+        "text_to_image": "t2i",
     }.get(pipeline_type, pipeline_type[:4])
 
     stem = ""
@@ -104,6 +105,7 @@ def generate_display_name(pipeline_type: str, params: dict, input_file: str = No
         "relief": "浮雕", "lithophane": "夜灯", "layered_relief": "套色浮雕",
         "triposr": "TripoSR", "hunyuan": "Hunyuan3D",
         "views": "六视图", "repair": "网格修复",
+        "text_to_image": "文生图",
     }
     label = type_labels.get(pipeline_type, pipeline_type)
 

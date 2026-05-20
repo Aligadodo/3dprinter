@@ -36,7 +36,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo ================================================
     echo.
     echo   If dependencies are missing, run:
-    echo     pip install fastapi uvicorn python-multipart markdown
+    echo     pip install fastapi uvicorn python-multipart markdown PyYAML httpx Pillow numpy
     echo.
     pause
     exit /b %ERRORLEVEL%

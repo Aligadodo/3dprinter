@@ -4,7 +4,7 @@
 
 **3D Print Pipeline** 是一个端到端 AI 驱动的 3D 打印流水线系统：将参考图片转换为 Bambu Lab 打印机可用的 STL 文件。项目支持两种 AI 生成引擎（TripoSR 快速、Hunyuan3D-2.1 高质量），以及浮雕/夜灯生成、网格修复和正交视图渲染。
 
-**目标硬件：** RTX 3060 Laptop 6GB VRAM / 64GB RAM / Windows 11  
+**目标硬件：** RTX 5070 Ti 16GB VRAM / 64GB RAM / Windows 11  
 **目标打印机：** Bambu Lab（4色 AMS），0.4mm 喷嘴，PLA/PETG
 
 ---
@@ -43,6 +43,12 @@
 │   ├── mesh-simplify.py     # 网格减面
 │   ├── mesh-smooth.py       # 网格平滑
 │   ├── mesh-scale.py        # 网格缩放
+│   ├── mesh-cut.py          # 平面切割
+│   ├── mesh-boolean.py      # CSG 布尔运算
+│   ├── mesh-align.py        # 网格对齐
+│   ├── mesh-stitch.py       # HC Laplacian 修复+平滑
+│   ├── mesh-decorate.py     # UV 位移贴图+顶点色
+│   ├── model-prep.py        # 组合 simplify+repair+scale+ground
 │   └── text-to-image.py     # 文本→图片
 │
 ├── config/                   # 配置文件
@@ -147,7 +153,7 @@
 
 **输出 JSON keys：** `output`, `vertices`, `faces`, `watertight`, `dimensions_mm`, `engine: "hunyuan3d-2.1"`
 
-**注意：** VRAM 需求 6.86GB，6GB 显卡会溢出到共享内存导致热节流。
+**注意：** VRAM 需求约 7GB，16GB 显卡可全量运行 `--steps 25` 高质量模式。
 
 ---
 
@@ -262,7 +268,7 @@ server.py (FastAPI)
 
 ## 七、关键设计点
 
-1. **GPU 锁机制**（`scheduler.py`）：`asyncio.Lock` 确保同时只有一个 GPU 任务执行，防止 6GB 显存超载。
+1. **GPU 锁机制**（`scheduler.py`）：`asyncio.Lock` 确保同时只有一个 GPU 任务执行，防止显存超载。
 
 2. **输出路径嵌套避免**（`image-to-3d.py`/`hunyuan-to-3d.py`）：输入在 `output/` 目录时不重复嵌套 `output/output/`。
 

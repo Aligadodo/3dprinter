@@ -19,7 +19,14 @@
     "title": "Browse Files",
     "loading": "Loading...",
     "error": "Load failed",
-    "empty": "No output files from completed tasks yet"
+    "empty": "No output files from completed tasks yet",
+    "downloading": "Downloading {n} files",
+    "copiedPaths": "Copied {n} paths",
+    "selectedFiles": "{n} files selected",
+    "downloadSelected": "Download",
+    "copySelectedPaths": "Copy paths",
+    "clearSelection": "Clear",
+    "selectFile": "Select"
   },
   "lang": { "zh": "中", "en": "EN" },
   "dash": {
@@ -37,7 +44,8 @@
     "workflow": "Workflow",
     "workflowTask": "This task belongs to a workflow run",
     "filterStatus": "Filter by status",
-    "filterType": "Filter by type"
+    "filterType": "Filter by type",
+    "loadMore": "Load more"
   },
   "new": {
     "title": "New Task",
@@ -79,7 +87,12 @@
     "dropHint": "Click or drag to upload file",
     "loadFailed": "Load failed",
     "fileChosen": "File",
-    "nodesCount": "nodes"
+    "nodesCount": "nodes",
+    "fieldRequired": "This field is required",
+    "minValue": "Minimum is {min}",
+    "maxValue": "Maximum is {max}",
+    "fixFormErrors": "Please fix form errors",
+    "selectedCount": "{n} selected"
   },
   "detail": {
     "title": "Task Detail",
@@ -214,6 +227,15 @@
       "round": "Round"
     },
     "format": "Format",
+    "formatTitle": "Auto-arrange nodes",
+    "templates": "Templates",
+    "searchNodes": "Search nodes...",
+    "runParams": "Run Parameters",
+    "inputNodes": "Input Nodes",
+    "noFileChosen": "No file chosen",
+    "chooseFile": "Choose File",
+    "nodeParams": "Node Parameters",
+    "outOf": " / ",
     "validation": {
       "title": "Workflow Validation",
       "errors": "Errors (must fix)",
@@ -225,7 +247,9 @@
       "inputNoConsumer": "Input node \"{label}\" has no downstream consumer",
       "requiredPortUnconnected": "Required port \"{port}\" on \"{label}\" is not connected",
       "outputNoInput": "Output node \"{label}\" has no input",
-      "isolatedNode": "Node \"{label}\" is isolated (no connections)"
+      "isolatedNode": "Node \"{label}\" is isolated (no connections)",
+      "fixErrorsHint": "Please fix the errors above before saving",
+      "close": "Close"
     }
   },
   "node": {
@@ -251,7 +275,11 @@
     "done": "Done! Image saved, ready for downstream tasks.",
     "error": "Generation failed",
     "useAsInput": "Use as input",
-    "unavailableSuffix": " (unavailable)"
+    "unavailableSuffix": " (unavailable)",
+    "loadingProviders": "Loading...",
+    "noProviders": "No providers available",
+    "noProvidersHint": "Configure API keys in config/providers.yaml to enable text-to-image generation.",
+    "promptRequired": "Please enter a prompt"
   },
   "inspector": {
     "title": "Node Properties",

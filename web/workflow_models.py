@@ -291,6 +291,15 @@ def update_node_run(node_run_id: int, status: str = None, task_id: str = None,
     conn.close()
 
 
+def get_node_run(node_run_id: int) -> dict | None:
+    conn = get_db()
+    row = conn.execute(
+        "SELECT * FROM workflow_node_runs WHERE id = ?", (node_run_id,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

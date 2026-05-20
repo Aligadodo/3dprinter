@@ -178,6 +178,16 @@ class WorkflowEngine:
         # Build port edge map using node type definitions
         edge_map = self._build_port_edge_map(node_map, edges)
 
+        # Validate port type compatibility across all edges
+        port_errors = dag.validate_port_compatibility(node_map, edges)
+        if port_errors:
+            err_msg = "Port type compatibility errors:\n" + "\n".join(port_errors)
+            await self._emit(instance_id, "error", {"error": err_msg})
+            wm.update_workflow_instance(instance_id, status="failed", finished_at=time.time(),
+                                        error_message=err_msg)
+            await self._emit(instance_id, "done", {})
+            return
+
         # Runtime context: node_id → {port_name: file_path}
         ctx = preserved_ctx or {}
         # Merge persisted context (includes _inputs, _work_dir from server)
@@ -287,6 +297,10 @@ class WorkflowEngine:
             except Exception as e:
                 error_msg = str(e)
                 wm.update_node_run(nr["id"], status="failed", error=error_msg, finished_at=time.time())
+                # Mark the linked task as failed if one exists (re-read from DB — run methods may have set task_id)
+                nr_updated = wm.get_node_run(nr["id"])
+                if nr_updated and nr_updated.get("task_id"):
+                    models.update_task_status(nr_updated["task_id"], "failed", {"error": error_msg})
                 # Mark remaining unstarted nodes as skipped
                 for later_nid in exec_list[idx + 1:]:
                     if later_nid in exec_node_runs:
@@ -318,8 +332,20 @@ class WorkflowEngine:
         size = runtime_params.get("size") or node_params.get("size", "2048x2048")
         provider_id = runtime_params.get("provider") or node_params.get("provider", "volcengine")
 
+        # Create a task record so failures are visible in the dashboard
+        task_id = uuid.uuid4().hex[:12]
+        pipeline_type = "text_to_image"
+        work_dir = ctx.get("_work_dir", scheduler.TASKS_DIR)
+        dir_name = models.make_task_dir_name(task_id, pipeline_type, prompt[:30])
+        task_dir = os.path.join(work_dir, dir_name) if work_dir else os.path.join(scheduler.TASKS_DIR, dir_name)
+        os.makedirs(task_dir, exist_ok=True)
+        display_name = f"文生图 {prompt[:40]}"
+        models.create_task(task_id, pipeline_type, {"provider": provider_id, "size": size, "prompt": prompt}, "", display_name)
+        wm.update_node_run(node_run_id, task_id=task_id)
+
         await self._emit(instance_id, "node_progress", {
-            "node_id": nid, "percent": 10, "message": f"Generating image with {provider_id}...",
+            "node_id": nid, "task_id": task_id, "percent": 10,
+            "message": f"Generating image with {provider_id}...",
         })
 
         prov = providers.get_provider(provider_id)
@@ -327,15 +353,35 @@ class WorkflowEngine:
             configs = providers.load_providers_config()
             cfg = next((c for c in configs if c["id"] == provider_id), None)
             if cfg and not cfg.get("enabled", True):
+                models.update_task_status(task_id, "failed", {"error": f"Provider '{provider_id}' is disabled"})
                 raise ValueError(f"Provider '{provider_id}' is disabled. Enable it in config/providers.yaml")
             if cfg and not providers.is_key_configured(cfg.get("api_key", "")):
+                models.update_task_status(task_id, "failed", {"error": f"Provider '{provider_id}' API key not configured"})
                 raise ValueError(f"Provider '{provider_id}' API key not configured. Set the environment variable in config/providers.yaml")
+            models.update_task_status(task_id, "failed", {"error": f"Provider '{provider_id}' not available"})
             raise ValueError(f"Provider '{provider_id}' not available")
+
+        # Validate size against provider supported sizes, fall back to default
+        supported_sizes = prov.config.get("sizes", [])
+        if supported_sizes and size not in supported_sizes:
+            fallback = prov.default_size
+            await self._emit(instance_id, "node_progress", {
+                "node_id": nid, "percent": 5,
+                "message": f"Size {size} not supported by {provider_id}, using {fallback}",
+            })
+            size = fallback
 
         result = await prov.generate(prompt, size)
         ctx[nid] = {"image": result.image_path, "_inputs": {"prompt": prompt}, "_params": {"size": size, "provider": provider_id}}
+
+        models.add_output_file(task_id, "image", result.image_path, "result")
+        models.update_task_status(task_id, "completed", {
+            "output": result.image_path, "provider": provider_id, "size": size,
+            "width": result.width, "height": result.height, "elapsed_ms": result.elapsed_ms,
+        })
+
         await self._emit(instance_id, "node_progress", {
-            "node_id": nid, "percent": 100, "message": "Image generated",
+            "node_id": nid, "task_id": task_id, "percent": 100, "message": "Image generated",
         })
 
     async def _run_inline(self, nid, node, node_type, node_params, ctx, instance_id, node_run_id, node_map, edges):

@@ -248,6 +248,7 @@ python scripts/mesh-to-views.py model.stl --resolution 2048 --no-grid
 **Relief/Lithophane:** `scipy scikit-learn fast_simplification`
 **Views:** `pyrender pyglet<2`
 **Repair:** `pymeshfix`
+**Mesh Ops (cut/boolean/stitch/align/decorate):** `shapely`
 **Web UI:** `fastapi uvicorn python-multipart`
 
 ## Web UI

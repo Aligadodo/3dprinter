@@ -263,7 +263,7 @@ def test_mesh_boolean_bool_op_is_choice():
     bool_op = nt.params.get("bool_op", {})
     assert bool_op.get("type") == "choice"
     assert "union" in bool_op.get("choices", [])
-    assert "difference" in bool_op.get("choices", [])
+    assert "diff" in bool_op.get("choices", [])
 
 
 def test_mesh_stitch_params_are_typed():
