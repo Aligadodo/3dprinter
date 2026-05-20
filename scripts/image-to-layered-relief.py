@@ -902,7 +902,11 @@ def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
 
     base = os.path.splitext(os.path.basename(image_path))[0]
     img_dir = os.path.dirname(os.path.abspath(image_path))
-    out_dir = os.path.join(img_dir, "layered_relief")
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if os.path.normpath(img_dir) == os.path.normpath(project_root):
+        out_dir = os.path.join(project_root, "output", "layered_relief")
+    else:
+        out_dir = os.path.join(img_dir, "layered_relief")
     os.makedirs(out_dir, exist_ok=True)
 
     # Stage 1 — Load & preprocess

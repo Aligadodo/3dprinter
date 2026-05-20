@@ -338,7 +338,11 @@ def image_to_relief(image_path, width_mm=160.0, height_mm=120.0,
     # Stage 4: Color export (before decimation — needs original vertex order)
     base = os.path.splitext(os.path.basename(image_path))[0]
     img_dir = os.path.dirname(os.path.abspath(image_path))
-    if lithophane:
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if os.path.normpath(img_dir) == os.path.normpath(project_root):
+        sub = "lithophane" if lithophane else "relief"
+        out_dir = os.path.join(project_root, "output", sub)
+    elif lithophane:
         out_dir = os.path.join(img_dir, "lithophane")
     else:
         out_dir = os.path.join(img_dir, "relief")

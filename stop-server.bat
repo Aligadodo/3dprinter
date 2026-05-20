@@ -8,7 +8,7 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-python "%~dp0stop-server.py" %*
+python "%~dp0scripts\stop-server.py" %*
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

@@ -28,19 +28,8 @@ models/*.safetensors
 ComfyUI_windows_portable/
 
 # ─── Output & Generated Files ───
-# All output subdirs - these contain generated meshes, images, logs
-output/tasks/
-output/lithophane/
-output/relief/
-output/views/
-output/text2img/
-output/layered_relief/
-output/*.log
-output/output/
-output/*.jpg
-output/*.png
-output/*.glb
-output/*.stl
+output/
+layered_relief/
 
 # Web server databases & uploads
 web/*.db
@@ -67,6 +56,10 @@ desktop.ini
 *.swp
 *.swo
 *.sublime-*
+
+# Test artifacts (Playwright screenshots, videos)
+test-results/
+test_input.*
 
 # Temp files
 *.tmp
