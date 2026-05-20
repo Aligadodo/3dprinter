@@ -10,19 +10,20 @@ End-to-end AI-powered 3D printing pipeline: reference image → 3D mesh → repa
 
 ## Hardware Constraints
 
-- **GPU:** RTX 3060 Laptop 6GB VRAM
+- **GPU:** RTX 5070 Ti 16GB VRAM (Blackwell, CC 12.0)
 - **RAM:** 64GB
 - **OS:** Windows 11
-- **Python:** 3.12 (system)
+- **Python:** 3.11 (system)
+- **CUDA:** 12.8 (torch nightly required for Blackwell)
 
 **VRAM budget per engine:**
 | Engine | VRAM | RAM | Disk |
 |--------|------|-----|------|
 | TripoSR | ~3.5 GB | 8GB+ | ~3GB (model.ckpt) |
-| Hunyuan3D-2.1 | 6.86 GB (spills to shared) | 32GB+ | ~50GB (ComfyUI portable) |
+| Hunyuan3D-2.1 | ~7 GB | 32GB+ | ~50GB (ComfyUI portable) |
 | Relief/Lithophane | <1 GB | any | — |
 
-Hunyuan3D-2.1 on 6GB: model loads 6.86GB, exceeding GPU by ~0.9GB, spills to shared memory. Thermal throttling causes 67→287s/step degradation. Use `--steps 10` for previews.
+16GB VRAM comfortably fits Hunyuan3D-2.1 without shared-memory spill. Full `--steps 25` quality runs feasible.
 
 ## Directory Structure
 
