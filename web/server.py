@@ -50,7 +50,12 @@ async def lifespan(app: FastAPI):
     # Startup
     models.init_db()
     workflow_models.init_workflow_db()
-    scheduler.get_scheduler()
+    sched = scheduler.get_scheduler()
+    # Mark stale "running" tasks as failed (server restart / crash recovery)
+    stale = models.get_tasks_by_status("running")
+    for t in (stale or []):
+        models.update_task_status(t["id"], "failed",
+            {"error": "Server restarted while task was running"})
     yield
     # Shutdown
     sched = scheduler.get_scheduler()
@@ -388,6 +393,20 @@ async def get_node_types():
         "types": node_types.all_node_types(),
         "categories": node_types.CATEGORIES,
     }
+
+
+@app.get("/api/td-database")
+async def get_td_database():
+    """Return filament Transmission Distance database for client-side preview."""
+    try:
+        from scripts.multi_color.td_database import KNOWN_TD
+        # Convert tuple keys → "brand|color" strings for JSON
+        db = {}
+        for (brand, color), td in KNOWN_TD.items():
+            db[f"{brand}|{color}"] = td
+        return {"td_values": db}
+    except ImportError:
+        return {"td_values": {}, "error": "td_database module not available"}
 
 
 # ---------------------------------------------------------------------------

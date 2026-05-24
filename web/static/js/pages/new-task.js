@@ -3,6 +3,43 @@ import { api, fetchProviderStatuses, providerChoiceLabel } from '../api.js';
 import { t, getLang } from '../i18n.js';
 import { formatBytes, toast, escHtml, isTypeCompatible, choiceLabel } from '../utils.js';
 
+function cardInfo(key, pt, isZh) {
+  // Infer input/output from pipeline type
+  const inputType = pt.input || 'none';
+  const inputIcon = inputType === 'image' ? '🖼️' : inputType === 'mesh' ? '📦' : '📋';
+  const inputLabel = inputType === 'image' ? 'Image' : inputType === 'mesh' ? '3D Mesh' : 'Text / None';
+
+  // Output inference
+  let outputIcon = '📄';
+  let outputLabel = 'STL Mesh';
+  if (key.includes('lithophane')) { outputIcon = '💡'; outputLabel = 'STL Lithophane'; }
+  else if (key.includes('relief')) { outputIcon = '🌊'; outputLabel = key.includes('multi') ? 'STL + 3MF' : 'STL Relief'; }
+  else if (key === 'triposr' || key === 'hunyuan') { outputIcon = '🧩'; outputLabel = '3D Mesh (GLB)'; }
+  else if (key === 'views') { outputIcon = '🖼️'; outputLabel = '6× PNG Views'; }
+  else if (key === 'repair') { outputIcon = '🔧'; outputLabel = 'Repaired STL'; }
+  else if (key === 'flatforge') { outputIcon = '🧩'; outputLabel = 'N× STL Sheets'; }
+  else if (key.startsWith('mesh_')) { outputIcon = '📦'; outputLabel = 'Processed Mesh'; }
+  else if (key === 'model_prep') { outputIcon = '🛠️'; outputLabel = 'Print-Ready STL'; }
+
+  // Tags: file extensions + key features
+  const tags = [];
+  if (pt.accepts && pt.accepts.length) {
+    tags.push(...pt.accepts.slice(0, 4)); // show up to 4 extensions
+  }
+  if (pt.gpu) tags.push('GPU Required');
+  if (key.includes('multi')) tags.push('AMS');
+  if (key.includes('manga')) tags.push('Line Art');
+  if (key === 'flatforge') tags.push('Puzzle');
+  if (key === 'triposr') tags.push('~2s');
+  if (key === 'hunyuan') tags.push('10-60min');
+  if (pt.params && pt.params.some(p => p.name === 'num_colors')) {
+    const nc = pt.params.find(p => p.name === 'num_colors');
+    if (nc) tags.push(`${nc.min}-${nc.max} Colors`);
+  }
+
+  return { inputIcon, inputLabel, outputIcon, outputLabel, tags };
+}
+
 export default async function renderNewTask(main) {
   selectedWorkflowId = null;
   window._wfInputFile = null; window._wfInputFiles = {};
@@ -42,13 +79,23 @@ export default async function renderNewTask(main) {
           </div>
         </div>
         <div class="type-grid" id="type-selector">
-          ${typeEntries.map(([key, pt]) => `
-            <div class="type-card" data-type="${key}" data-cat="${pt.category||'other'}" data-search="${(pt.label + ' ' + (pt.label_zh||'') + ' ' + key + ' ' + (pt.description||'')).toLowerCase()}">
-              <h4>${isZh ? (pt.label_zh || pt.label) : pt.label}</h4>
-              <p>${isZh ? (pt.description_zh || pt.description) : (pt.description || '')}</p>
-              <span class="gpu-badge gpu-${pt.gpu?'yes':'no'}">${pt.gpu?'GPU':'CPU'}</span>
+          ${typeEntries.map(([key, pt]) => {
+            const info = cardInfo(key, pt, isZh);
+            const searchText = [pt.label, pt.label_zh||'', key, pt.description||'', info.inputLabel, info.outputLabel, (pt.accepts||[]).join(' ')].join(' ').toLowerCase();
+            return `
+            <div class="type-card" data-type="${key}" data-cat="${pt.category||'other'}" data-search="${searchText}">
+              <div class="tc-header">
+                <span class="tc-title">${isZh ? (pt.label_zh || pt.label) : pt.label}</span>
+                <span class="gpu-badge gpu-${pt.gpu?'yes':'no'}">${pt.gpu?'GPU':'CPU'}</span>
+              </div>
+              <div class="tc-desc">${isZh ? (pt.description_zh || pt.description) : (pt.description || '')}</div>
+              <div class="tc-meta">
+                <span class="tc-meta-item io-in">${info.inputIcon} ${info.inputLabel}</span>
+                <span class="tc-meta-item io-out">${info.outputIcon} ${info.outputLabel}</span>
+              </div>
+              <div class="tc-tags">${info.tags.map(t => `<span class="tc-tag">${t}</span>`).join('')}</div>
             </div>
-          `).join('')}
+          `}).join('')}
         </div>
         <div class="nt-empty" id="nt-empty" style="display:none">${t('new.noMatch')}</div>
       </div>
@@ -104,6 +151,13 @@ export default async function renderNewTask(main) {
   main.querySelectorAll('#type-selector .type-card').forEach(card => {
     card.addEventListener('click', () => {
       const cardType = card.dataset.type;
+
+      // Multi-color types → preview page with live 3D preview
+      if (cardType === 'multi_color_relief' || cardType === 'multi_color_lithophane') {
+        location.hash = '#/preview/' + cardType;
+        return;
+      }
+
       main.querySelectorAll('#type-selector .type-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
       selectedType = cardType;
@@ -123,7 +177,7 @@ export default async function renderNewTask(main) {
         if (p.type === 'choice') return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><select name="${p.name}">${(p.choices||[]).map(c => `<option value="${c}" ${c===p.default?'selected':''}>${choiceLabel(c, p.choices, p.choices_zh)}</option>`).join('')}</select></span><div class="field-error"></div></div>`;
         const min = p.min != null ? `min="${p.min}"` : '';
         const max = p.max != null ? `max="${p.max}"` : '';
-        return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><input type="${p.type==='int'?'number':p.type}" name="${p.name}" value="${p.default||''}" ${min} ${max} step="${p.type==='float'?'any':'1'}"></span><div class="field-error" id="err-${p.name}"></div></div>`;
+        return `<div class="form-row"><label class="form-label"${titleAttr}>${plabel}${reqStar}</label><span class="form-value"><input type="${p.type==='int'?'number':p.type}" name="${p.name}" value="${escHtml(String(p.default||''))}" ${min} ${max} step="${p.type==='float'?'any':'1'}"></span><div class="field-error" id="err-${p.name}"></div></div>`;
       }).join('');
       // Wire real-time validation
       fields.querySelectorAll('input, select').forEach(el => {
@@ -346,6 +400,70 @@ export default async function renderNewTask(main) {
 let selectedWorkflowId = null;
 window._wfInputFile = null; window._wfInputFiles = {};
 
+function computeDagSummary(graph) {
+  // Parse graph into nodes and edges
+  const nodes = graph.nodes || [];
+  const edges = graph.edges || (graph.links ? graph.links.map(link => {
+    if (Array.isArray(link) && link.length >= 5) return { source: link[1], sourcePort: link[2], target: link[3], targetPort: link[4] };
+    return null;
+  }).filter(Boolean) : []);
+
+  if (nodes.length === 0) return null;
+
+  // Build adjacency maps
+  const nodeMap = {};
+  nodes.forEach(n => { nodeMap[String(n.id)] = n; });
+
+  const successors = {}; // id → [target ids]
+  const predecessors = {}; // id → [source ids]
+  nodes.forEach(n => { const sid = String(n.id); successors[sid] = []; predecessors[sid] = []; });
+  edges.forEach(e => {
+    const s = String(e.source), t = String(e.target);
+    if (successors[s] && !successors[s].includes(t)) successors[s].push(t);
+    if (predecessors[t] && !predecessors[t].includes(s)) predecessors[t].push(s);
+  });
+
+  // Topological sort (Kahn's algorithm)
+  const inDegree = {};
+  nodes.forEach(n => { inDegree[String(n.id)] = (predecessors[String(n.id)] || []).length; });
+
+  const queue = nodes.filter(n => inDegree[String(n.id)] === 0).map(n => String(n.id));
+  const topoOrder = [];
+  while (queue.length > 0) {
+    const cur = queue.shift();
+    topoOrder.push(cur);
+    (successors[cur] || []).forEach(tgt => {
+      inDegree[tgt]--;
+      if (inDegree[tgt] === 0) queue.push(tgt);
+    });
+  }
+
+  // Build a readable type label for each node
+  function nodeTypeLabel(node) {
+    const typeId = (node.type || '').replace(/^wf_/, '');
+    // Shorten common type names
+    const shorts = {
+      file_input: 'File', text_input: 'Text', relief: 'Relief', lithophane: 'Litho',
+      multi_color_relief: 'MC Relief', multi_color_lithophane: 'MC Litho',
+      manga_relief: 'Manga', flatforge: 'FlatForge', layered_relief: 'Layered',
+      triposr: 'TripoSR', hunyuan: 'Hunyuan3D', views: 'Views',
+      repair: 'Repair', model_prep: 'Prep', mesh_simplify: 'Simplify',
+      mesh_smooth: 'Smooth', mesh_scale: 'Scale', mesh_boolean: 'Boolean',
+      mesh_stitch: 'Stitch', mesh_cut: 'Cut', mesh_align: 'Align',
+      mesh_decorate: 'Decorate', text_to_image: 'T2I',
+    };
+    return shorts[typeId] || typeId;
+  }
+
+  return {
+    topoOrder,
+    nodeMap,
+    successors,
+    predecessors,
+    nodeTypeLabel,
+  };
+}
+
 async function loadWorkflowCards(isZh) {
   const grid = document.getElementById('nt-wf-grid');
   const countEl = document.getElementById('nt-wf-count');
@@ -363,15 +481,37 @@ async function loadWorkflowCards(isZh) {
       const graph = wf.graph || {};
       const nodeCount = (graph.nodes || []).length;
       const desc = wf.description || '';
+      const dag = computeDagSummary(graph);
+
+      // Build DAG chain visualization
+      let dagHtml = '';
+      if (dag && dag.topoOrder.length > 0) {
+        const chainItems = dag.topoOrder.map(id => {
+          const node = dag.nodeMap[id];
+          const typeLabel = dag.nodeTypeLabel(node);
+          const preds = dag.predecessors[id] || [];
+          const succs = dag.successors[id] || [];
+          const predStr = preds.length > 0 ? `←#${preds.join(',#')}` : '';
+          const succStr = succs.length > 0 ? `→#${succs.join(',#')}` : '';
+          const connStr = [predStr, succStr].filter(Boolean).join(' ');
+          return `<span class="nt-wf-node-chip" title="Node #${id}: ${typeLabel}&#10;Predecessors: ${preds.length ? preds.map(p=>'#'+p).join(', ') : 'none'}&#10;Successors: ${succs.length ? succs.map(s=>'#'+s).join(', ') : 'none'}">
+            <span class="nt-wf-node-id">#${id}</span>${typeLabel}
+            ${connStr ? `<span class="nt-wf-node-conn">${connStr}</span>` : ''}
+          </span>`;
+        });
+        dagHtml = `<div class="nt-wf-dag">${chainItems.join('<span class="nt-wf-dag-arrow">→</span>')}</div>`;
+      }
+
       return `<div class="nt-wf-card" data-wf-id="${wf.id}">
         <div class="nt-wf-card-header">
           <span class="nt-wf-icon">🔗</span>
           <span class="nt-wf-name">${escHtml(wf.name)}</span>
         </div>
+        ${desc ? `<div class="nt-wf-desc-full">${escHtml(desc)}</div>` : ''}
         <div class="nt-wf-meta">
           <span>📊 ${nodeCount} ${t('new.nodesCount')}</span>
-          ${desc ? `<span class="nt-wf-desc">${escHtml(desc)}</span>` : ''}
         </div>
+        ${dagHtml}
         <div class="nt-wf-arrow">→</div>
       </div>`;
     }).join('');

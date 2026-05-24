@@ -40,6 +40,7 @@ export default async function renderWorkflowEditor(main, hash) {
     <div class="wf-toolbar">
       <span class="wf-name" id="wf-name-display">${wfId ? t('wf.loading') : t('wf.untitled')}</span>
       <input id="wf-name-input" placeholder="${t('wf.name')}" style="display:none;flex:1;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:13px;font-family:var(--font);max-width:300px">
+      <input id="wf-desc-input" placeholder="${t('wf.descPlaceholder') || 'Description (optional)'}" style="flex:1;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font);max-width:320px" value="">
       <button class="btn btn-sm" id="wf-save-btn">💾 ${t('wf.save')}</button>
       <button class="btn btn-sm btn-primary" id="wf-run-btn">▶ ${t('wf.run')}</button>
       <button class="btn btn-sm" id="wf-format-btn" title="${t('wf.formatTitle')}">🔧 ${t('wf.format')}</button>
@@ -212,6 +213,7 @@ export default async function renderWorkflowEditor(main, hash) {
       document.getElementById('wf-name-display').textContent = wf.name || t('wf.untitled');
       document.getElementById('wf-name-input').style.display = 'block';
       document.getElementById('wf-name-display').style.display = 'none';
+      document.getElementById('wf-desc-input').value = wf.description || '';
       loadGraph(wf.graph);
     } catch (e) { toast(e.message, 'error'); }
   }
@@ -225,6 +227,7 @@ export default async function renderWorkflowEditor(main, hash) {
   // Save
   document.getElementById('wf-save-btn').addEventListener('click', async () => {
     const name = nameInput.value.trim() || t('wf.untitled');
+    const desc = document.getElementById('wf-desc-input').value.trim();
     const graph = wfGraph.serialize();
     // Normalize: convert Float32Array pos to plain arrays (survives JSON round-trip)
     graph.nodes = (graph.nodes||[]).map(n => ({
@@ -243,9 +246,9 @@ export default async function renderWorkflowEditor(main, hash) {
 
     try {
       if (wfId) {
-        await api('PUT', `/workflows/${wfId}`, { name, graph });
+        await api('PUT', `/workflows/${wfId}`, { name, description: desc, graph });
       } else {
-        const wf = await api('POST', '/workflows', { name, graph });
+        const wf = await api('POST', '/workflows', { name, description: desc, graph });
         wfId = wf.id;
         document.getElementById('wf-delete-btn').style.display = '';
         location.hash = '#/workflow/' + wfId;
@@ -566,7 +569,7 @@ function renderInspector(node) {
       } else if (spec.type === 'float') {
         html += `<input type="number" id="${fieldId}" class="wf-insp-input" value="${val}" step="any" onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=parseFloat(this.value)||0;wfCanvas.setDirty(true,true)}">`;
       } else {
-        html += `<input type="text" id="${fieldId}" class="wf-insp-input" value="${String(val||'')}" onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=this.value;wfCanvas.setDirty(true,true)}">`;
+        html += `<input type="text" id="${fieldId}" class="wf-insp-input" value="${escHtml(String(val||''))}" onchange="var n=window._wfInspGetNode&&window._wfInspGetNode(${nodeId});if(n){n.properties['${key}']=this.value;wfCanvas.setDirty(true,true)}">`;
       }
       html += `</div>`;
     });
@@ -815,7 +818,7 @@ async function showRunParamsDialog(wfId) {
           bodyHTML += `<select id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="choice" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">${(spec.choices||[]).map(c => `<option value="${c}" ${String(c)===String(val)?'selected':''}>${choiceLabel(c, spec.choices, spec.choices_zh)}</option>`).join('')}</select>`;
         } else if (spec.type === 'int') bodyHTML += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="int" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="1" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
         else if (spec.type === 'float') bodyHTML += `<input type="number" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="float" value="${val}" min="${spec.min!=null?spec.min:-99999}" max="${spec.max!=null?spec.max:99999}" step="any" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
-        else bodyHTML += `<input type="text" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="text" value="${String(val||'')}" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
+        else bodyHTML += `<input type="text" id="${fieldId}" data-node="${n.id}" data-param="${key}" data-type="text" value="${escHtml(String(val||''))}" style="width:100%;padding:6px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg);color:var(--fg);font-size:12px;font-family:var(--font)">`;
         bodyHTML += `</div>`;
       });
       bodyHTML += `</div>`;

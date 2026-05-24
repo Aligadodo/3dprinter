@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/static/css/components.css">
 <link rel="stylesheet" href="/static/css/workflow.css">
 <link rel="stylesheet" href="/static/css/pages.css">
+<link rel="stylesheet" href="/static/css/preview.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litegraph.js@0.7.14/css/litegraph.css">
 </head>
 <body>
@@ -47,6 +48,12 @@
 <div class="modal-overlay" id="file-modal" style="display:none" onclick="if(event.target===this)document.getElementById('file-modal').style.display='none'"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/litegraph.js@0.7.14/build/litegraph.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
 <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>

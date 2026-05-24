@@ -21,12 +21,16 @@ const routes = {
   '#/iterations': () => import('./pages/iterations.js'),
   '#/workflows':  () => import('./pages/workflows.js'),
   '#/workflow/new': () => import('./pages/wf-editor.js'),
+  '#/preview':    () => import('./pages/preview.js'),
 };
 
 function resolveRoute(hash) {
   // Direct matches
   if (routes[hash]) return routes[hash];
   // Pattern matches
+  if (hash.startsWith('#/preview')) {
+    return () => import('./pages/preview.js');
+  }
   if (hash.startsWith('#/task/')) {
     return () => import('./pages/task-detail.js');
   }

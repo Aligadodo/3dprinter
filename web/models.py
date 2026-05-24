@@ -217,6 +217,25 @@ def get_task(task_id: str) -> dict | None:
     return _format_task(task)
 
 
+def get_tasks_by_status(status: str) -> list[dict]:
+    """Return all tasks with the given status (no pagination)."""
+    conn = get_db()
+    rows = _tasks_with_wf(conn,
+        "SELECT t.*, wnr.instance_id AS wf_instance_id, wnr.node_id AS wf_node_id "
+        "FROM tasks t LEFT JOIN workflow_node_runs wnr ON t.id = wnr.task_id "
+        "WHERE t.status = ? ORDER BY t.updated_at ASC", (status,)
+    )
+    tasks = []
+    for row in rows:
+        task = dict(row)
+        task["is_workflow_task"] = bool(task.pop("wf_instance_id", None))
+        task["workflow_instance_id"] = task.pop("wf_instance_id", None)
+        task["_wf_node_id"] = task.pop("wf_node_id", None)
+        tasks.append(_format_task(task))
+    conn.close()
+    return tasks
+
+
 def list_tasks(status: str = None, pipeline_type: str = None, limit: int = 50, offset: int = 0) -> list[dict]:
     conn = get_db()
     base_query = (

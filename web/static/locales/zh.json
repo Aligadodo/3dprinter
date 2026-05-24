@@ -170,7 +170,11 @@
     "hunyuan": { "label": "Hunyuan3D-2.1（高质量）", "desc": "高质量 AI 图片转 3D 网格，10-60 分钟，几何模式。适合最终模型输出。需 6.9GB 显存。" },
     "views": { "label": "六视图 (Views)", "desc": "从已有 3D 网格渲染六面正交视图（前/后/左/右/上/下），输出 PNG 图片。" },
     "repair": { "label": "网格修复 (Repair)", "desc": "修复并封闭网格，输出 watertight STL。支持去重、填洞、减面，直接用于打印。" },
-    "layered_relief": { "label": "多层套色浮雕", "desc": "单 mesh 高度分色浮雕 — 不同 Z 高度区间对应不同耗材颜色，配合 AMS 自动换色。" }
+    "manga_relief": { "label": "漫画/线稿浮雕", "desc": "针对线稿/漫画优化的多色浮雕。线条区域薄层暗色透出，背景区域厚层亮色遮盖。边缘感知的 S 形过渡自适应线宽。支持反转模式。" },
+    "flatforge": { "label": "FlatForge（拼图式）", "desc": "每种颜色生成独立薄片 STL — 面朝下打印在纹理板上，然后像拼图一样组装。颜色完全物理分离无混合，适合高对比度图案。" },
+    "layered_relief": { "label": "多层套色浮雕", "desc": "单 mesh 高度分色浮雕 — 不同 Z 高度区间对应不同耗材颜色，配合 AMS 自动换色。" },
+    "multi_color_relief": { "label": "多色浮雕 (MC Relief)", "desc": "基于 Beer-Lambert 物理模型的真彩色浮雕 — 叠加彩色耗材层实现真实色彩混合。输出 STL + 拓竹 3MF + 换丝说明。" },
+    "multi_color_lithophane": { "label": "多色夜灯 (MC Lithophane)", "desc": "基于 Beer-Lambert 物理模型的背光彩灯 — 薄处透出混合色彩。输出 STL + 拓竹 3MF + 换丝说明。" }
   },
   "wf": {
     "title": "工作流管理",
@@ -191,6 +195,7 @@
     "runStarted": "工作流已启动",
     "name": "工作流名称",
     "untitled": "未命名工作流",
+    "descPlaceholder": "描述（可选）— 简要说明此工作流的用途...",
     "log": "执行日志",
     "palette": "节点面板",
     "instances": "运行历史",
@@ -311,5 +316,27 @@
     "emptyFilter": "该分类暂无记录",
     "notFound": "记录未找到",
     "back": "返回列表"
+  },
+  "preview": {
+    "title": "多色预览",
+    "chooseImage": "选择图片",
+    "dropHint": "拖拽图片到此处或点击选择",
+    "parameters": "参数",
+    "image": "图片",
+    "colors": "颜色数量",
+    "layerHeight": "层高 (mm)",
+    "maxDepth": "最大深度 (mm)",
+    "baseThickness": "底厚 (mm)",
+    "dither": "抖动强度",
+    "width": "宽度 (mm)",
+    "height": "高度 (mm)",
+    "lithophane": "夜灯模式 (背光)",
+    "filaments": "识别到的耗材",
+    "swapTimeline": "换色时序",
+    "submit": "提交任务",
+    "submitting": "提交中...",
+    "front": "正面",
+    "back": "背面",
+    "computing": "计算中..."
   }
 }

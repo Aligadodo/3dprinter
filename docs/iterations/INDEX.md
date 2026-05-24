@@ -2,6 +2,14 @@
 
 Sorted by time (newest first).
 
+- [2026-05-24] [HueForge 生态调研 & 对比分析 — 示例逆向 + 同类工具评估 + 集成建议](hueforge-ecosystem-analysis-20260524.md)
+- [2026-05-22] [Multi-Color UX 简化：自动颜色提取替代手动 JSON 输入](multi-color-ux-simplify-20260522.md)
+- [2026-05-22] [Multi-Color Pipeline — Functional Test Report](multi-color-test-report-20260522.md)
+- [2026-05-22] [enumerated conjuring spindle](2026-05-22-134847-report.md)
+- [2026-05-22] [多色3D打印技术调研 & 实施方案](multi-color-research-20260522.md)
+- [2026-05-22] [enumerated conjuring spindle](2026-05-22-132737-report.md)
+- [2026-05-20] [enumerated conjuring spindle](2026-05-20-224747-report.md)
+- [2026-05-20] [enumerated conjuring spindle](2026-05-20-222537-report.md)
 - [2026-05-20] [witty forging porcupine](2026-05-20-210512-report.md)
 - [2026-05-20] [witty forging porcupine](2026-05-20-192528-report.md)
 - [2026-05-20] [witty forging porcupine](2026-05-20-172235-report.md)

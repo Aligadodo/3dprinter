@@ -464,14 +464,11 @@ async def test_static_files(server_url):
 # ═══════════════════════════════════════════════════════════
 
 @pytest.mark.asyncio
-async def test_file_actions(api_url):
-    """File endpoints: serve, open, folder, terminal; path traversal blocked."""
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+async def test_file_serve(api_url):
+    """GET /api/files/ serves project files; path traversal blocked."""
     test_file_rel = "web/static/js/utils.js"
-    test_file_abs = os.path.join(project_root, test_file_rel)
 
     async with httpx.AsyncClient(timeout=15) as client:
-        # GET /api/files/
         r = await client.get(f"{api_url}/files/{test_file_rel.replace(os.sep, '/')}")
         assert r.status_code == 200, f"got {r.status_code}"
 
@@ -483,55 +480,36 @@ async def test_file_actions(api_url):
         r = await client.get(f"{api_url}/files/nonexistent_file_12345.xyz")
         assert r.status_code == 404
 
-    # POST /api/open-path
+
+@pytest.mark.asyncio
+async def test_open_path_security(api_url):
+    """POST /api/open-path validates inputs without triggering OS actions."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     async with httpx.AsyncClient(timeout=15) as client:
-        r = await client.post(f"{api_url}/open-path", json={
-            "path": test_file_abs, "action": "open"
-        })
-        assert r.status_code == 200, f"got {r.status_code}: {r.text[:100]}"
-        assert r.json().get("ok") == True
-
-        r = await client.post(f"{api_url}/open-path", json={
-            "path": test_file_abs, "action": "folder"
-        })
-        assert r.status_code == 200
-        assert r.json().get("ok") == True
-
-        r = await client.post(f"{api_url}/open-path", json={
-            "path": test_file_abs, "action": "terminal"
-        })
-        assert r.status_code == 200
-        assert r.json().get("ok") == True
-
-        test_dir = os.path.join(project_root, "web", "static")
-        r = await client.post(f"{api_url}/open-path", json={
-            "path": test_dir, "action": "folder"
-        })
-        assert r.status_code == 200
-
-        r = await client.post(f"{api_url}/open-path", json={
-            "path": "web/server.py", "action": "open"
-        })
-        assert r.status_code == 200
-
+        # Missing path
         r = await client.post(f"{api_url}/open-path", json={
             "path": "", "action": "folder"
         })
         assert r.status_code == 400
 
+        # Path outside project root
         r = await client.post(f"{api_url}/open-path", json={
             "path": "C:/Windows/System32/notepad.exe", "action": "open"
         })
         assert r.status_code == 403
 
+        # Non-existent file inside project root
         r = await client.post(f"{api_url}/open-path", json={
             "path": os.path.join(project_root, "nonexistent_file.xyz"),
             "action": "open"
         })
         assert r.status_code == 404
 
+        # Invalid action
         r = await client.post(f"{api_url}/open-path", json={
-            "path": test_file_abs, "action": "invalid_action"
+            "path": os.path.join(project_root, "web", "server.py"),
+            "action": "invalid_action"
         })
         assert r.status_code == 400
 

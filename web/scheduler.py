@@ -49,6 +49,14 @@ class TaskScheduler:
         if not task:
             return False
         if task["status"] == "running":
+            # If the asyncio task is already gone (process died without
+            # updating status), mark as failed instead of leaving it stuck.
+            if task_id not in self.running_tasks or self.running_tasks[task_id].done():
+                models.update_task_status(task_id, "failed",
+                    {"error": "Task process exited unexpectedly"})
+                await self._emit(task_id, "failed",
+                    {"message": "Task process exited unexpectedly"})
+                return True
             self.cancel_flags[task_id] = True
         elif task["status"] == "queued":
             models.update_task_status(task_id, "cancelled")
@@ -112,7 +120,12 @@ class TaskScheduler:
                     if evt:
                         await self._emit(task_id, evt[0], evt[1])
                     else:
-                        await self._emit(task_id, "log", {"line": text})
+                        # Skip log emission for very long lines — these are
+                        # data dumps (e.g., JSON with stringified numpy arrays),
+                        # not human-readable log output. Emitting them floods
+                        # the SSE queue and blocks the terminal "complete" event.
+                        if len(text) < 500:
+                            await self._emit(task_id, "log", {"line": text})
                     if self.cancel_flags.get(task_id):
                         proc.terminate()
                         break
@@ -168,11 +181,13 @@ class TaskScheduler:
                 models.add_output_file(task_id, os.path.splitext(input_file)[1].lower(), input_file, "input")
 
             models.update_task_status(task_id, "completed", result)
-            await self._emit(task_id, "complete", result)
+            await self._emit(task_id, "complete", {"status": "completed"})
 
         except Exception as e:
-            models.update_task_status(task_id, "failed", {"error": str(e)})
-            await self._emit(task_id, "error", {"error": str(e)})
+            import traceback
+            tb = traceback.format_exc()
+            models.update_task_status(task_id, "failed", {"error": str(e), "traceback": tb[-2000:]})
+            await self._emit(task_id, "error", {"error": str(e), "traceback": tb[-500:]})
 
     def _build_command(self, pipeline_type: str, pt: dict, params: dict, input_file: str = None) -> list:
         script = pt["script"]
@@ -237,6 +252,30 @@ class TaskScheduler:
             "mesh_decorate": {
                 "deco_displacement": "--displacement",
             },
+            "multi_color_relief": {
+                "width": "--width", "height": "--height",
+                "max_depth": "--max-depth", "base_thickness": "--base-thickness",
+                "pixel_spacing": "--pixel-spacing", "layer_height": "--layer-height",
+                "dither_strength": "--dither-strength", "num_colors": "--num-colors",
+            },
+            "multi_color_lithophane": {
+                "width": "--width", "height": "--height",
+                "max_depth": "--max-depth", "base_thickness": "--base-thickness",
+                "pixel_spacing": "--pixel-spacing", "layer_height": "--layer-height",
+                "dither_strength": "--dither-strength", "num_colors": "--num-colors",
+            },
+            "manga_relief": {
+                "width": "--width", "height": "--height",
+                "max_depth": "--max-depth", "base_thickness": "--base-thickness",
+                "line_width_scale": "--line-width-scale", "invert": "--invert",
+                "pixel_spacing": "--pixel-spacing", "layer_height": "--layer-height",
+            },
+            "flatforge": {
+                "width": "--width", "height": "--height",
+                "num_colors": "--num-colors", "thickness": "--ff-thickness",
+                "gap_tolerance": "--ff-gap", "min_region_area": "--ff-min-area",
+                "pixel_spacing": "--pixel-spacing",
+            },
         }
 
         mapping = param_map.get(pipeline_type, {})
@@ -254,10 +293,18 @@ class TaskScheduler:
             cmd.append("--no-bg-remove")
         if pipeline_type == "hunyuan" and params.get("skip_bg_remove"):
             cmd.append("--skip-bg-remove")
-        if pipeline_type == "lithophane":
+        if pipeline_type in ("multi_color_relief", "multi_color_lithophane"):
+            cmd.append("--multi-color")
+        if pipeline_type in ("lithophane", "multi_color_lithophane"):
             cmd.append("--lithophane")
         if pipeline_type == "views" and params.get("no_grid"):
             cmd.append("--no-grid")
+        if pipeline_type == "manga_relief":
+            cmd.append("--manga")
+        if pipeline_type == "flatforge":
+            cmd.append("--flatforge")
+            if not params.get("connectors", True):
+                cmd.append("--ff-no-frame")
 
         return cmd
 
@@ -283,7 +330,7 @@ class TaskScheduler:
         while pos < len(stdout):
             try:
                 obj, end = decoder.raw_decode(stdout, pos)
-                if "event" not in obj:
+                if isinstance(obj, dict) and "event" not in obj:
                     best = obj
                 pos = end
             except json.JSONDecodeError:
@@ -294,7 +341,7 @@ class TaskScheduler:
         """Scan result for output file paths and register them with categories."""
         preview_keys = ["color_preview", "grid", "preview"]
         result_keys = ["output", "stl", "colored_obj", "final_output", "repair_output",
-                       "alignment_pins", "output_3mf", "color_map"]
+                       "alignment_pins", "output_3mf", "color_map", "swaps"]
 
         for key in preview_keys:
             path = result.get(key)

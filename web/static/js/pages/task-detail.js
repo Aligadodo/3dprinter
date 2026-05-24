@@ -3,7 +3,7 @@ import { api, apiStream } from '../api.js';
 import { t, getLang } from '../i18n.js';
 import { escHtml, formatTime, formatBytes, cacheFile, showFileModal, showCtxMenu, getFile, toast, getBilingualLabel } from '../utils.js';
 import { showConfirm } from '../components/confirm.js';
-import { setActiveSSE } from '../router.js';
+import { setActiveSSE, activeSSE } from '../router.js';
 import { renderNodeDetailPanel } from '../components/node-detail.js';
 
 let _renderGen = 0;
@@ -318,15 +318,63 @@ export default async function renderTaskDetail(main, hash) {
 
   await render();
 
-  // SSE for live updates (all non-terminal states so 'complete' can trigger re-render)
-  if (task.status !== 'failed' && task.status !== 'cancelled') {
+  // SSE + Polling for running/queued tasks
+  if (task.status === 'running' || task.status === 'queued') {
     setActiveSSE(apiStream(taskId, (evt, data) => {
       handleSSEEvent(evt, data, taskId, task, render);
     }, (connState) => {
       const el = document.getElementById('sse-indicator');
       if (el) { el.className = 'sse-indicator sse-' + connState; }
     }));
+
+    startPolling(taskId, task, render);
   }
+}
+
+// ── Polling: simple interval-based task status watcher ──
+
+let _pollInterval = null;
+
+function startPolling(taskId, task, render) {
+  // Clean up any previous polling
+  if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+
+  _pollInterval = setInterval(async () => {
+    let fresh;
+    try {
+      fresh = await api('GET', `/tasks/${taskId}`);
+    } catch (_) {
+      return; // network error, retry next tick
+    }
+
+    const oldStatus = task.status;
+    const newStatus = fresh.status;
+
+    // Always update task object so progress/log handlers see fresh data
+    Object.assign(task, fresh);
+
+    if (newStatus !== oldStatus) {
+      if (newStatus === 'completed' || newStatus === 'failed' || newStatus === 'cancelled') {
+        // Terminal state reached — stop everything and re-render
+        clearInterval(_pollInterval);
+        _pollInterval = null;
+        if (activeSSE) { activeSSE.close(); activeSSE = null; }
+
+        try {
+          await render();
+        } catch (e) {
+          console.error('Task detail render failed, reloading page:', e);
+          location.reload();
+        }
+      }
+    }
+  }, 2000);
+
+  // Register cleanup for page navigation
+  window._pageCleanup = () => {
+    if (_pollInterval) { clearInterval(_pollInterval); _pollInterval = null; }
+    if (activeSSE) { activeSSE.close(); activeSSE = null; }
+  };
 }
 
 // ── Helpers ──
@@ -416,7 +464,7 @@ function handleSSEEvent(evt, data, taskId, task, render) {
   }
   if (evt === 'progress') {
     const el = document.getElementById('progress-fill');
-    if (el) el.style.width = (data.percent || 5) + '%';
+    if (el) el.style.width = (data.percent != null ? data.percent : 5) + '%';
     const pt = document.getElementById('progress-text');
     if (pt && data.message) pt.textContent = data.message;
   }
@@ -430,6 +478,7 @@ function handleSSEEvent(evt, data, taskId, task, render) {
     }
   }
   if (evt === 'complete') {
+    if (activeSSE) { activeSSE.close(); activeSSE = null; }
     toast(t('toast.taskCompleted'), 'success');
     const badge = document.querySelector('#detail-content .badge');
     if (badge) { badge.className = 'badge badge-completed'; badge.textContent = t('badge.completed'); }
@@ -444,9 +493,13 @@ function handleSSEEvent(evt, data, taskId, task, render) {
       if (gen !== _renderGen) return;
       Object.assign(task, fresh);
       render();
+    }).catch(() => {
+      if (gen !== _renderGen) return;
+      render();
     });
   }
   if (evt === 'error') {
+    if (activeSSE) { activeSSE.close(); activeSSE = null; }
     toast(data.error || t('toast.taskFailed'), 'error');
     const badge = document.querySelector('#detail-content .badge');
     if (badge) { badge.className = 'badge badge-failed'; badge.textContent = t('badge.failed'); }
@@ -461,9 +514,13 @@ function handleSSEEvent(evt, data, taskId, task, render) {
       if (gen !== _renderGen) return;
       Object.assign(task, fresh);
       render();
+    }).catch(() => {
+      if (gen !== _renderGen) return;
+      render();
     });
   }
   if (evt === 'cancelled') {
+    if (activeSSE) { activeSSE.close(); activeSSE = null; }
     toast(t('toast.taskCancelled'), 'error');
     const badge = document.querySelector('#detail-content .badge');
     if (badge) { badge.className = 'badge badge-cancelled'; badge.textContent = t('badge.cancelled'); }
@@ -473,6 +530,9 @@ function handleSSEEvent(evt, data, taskId, task, render) {
     api('GET', `/tasks/${taskId}`).then(fresh => {
       if (gen !== _renderGen) return;
       Object.assign(task, fresh);
+      render();
+    }).catch(() => {
+      if (gen !== _renderGen) return;
       render();
     });
   }

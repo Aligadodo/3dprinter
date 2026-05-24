@@ -1,0 +1,296 @@
+/* ═══════════════════════════════════════════
+   preview.css — Multi-color preview page
+   ═══════════════════════════════════════════ */
+
+.preview-layout {
+  display: flex;
+  gap: 16px;
+  height: calc(100vh - 80px);
+  min-height: 500px;
+}
+
+.preview-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-canvas-wrap {
+  flex: 1;
+  position: relative;
+  background: var(--surface);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 300px;
+}
+
+.preview-canvas-wrap canvas {
+  display: block;
+}
+
+.preview-canvas-wrap .drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.preview-canvas-wrap .drop-overlay .icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.preview-canvas-wrap .drop-overlay .hint {
+  font-size: 13px;
+}
+
+/* Parameter card */
+.pv-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.pv-card h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.pv-field {
+  margin-bottom: 8px;
+}
+
+.pv-field label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.pv-field label .val {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pv-field input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.pv-field input[type="number"] {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.pv-field select {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* Filament list */
+.pv-filament {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.pv-filament:last-child {
+  border-bottom: none;
+}
+
+.pv-filament .swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pv-filament .info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pv-filament .name {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pv-filament .td {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Swap timeline */
+.pv-swaps {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pv-swap-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.pv-swap-row .z {
+  font-variant-numeric: tabular-nums;
+  width: 50px;
+  text-align: right;
+  color: var(--accent);
+}
+
+.pv-swap-row .arrow {
+  color: var(--muted);
+}
+
+.pv-swap-row .fil-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Buttons */
+.pv-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pv-actions .btn {
+  flex: 1;
+  min-width: 80px;
+}
+
+/* View toggle */
+.pv-view-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.pv-view-toggle button {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pv-view-toggle button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* Status bar */
+.pv-status {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 0;
+  min-height: 18px;
+}
+
+.pv-status .spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Loading / empty state */
+.pv-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  z-index: 3;
+}
+
+.pv-empty .icon {
+  font-size: 64px;
+  margin-bottom: 12px;
+}
+
+.pv-empty p {
+  font-size: 14px;
+}
+
+.pv-empty .upload-btn {
+  margin-top: 16px;
+  padding: 8px 24px;
+}
+
+/* Image upload zone in canvas */
+.pv-dropzone {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pv-dropzone.drag-over {
+  background: rgba(66, 133, 244, 0.1);
+  border: 2px dashed var(--accent);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .preview-layout {
+    flex-direction: column;
+    height: auto;
+  }
+  .preview-sidebar {
+    width: 100%;
+  }
+  .preview-canvas-wrap {
+    height: 400px;
+  }
+}

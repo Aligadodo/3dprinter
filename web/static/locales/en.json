@@ -170,7 +170,11 @@
     "hunyuan": { "label": "Hunyuan3D-2.1 (Quality)", "desc": "High-quality AI image-to-3D. 10-60 min, geometry mode. Best for final output. Needs 6.9GB VRAM." },
     "views": { "label": "Mesh Views", "desc": "Render 6 orthographic views (front/back/left/right/top/bottom) from a 3D mesh. Outputs PNG images." },
     "repair": { "label": "Mesh Repair", "desc": "Repair and waterproof a mesh. Outputs print-ready STL with deduplication, hole filling, and decimation." },
-    "layered_relief": { "label": "Layered Color Relief", "desc": "Single-mesh multi-colour relief via height banding. Different Z ranges map to different filament colours. Works with AMS." }
+    "manga_relief": { "label": "Manga / Line Art", "desc": "Line-art optimized relief. Thin dark layers over lines, thick light layers over background. Edge-aware transitions adapt to local line width. Supports invert mode." },
+    "flatforge": { "label": "FlatForge (Puzzle)", "desc": "Separate thin STL per color for face-down printing. Each color is an independent flat sheet — print, then assemble like a puzzle. Zero color mixing." },
+    "layered_relief": { "label": "Layered Color Relief", "desc": "Single-mesh multi-colour relief via height banding. Different Z ranges map to different filament colours. Works with AMS." },
+    "multi_color_relief": { "label": "Multi-Color Relief", "desc": "Physical Beer-Lambert multi-color relief using stacked filament layers for true color blending. Outputs STL + Bambu 3MF with filament swap instructions." },
+    "multi_color_lithophane": { "label": "Multi-Color Lithophane", "desc": "Physical Beer-Lambert multi-color backlit lithophane. Thin areas create blended colors through light. Outputs STL + Bambu 3MF." }
   },
   "wf": {
     "title": "Workflows",
@@ -191,6 +195,7 @@
     "runStarted": "Workflow started",
     "name": "Workflow Name",
     "untitled": "Untitled",
+    "descPlaceholder": "Description (optional) — describe what this workflow does...",
     "log": "Execution Log",
     "palette": "Node Palette",
     "instances": "Run History",
@@ -311,5 +316,27 @@
     "emptyFilter": "No records in this category",
     "notFound": "Record not found",
     "back": "Back to list"
+  },
+  "preview": {
+    "title": "Multi-Color Preview",
+    "chooseImage": "Choose Image",
+    "dropHint": "Drop an image here or click to choose",
+    "parameters": "Parameters",
+    "image": "Image",
+    "colors": "Number of Colors",
+    "layerHeight": "Layer Height (mm)",
+    "maxDepth": "Max Depth (mm)",
+    "baseThickness": "Base Thickness (mm)",
+    "dither": "Dither Strength",
+    "width": "Width (mm)",
+    "height": "Height (mm)",
+    "lithophane": "Lithophane (backlit)",
+    "filaments": "Detected Filaments",
+    "swapTimeline": "Swap Timeline",
+    "submit": "Submit Task",
+    "submitting": "Submitting...",
+    "front": "Front",
+    "back": "Back",
+    "computing": "Computing..."
   }
 }

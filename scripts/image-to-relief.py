@@ -2,12 +2,21 @@
 """image-to-relief.py - Convert a 2D image to a 3D-printable bas-relief.
 
 Generates a height-field mesh from image luminance, with optional multi-color
-vertex painting for Bambu 4-color (AMS) printing.
+vertex painting or physical Beer-Lambert layer stacking for FDM printers.
 
 Usage:
-  python image-to-relief.py photo.jpg                           # STL only
-  python image-to-relief.py photo.jpg --colors 4                # STL + colored OBJ
-  python image-to-relief.py photo.jpg --width 160 --height 120  # custom size
+  # Single-color STL (luminance → height)
+  python image-to-relief.py photo.jpg
+
+  # Vertex-color OBJ (K-means palette → per-vertex color)
+  python image-to-relief.py photo.jpg --colors 4
+
+  # Multi-color with physical layer stacking (Beer-Lambert, 3MF + STL)
+  python image-to-relief.py photo.jpg --multi-color \\
+      --filaments '[{"color":"#000000","name":"Black PLA"},{"color":"#FFFFFF","name":"White PLA"}]'
+
+  # Custom size
+  python image-to-relief.py photo.jpg --width 160 --height 120
 """
 
 import argparse, sys, os, json, time
@@ -434,8 +443,239 @@ if __name__ == "__main__":
                         help="Pixel spacing in mm (default: 0.08)")
     parser.add_argument("--lithophane", action="store_true",
                         help="Generate backlit lithophane (thin=light, thick=dark)")
+    parser.add_argument("--multi-color", action="store_true",
+                        help="Use Beer-Lambert physical layer stacking for multi-color FDM printing")
+    parser.add_argument("--filaments", type=str, default=None,
+                        help='JSON array of filament specs, e.g. \'[{"color":"#000000","td":0.6,"name":"Black PLA"}]\'')
+    parser.add_argument("--num-colors", type=int, default=None,
+                        help="Auto-extract N dominant colors from image (2-8). Overrides --filaments if both given.")
+    parser.add_argument("--layer-height", type=float, default=0.08,
+                        help="Layer height in mm for multi-color mode (default: 0.08)")
+    parser.add_argument("--dither-strength", type=float, default=0.8,
+                        help="Floyd-Steinberg dithering strength 0-1 (default: 0.8)")
+    parser.add_argument("--manga", action="store_true",
+                        help="Manga/line-art mode: adaptive binarization + edge-aware height mapping")
+    parser.add_argument("--line-width-scale", type=float, default=1.0,
+                        help="Line width scale for manga mode (0.5=thinner, 2.0=thicker)")
+    parser.add_argument("--invert", action="store_true",
+                        help="Invert line/background (white lines on dark bg for manga mode)")
+    parser.add_argument("--flatforge", action="store_true",
+                        help="FlatForge mode: separate thin STL per color for face-down printing")
+    parser.add_argument("--ff-thickness", type=float, default=0.8,
+                        help="Sheet thickness in mm for FlatForge mode (default: 0.8)")
+    parser.add_argument("--ff-gap", type=float, default=0.1,
+                        help="Gap tolerance in mm for FlatForge mode (default: 0.1)")
+    parser.add_argument("--ff-min-area", type=float, default=4.0,
+                        help="Min region area in mm^2 for FlatForge mode (default: 4.0)")
+    parser.add_argument("--ff-no-frame", action="store_true",
+                        help="Disable alignment frame generation in FlatForge mode")
     args = parser.parse_args()
 
+    # ── Multi-color mode: Beer-Lambert physical layer stacking ──
+    if args.multi_color:
+        if not args.filaments and not args.num_colors:
+            print(json.dumps({"error": "Either --filaments JSON or --num-colors N is required for --multi-color mode"}, ensure_ascii=False))
+            sys.exit(1)
+
+        import json as _json
+        filaments_spec = None
+        if args.filaments:
+            try:
+                filaments_spec = _json.loads(args.filaments)
+            except _json.JSONDecodeError as e:
+                print(_json.dumps({"error": f"Invalid --filaments JSON: {e}"}, ensure_ascii=False))
+                sys.exit(1)
+
+        from multi_color import compute_color_layers, export_3mf
+        from multi_color.export_3mf import export_swap_text
+
+        result = compute_color_layers(
+            args.image,
+            filaments=filaments_spec,
+            layer_height=args.layer_height,
+            max_thickness_mm=args.max_depth,
+            base_thickness_mm=args.base_thickness,
+            pixel_spacing_mm=args.pixel_spacing,
+            lithophane=args.lithophane,
+            dither_strength=args.dither_strength,
+            target_width_mm=args.width,
+            target_height_mm=args.height,
+            num_colors=args.num_colors,
+        )
+
+        # Export STL (single-color mesh for slicer)
+        base = os.path.splitext(os.path.basename(args.image))[0]
+        img_dir = os.path.dirname(os.path.abspath(args.image))
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sub = "lithophane" if args.lithophane else "relief"
+        out_dir = os.path.join(project_root, "output", sub, "multi-color")
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Export STL mesh
+        print(_json.dumps({"event": "progress", "stage": "export_stl",
+              "message": "Exporting STL..."}, ensure_ascii=False), flush=True)
+        stl_path = os.path.join(out_dir, f"{base}_multi.stl")
+        _export_stl(result["mesh_verts"], result["mesh_faces"], stl_path)
+        stl_mb = os.path.getsize(stl_path) / 1024**2
+        result["log"].append(f"STL: {stl_path} ({stl_mb:.1f} MB)")
+
+        # Export 3MF with filament swap instructions
+        print(_json.dumps({"event": "progress", "stage": "export_3mf",
+              "message": "Exporting 3MF project..."}, ensure_ascii=False), flush=True)
+        mf3_path = os.path.join(out_dir, f"{base}_multi.3mf")
+        export_3mf(
+            mf3_path, stl_path,
+            swaps=result["swaps"],
+            filaments=result["filament_info"],
+            layer_height=args.layer_height,
+            total_thickness_mm=result["total_thickness_mm"],
+        )
+        mf3_mb = os.path.getsize(mf3_path) / 1024**2
+        result["log"].append(f"3MF: {mf3_path} ({mf3_mb:.1f} MB)")
+        print(_json.dumps({"event": "progress", "stage": "export_3mf",
+              "message": f"3MF exported ({mf3_mb:.1f} MB)"}, ensure_ascii=False), flush=True)
+
+        # Export human-readable swap instructions
+        swaps_path = os.path.join(out_dir, f"{base}_swaps.txt")
+        export_swap_text(
+            swaps_path,
+            swaps=result["swaps"],
+            filaments=result["filament_info"],
+            layer_height=args.layer_height,
+        )
+        result["log"].append(f"Swap instructions: {swaps_path}")
+
+        # Height map preview
+        from PIL import Image as PILImage
+        hm = result["height_map"]
+        hm_vis = ((hm - hm.min()) / (hm.max() - hm.min() + 1e-10) * 255).astype(np.uint8)
+        preview_path = os.path.join(out_dir, f"{base}_multi_preview.png")
+        PILImage.fromarray(hm_vis, mode='L').save(preview_path)
+        result["log"].append(f"Height preview: {preview_path}")
+
+        result["output"] = {
+            "stl": stl_path,
+            "3mf": mf3_path,
+            "swaps_txt": swaps_path,
+            "preview": preview_path,
+        }
+        # Flattened keys for Web UI scheduler result discovery
+        result["stl"] = stl_path
+        result["output_3mf"] = mf3_path
+        result["preview"] = preview_path
+        result["swaps"] = swaps_path
+        result["error"] = None
+
+        # Print summary result WITHOUT large array fields.
+        # height_map/mesh_verts/mesh_faces contain numpy arrays that would
+        # produce hundreds of thousands of lines when stringified — flooding
+        # the Web UI SSE log queue and blocking the "complete" event.
+        _large_keys = {"height_map", "mesh_verts", "mesh_faces", "layer_plan"}
+        summary = {k: v for k, v in result.items() if k not in _large_keys}
+        print(_json.dumps(summary, ensure_ascii=False, indent=2, default=str))
+        sys.exit(0)
+
+    # ── Manga / line-art mode ──
+    if args.manga:
+        from multi_color.manga_mode import process_manga
+        from multi_color.export_3mf import export_3mf as _export_3mf_manga, export_swap_text
+
+        import json as _json
+        dark_fil = {"color": "#000000", "name": "Black PLA", "td": 0.6}
+        light_fil = {"color": "#FFFFFF", "name": "White PLA", "td": 4.4}
+        if args.filaments:
+            try:
+                fil_list = _json.loads(args.filaments)
+                if len(fil_list) >= 1:
+                    dark_fil = fil_list[0]
+                if len(fil_list) >= 2:
+                    light_fil = fil_list[-1]
+            except _json.JSONDecodeError:
+                pass
+
+        result = process_manga(
+            args.image,
+            dark_filament=dark_fil,
+            light_filament=light_fil,
+            max_depth_mm=args.max_depth,
+            base_thickness_mm=args.base_thickness,
+            line_width_scale=args.line_width_scale,
+            invert=args.invert,
+            pixel_spacing_mm=args.pixel_spacing,
+            target_width_mm=args.width,
+            target_height_mm=args.height,
+            layer_height=args.layer_height,
+            dither_strength=args.dither_strength,
+        )
+
+        base = os.path.splitext(os.path.basename(args.image))[0]
+        img_dir = os.path.dirname(os.path.abspath(args.image))
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sub = "lithophane" if args.lithophane else "relief"
+        out_dir = os.path.join(project_root, "output", sub, "manga")
+        os.makedirs(out_dir, exist_ok=True)
+
+        stl_path = os.path.join(out_dir, f"{base}_manga.stl")
+        _export_stl(result["mesh_verts"], result["mesh_faces"], stl_path)
+        result["log"].append(f"STL: {stl_path}")
+
+        mf3_path = os.path.join(out_dir, f"{base}_manga.3mf")
+        _export_3mf_manga(
+            mf3_path, stl_path,
+            swaps=result["swaps"],
+            filaments=result["filament_info"],
+            layer_height=args.layer_height,
+            total_thickness_mm=result["total_thickness_mm"],
+        )
+        result["log"].append(f"3MF: {mf3_path}")
+
+        swaps_path = os.path.join(out_dir, f"{base}_manga_swaps.txt")
+        export_swap_text(
+            swaps_path,
+            swaps=result["swaps"],
+            filaments=result["filament_info"],
+            layer_height=args.layer_height,
+        )
+
+        from PIL import Image as PILImage
+        hm = result["height_map"]
+        hm_vis = ((hm - hm.min()) / (hm.max() - hm.min() + 1e-10) * 255).astype(np.uint8)
+        preview_path = os.path.join(out_dir, f"{base}_manga_preview.png")
+        PILImage.fromarray(hm_vis, mode='L').save(preview_path)
+
+        result["output"] = {"stl": stl_path, "3mf": mf3_path, "swaps_txt": swaps_path, "preview": preview_path}
+        result["stl"] = stl_path
+        result["output_3mf"] = mf3_path
+        result["preview"] = preview_path
+        result["error"] = None
+
+        _large_keys = {"height_map", "mesh_verts", "mesh_faces"}
+        summary = {k: v for k, v in result.items() if k not in _large_keys}
+        print(_json.dumps(summary, ensure_ascii=False, indent=2, default=str))
+        sys.exit(0)
+
+    # ── FlatForge mode ──
+    if args.flatforge:
+        from multi_color.flatforge import generate_flatforge
+
+        import json as _json
+        result = generate_flatforge(
+            args.image,
+            num_colors=args.num_colors if args.num_colors else 4,
+            thickness_mm=args.ff_thickness,
+            gap_tolerance_mm=args.ff_gap,
+            min_region_area_mm2=args.ff_min_area,
+            target_width_mm=args.width,
+            target_height_mm=args.height,
+            pixel_spacing_mm=args.pixel_spacing,
+            connectors=not args.ff_no_frame,
+        )
+
+        result["error"] = None
+        print(_json.dumps(result, ensure_ascii=False, indent=2, default=str))
+        sys.exit(0)
+
+    # ── Single-color mode (existing pipeline) ──
     print(json.dumps({
         "width_mm": args.width,
         "height_mm": args.height,

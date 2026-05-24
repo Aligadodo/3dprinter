@@ -565,7 +565,8 @@ class WorkflowEngine:
             "mesh": ["output", "stl"],
             "preview": ["preview"],
             "views_dir": ["views_dir"],
-            "color_preview": ["color_preview"],
+            "color_preview": ["color_preview", "preview"],
+            "swaps": ["swaps"],
         }
         for port in nt_def.outputs:
             if port.name not in ctx[nid]:

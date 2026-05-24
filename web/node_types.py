@@ -161,6 +161,60 @@ _register(NodeType(
 ))
 
 _register(NodeType(
+    "multi_color_relief",
+    label="Multi-Color Relief",
+    label_zh="多色浮雕 MC Relief",
+    category="process",
+    inputs=[
+        PortSpec("image", "image", required=True),
+    ],
+    outputs=[
+        PortSpec("stl", "stl", required=True),
+        PortSpec("3mf", "file", required=False, label="3MF Project", label_zh="3MF 工程"),
+        PortSpec("color_preview", "image", required=False),
+        PortSpec("swaps", "file", required=False, label="Swap Instructions", label_zh="换丝说明"),
+    ],
+    params={
+        "width": {"type": "float", "default": 160.0, "min": 20, "max": 500},
+        "height": {"type": "float", "default": 120.0, "min": 20, "max": 500},
+        "max_depth": {"type": "float", "default": 3.0, "min": 0.5, "max": 10.0},
+        "base_thickness": {"type": "float", "default": 0.6, "min": 0.2, "max": 5.0},
+        "pixel_spacing": {"type": "float", "default": 0.2, "min": 0.08, "max": 1.0},
+        "layer_height": {"type": "float", "default": 0.08, "min": 0.04, "max": 0.4, "step": 0.01},
+        "dither_strength": {"type": "float", "default": 0.8, "min": 0.0, "max": 1.0, "step": 0.05},
+        "num_colors": {"type": "int", "default": 4, "min": 2, "max": 8},
+    },
+    color="#8e44ad",
+))
+
+_register(NodeType(
+    "multi_color_lithophane",
+    label="Multi-Color Lithophane",
+    label_zh="多色夜灯 MC Litho",
+    category="process",
+    inputs=[
+        PortSpec("image", "image", required=True),
+    ],
+    outputs=[
+        PortSpec("stl", "stl", required=True),
+        PortSpec("3mf", "file", required=False, label="3MF Project", label_zh="3MF 工程"),
+        PortSpec("color_preview", "image", required=False),
+        PortSpec("swaps", "file", required=False, label="Swap Instructions", label_zh="换丝说明"),
+    ],
+    params={
+        "width": {"type": "float", "default": 160.0, "min": 20, "max": 500},
+        "height": {"type": "float", "default": 120.0, "min": 20, "max": 500},
+        "max_depth": {"type": "float", "default": 2.0, "min": 0.5, "max": 5.0},
+        "base_thickness": {"type": "float", "default": 0.6, "min": 0.3, "max": 3.0},
+        "pixel_spacing": {"type": "float", "default": 0.2, "min": 0.08, "max": 1.0},
+        "layer_height": {"type": "float", "default": 0.08, "min": 0.04, "max": 0.4, "step": 0.01},
+        "dither_strength": {"type": "float", "default": 0.8, "min": 0.0, "max": 1.0, "step": 0.05},
+        "num_colors": {"type": "int", "default": 4, "min": 2, "max": 8},
+    },
+    color="#8e44ad",
+))
+
+_register(NodeType(
     "triposr",
     label="TripoSR 快速3D",
     category="process",
@@ -828,6 +882,17 @@ PARAM_META: dict[str, dict] = {
         "desc": "Select vertices within bounding box: xmin,ymin,zmin,xmax,ymax,zmax (default: all)",
         "desc_zh": "在包围盒内的顶点: xmin,ymin,zmin,xmax,ymax,zmax",
     },
+    # ── Multi-Color ────────────────────────────────────────────────────
+    "dither_strength": {
+        "label": "Dither Strength", "label_zh": "抖动强度",
+        "desc": "Floyd-Steinberg error diffusion (0=none, 1=full). Higher = smoother color gradients",
+        "desc_zh": "Floyd-Steinberg 误差扩散强度 (0=无, 1=全部)。越高颜色过渡越平滑",
+    },
+    "filaments": {
+        "label": "Filaments (JSON)", "label_zh": "耗材列表 (JSON)",
+        "desc": 'JSON array of filament specs: [{"color":"#HEX","name":"Name","td":0.6}] (td=transmission distance, optional)',
+        "desc_zh": '耗材规格 JSON 数组：[{"color":"#颜色","name":"名称","td":透光率}] (td 可选，自动查内置数据库)',
+    },
 }
 # ---------------------------------------------------------------------------
 
@@ -1009,6 +1074,8 @@ def node_pipeline_map() -> dict[str, str]:
         "mesh_cut": "mesh_cut",
         "mesh_align": "mesh_align",
         "mesh_decorate": "mesh_decorate",
+        "multi_color_relief": "multi_color_relief",
+        "multi_color_lithophane": "multi_color_lithophane",
     }
 
 
@@ -1034,6 +1101,8 @@ def node_input_port_map() -> dict[str, str]:
         "mesh_decorate": "mesh",
         "mesh_transform": "mesh",
         "mesh_select": "mesh",
+        "multi_color_relief": "image",
+        "multi_color_lithophane": "image",
     }
 
 
