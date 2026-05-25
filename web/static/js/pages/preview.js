@@ -149,16 +149,37 @@ export default async function renderPreview(main, hash) {
     document.getElementById('pv-submit').onclick = submitTask;
 
     // Parameter sliders → debounced recompute
-    const paramIds = ['pv-num-colors','pv-layer-height','pv-max-depth','pv-base-thick','pv-dither','pv-width','pv-height'];
+    const paramIds = ['pv-num-colors','pv-layer-height','pv-max-depth','pv-base-thick','pv-dither'];
     paramIds.forEach(id => {
         const el = document.getElementById(id);
         el.oninput = () => {
-            // Update value label
             const valEl = document.getElementById(id + '-val');
             if (valEl) valEl.textContent = el.value;
             scheduleRecompute();
         };
     });
+
+    // Width/height sliders — maintain image aspect ratio
+    document.getElementById('pv-width').oninput = () => {
+        document.getElementById('pv-width-val').textContent = document.getElementById('pv-width').value;
+        if (lastResult) {
+            var ratio = lastResult.height / lastResult.width;
+            var newH = Math.round(parseFloat(document.getElementById('pv-width').value) * ratio);
+            document.getElementById('pv-height').value = newH;
+            document.getElementById('pv-height-val').textContent = newH;
+        }
+        scheduleRecompute();
+    };
+    document.getElementById('pv-height').oninput = () => {
+        document.getElementById('pv-height-val').textContent = document.getElementById('pv-height').value;
+        if (lastResult) {
+            var ratio = lastResult.width / lastResult.height;
+            var newW = Math.round(parseFloat(document.getElementById('pv-height').value) * ratio);
+            document.getElementById('pv-width').value = newW;
+            document.getElementById('pv-width-val').textContent = newW;
+        }
+        scheduleRecompute();
+    };
     document.getElementById('pv-lithophane').onchange = () => scheduleRecompute();
 
     // ── Init Three.js ──
@@ -262,9 +283,11 @@ function recompute() {
             log: data.log,
         };
 
-        // Update 3D view
+        // Update 3D view — preserve image aspect ratio
         const physW = parseFloat(document.getElementById('pv-width').value);
-        const physH = parseFloat(document.getElementById('pv-height').value);
+        const physH = physW * (data.height / data.width);
+        document.getElementById('pv-height-val').textContent = Math.round(physH);
+        document.getElementById('pv-height').value = Math.round(physH);
         const baseT = parseFloat(document.getElementById('pv-base-thick').value);
         const maxD = parseFloat(document.getElementById('pv-max-depth').value);
         updateMesh(heightMap, colorMap, data.width, data.height, physW, physH, baseT, maxD);
@@ -398,7 +421,7 @@ async function submitTask() {
 
         const result = await api('POST', '/tasks', formData);
         toast(getLang() === 'zh' ? '任务已提交！' : 'Task submitted!');
-        location.hash = '#/task/' + result.task_id;
+        location.hash = '#/task/' + result.id;
     } catch (e) {
         toast('Submit error: ' + e.message);
         btn.disabled = false;
