@@ -144,12 +144,18 @@ def _build_height_map(labels, palette, gray, sorted_indices,
 #  Watertight thin-plate mesh building
 # ═══════════════════════════════════════════════════════════════════
 
-def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.3):
+def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.3,
+                       pixel_spacing_mm=None):
     """Build a watertight thin-plate mesh from a height field.
 
     Front face at z = base_thickness + height, back face at z = 0.
     Side walls close the volume.
     """
+    from multi_color.mesh_builder import limit_overhang_slope
+
+    if pixel_spacing_mm is not None:
+        height_map = limit_overhang_slope(height_map, pixel_spacing_mm)
+
     H, W = height_map.shape
 
     x = np.linspace(0, phys_w, W)
@@ -946,7 +952,8 @@ def image_to_layered_relief(image_path, width_mm=160.0, height_mm=120.0,
 
     # Stage 5 — Build watertight mesh
     _emit("progress", {"percent": 55, "message": "Building mesh..."})
-    verts, faces = _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm)
+    verts, faces = _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm,
+                         pixel_spacing_mm=pixel_spacing_mm)
     log.append(f"Mesh: {len(verts)} vertices, {len(faces)} faces")
 
     # Stage 6 — Decimate if needed

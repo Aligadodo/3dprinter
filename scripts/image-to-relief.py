@@ -95,7 +95,8 @@ def _height_map(gray, max_depth_mm=3.0, detail_strength=0.25,
     return combined
 
 
-def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.5):
+def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.5,
+                       pixel_spacing_mm=None):
     """Build a watertight triangular mesh from a height field.
 
     Front face is the height-displaced surface. Back is a flat plate.
@@ -105,6 +106,11 @@ def _build_relief_mesh(height_map, phys_w, phys_h, base_thickness_mm=0.5):
         vertices: (N, 3) array
         faces: (M, 3) array of vertex indices
     """
+    from multi_color.mesh_builder import limit_overhang_slope
+
+    if pixel_spacing_mm is not None:
+        height_map = limit_overhang_slope(height_map, pixel_spacing_mm)
+
     H, W = height_map.shape
     dx = phys_w / (W - 1)
     dy = phys_h / (H - 1)
@@ -338,7 +344,8 @@ def image_to_relief(image_path, width_mm=160.0, height_mm=120.0,
     # Stage 3: Build mesh
     t0 = time.time()
     verts, faces, front_face_count = _build_relief_mesh(hm, phys_w, phys_h,
-                                      base_thickness_mm=base_thickness_mm)
+                                      base_thickness_mm=base_thickness_mm,
+                                      pixel_spacing_mm=pixel_sp)
     total_thickness = base_thickness_mm + max_depth_mm
     log.append(f"Mesh: {len(verts)} verts, {len(faces)} faces")
     log.append(f"Total thickness: {total_thickness:.2f} mm")

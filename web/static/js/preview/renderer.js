@@ -75,17 +75,18 @@ export function initPreview(container, canvasWidth, canvasHeight) {
 
 /** Update the 3D mesh with new height map and color data. */
 export function updateMesh(heightMap, colorMap, width, height,
-                           physWidthMm, physHeightMm, baseThicknessMm) {
+                           physWidthMm, physHeightMm, baseThicknessMm, maxDepthMm) {
     if (mesh) scene.remove(mesh);
     if (wireframe) scene.remove(wireframe);
 
-    const w = width, h = height;
-    const dx = physWidthMm / 1000 / Math.max(w - 1, 1); // mm→meters for Three.js
-    const dy = physHeightMm / 1000 / Math.max(h - 1, 1);
+    var w = width, h = height;
+    var dx = physWidthMm / 1000 / Math.max(w - 1, 1);
+    var dy = physHeightMm / 1000 / Math.max(h - 1, 1);
+    var totalThicknessM = (baseThicknessMm + (maxDepthMm || 0)) / 1000;
 
-    const geometry = new THREE.PlaneGeometry(
+    var geometry = new THREE.PlaneGeometry(
         physWidthMm / 1000, physHeightMm / 1000, w - 1, h - 1);
-    geometry.rotateX(-Math.PI / 2); // lay flat on XZ plane
+    geometry.rotateX(-Math.PI / 2);
 
     const positions = geometry.attributes.position;
     const colors = new Float32Array(positions.count * 3);
@@ -132,10 +133,11 @@ export function updateMesh(heightMap, colorMap, width, height,
     wireframe = new THREE.Mesh(geometry, wireMat);
     scene.add(wireframe);
 
-    // Fit camera
-    const maxDim = Math.max(physWidthMm, physHeightMm) / 1000;
-    camera.position.set(maxDim * 0.8, -maxDim * 1.5, maxDim * 1.2);
-    controls.target.set(0, 0, (baseThicknessMm / 1000) * 0.5);
+    // Fit camera to mesh including Z thickness
+    var maxDim = Math.max(physWidthMm, physHeightMm, (maxDepthMm || 0)) / 1000;
+    var dist = Math.max(maxDim * 1.8, 0.3);
+    camera.position.set(dist * 0.6, -dist * 0.9, dist * 0.7 + totalThicknessM);
+    controls.target.set(0, 0, totalThicknessM * 0.5);
     controls.update();
 }
 

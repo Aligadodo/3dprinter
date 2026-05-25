@@ -87,6 +87,8 @@ export default async function renderPreview(main, hash) {
           <div id="pv-swaps-list" class="pv-swaps"></div>
         </div>
 
+        <div id="pv-summary" style="display:none;font-size:12px;color:var(--muted);padding:4px 0"></div>
+
         <div class="pv-actions">
           <button class="btn btn-primary" id="pv-submit" disabled>${isZh ? '提交任务' : 'Submit Task'}</button>
           <div class="pv-view-toggle">
@@ -102,6 +104,10 @@ export default async function renderPreview(main, hash) {
           <div class="icon">🖼️</div>
           <p>${isZh ? '拖拽图片到此处或点击选择' : 'Drop an image here or click to choose'}</p>
           <button class="btn btn-primary upload-btn" id="pv-empty-upload">${isZh ? '选择图片' : 'Choose Image'}</button>
+        </div>
+        <div class="pv-canvas-status" id="pv-canvas-status" style="display:none">
+          <div class="pv-spinner-big"></div>
+          <p>${isZh ? '计算中...' : 'Computing...'}</p>
         </div>
         <input type="file" id="pv-empty-file" accept=".jpg,.jpeg,.png,.webp,.bmp" style="display:none">
       </div>
@@ -156,10 +162,15 @@ export default async function renderPreview(main, hash) {
     document.getElementById('pv-lithophane').onchange = () => scheduleRecompute();
 
     // ── Init Three.js ──
-    const rect = canvasWrap.getBoundingClientRect();
-    const cw = rect.width || 600;
-    const ch = rect.height || 400;
-    initPreview(canvasWrap, cw, ch);
+    // Double rAF ensures layout is painted before reading dimensions
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const rect = canvasWrap.getBoundingClientRect();
+            const cw = Math.max(rect.width || 600, 100);
+            const ch = Math.max(rect.height || 400, 100);
+            initPreview(canvasWrap, cw, ch);
+        });
+    });
 
     // Resize observer
     if (window.ResizeObserver) {
@@ -230,6 +241,7 @@ function recompute() {
     if (!currentImageData) return;
 
     setStatus('computing', true);
+    document.getElementById('pv-canvas-status').style.display = 'flex';
 
     if (worker) { worker.terminate(); }
     worker = new Worker('/static/js/preview/worker.js');
@@ -254,7 +266,8 @@ function recompute() {
         const physW = parseFloat(document.getElementById('pv-width').value);
         const physH = parseFloat(document.getElementById('pv-height').value);
         const baseT = parseFloat(document.getElementById('pv-base-thick').value);
-        updateMesh(heightMap, colorMap, data.width, data.height, physW, physH, baseT);
+        const maxD = parseFloat(document.getElementById('pv-max-depth').value);
+        updateMesh(heightMap, colorMap, data.width, data.height, physW, physH, baseT, maxD);
 
         // Update filament list
         updateFilamentList(data.filaments);
@@ -264,14 +277,37 @@ function recompute() {
 
         // Enable submit
         document.getElementById('pv-submit').disabled = false;
+        document.getElementById('pv-canvas-status').style.display = 'none';
+
+        // Show total height summary
+        var summaryEl = document.getElementById('pv-summary');
+        var blendH = data.totalHeightMm - baseT;
+        summaryEl.style.display = 'block';
+        summaryEl.textContent = (getLang() === 'zh' ? '总厚度: ' : 'Total height: ') +
+            data.totalHeightMm.toFixed(2) + ' mm (' +
+            (getLang() === 'zh' ? '底厚 ' : 'base ') + baseT.toFixed(2) + ' + ' +
+            (getLang() === 'zh' ? '混合 ' : 'blend ') + Math.max(0, blendH).toFixed(2) + ')';
 
         setStatus(data.log.join(' · '), false);
         worker = null;
     };
 
     worker.onerror = (err) => {
+        document.getElementById('pv-canvas-status').style.display = 'none';
         setStatus('Worker error: ' + err.message, false);
         worker = null;
+    };
+
+    // Handle error messages from worker (e.g. image too small)
+    const origOnmessage = worker.onmessage;
+    worker.onmessage = (e) => {
+        if (e.data.error) {
+            document.getElementById('pv-canvas-status').style.display = 'none';
+            setStatus('Error: ' + e.data.error, false);
+            worker = null;
+            return;
+        }
+        origOnmessage(e);
     };
 
     const params = {
@@ -282,6 +318,8 @@ function recompute() {
         baseThickness: parseFloat(document.getElementById('pv-base-thick').value),
         ditherStrength: parseFloat(document.getElementById('pv-dither').value),
         lithophane: document.getElementById('pv-lithophane').checked,
+        physWidthMm: parseFloat(document.getElementById('pv-width').value),
+        physHeightMm: parseFloat(document.getElementById('pv-height').value),
     };
 
     worker.postMessage(params);
@@ -354,7 +392,7 @@ async function submitTask() {
             dither_strength: parseFloat(document.getElementById('pv-dither').value),
             num_colors: parseInt(document.getElementById('pv-num-colors').value),
             multi_color: 'true',
-            lithophane: document.getElementById('pv-lithophane').checked ? 'true' : '',
+            lithophane: document.getElementById('pv-lithophane').checked,
         };
         formData.append('params', JSON.stringify(params));
 

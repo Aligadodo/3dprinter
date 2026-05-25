@@ -117,7 +117,13 @@ function kmeansColors(pixels, k, maxIter) {
             counts[cl]++;
         }
         for (var c=0; c<k; c++) {
-            if (counts[c]>0) { cents[c][0]=sums[c][0]/counts[c]; cents[c][1]=sums[c][1]/counts[c]; cents[c][2]=sums[c][2]/counts[c]; }
+            if (counts[c]>0) {
+                cents[c][0]=sums[c][0]/counts[c]; cents[c][1]=sums[c][1]/counts[c]; cents[c][2]=sums[c][2]/counts[c];
+            } else {
+                // Re-initialize empty cluster with a random pixel
+                var ri = Math.floor(Math.random() * n);
+                cents[c] = [pixels[ri][0], pixels[ri][1], pixels[ri][2]];
+            }
         }
         if (changed===0) break;
     }
@@ -285,6 +291,27 @@ function mapColorsToHeight(imageRGB, swatches, maxHeight, layerHeight, ditherStr
     return { heightMap: heightMap, heightIndices: heightIndices };
 }
 
+function findNeighborHeights(z, swatchIdx, swatches) {
+    var currentFil = swatches[swatchIdx].topFilamentIndex;
+    var heights = [];
+    var seen = {};
+    for (var i = 0; i < swatches.length; i++) {
+        if (swatches[i].topFilamentIndex === currentFil) {
+            var h = swatches[i].z_mm;
+            if (!seen[h]) { seen[h] = true; heights.push(h); }
+        }
+    }
+    heights.sort(function(a, b) { return a - b; });
+    if (heights.length < 2) return null;
+
+    var lower = null, upper = null;
+    for (var i = 0; i < heights.length; i++) {
+        if (heights[i] <= z + 1e-8) lower = heights[i];
+        if (heights[i] >= z - 1e-8 && upper === null) upper = heights[i];
+    }
+    return { lower: lower, upper: upper };
+}
+
 function floydSteinbergHeight(heightMap, indices, swatches, H, W, strength) {
     var hm = new Float64Array(heightMap);
     var kernel = [[0,1,7/16],[1,-1,3/16],[1,0,5/16],[1,1,1/16]];
@@ -294,11 +321,19 @@ function floydSteinbergHeight(heightMap, indices, swatches, H, W, strength) {
             var idx = y*W + x;
             var currentZ = hm[idx];
             var currentIdx = indices[idx];
-            var swatchZ = swatches[currentIdx].z_mm;
 
-            var quantized = currentZ; // stay at current
+            var neighbors = findNeighborHeights(currentZ, currentIdx, swatches);
+            if (!neighbors || neighbors.lower === null || neighbors.upper === null) continue;
+
+            // Quantize to the closer of the two neighboring swatch heights
+            var quantized;
+            if (Math.abs(currentZ - neighbors.lower) < Math.abs(currentZ - neighbors.upper)) {
+                quantized = neighbors.lower;
+            } else {
+                quantized = currentZ; // stay at current (upper) swatch
+            }
+
             var zError = (currentZ - quantized) * strength;
-
             if (Math.abs(zError) < 1e-10) continue;
             hm[idx] = quantized;
 
@@ -403,6 +438,54 @@ function computeTransitionZone(filaments, topIdx, layerHeight, maxBudget) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Overhang slope limiting (simplified for preview)
+// ═══════════════════════════════════════════════════════════════
+
+function limitOverhangSlope(heightMap, H, W, pixelSpacingMm, maxOverhangDeg, layerHeight) {
+    maxOverhangDeg = maxOverhangDeg || 50;
+    layerHeight = layerHeight || 0.08;
+    var maxDz = pixelSpacingMm * Math.tan(maxOverhangDeg * Math.PI / 180);
+    var rh = Math.max(layerHeight, 1e-4);
+    var hmap = new Float64Array(heightMap);
+
+    // Quantize to layer boundaries first
+    for (var i = 0; i < hmap.length; i++) {
+        hmap[i] = Math.round(hmap[i] / rh) * rh;
+    }
+
+    // Iterative downhill clamping (fewer iterations for preview speed)
+    var maxIter = 10;
+    for (var iter = 0; iter < maxIter; iter++) {
+        var changed = false;
+
+        // Pass 1: left-to-right, top-to-bottom
+        for (var y = 0; y < H; y++) {
+            for (var x = 0; x < W; x++) {
+                var idx = y * W + x;
+                var cur = hmap[idx];
+                var limitHi = cur + maxDz;
+                var limitLo = cur - maxDz;
+
+                if (x + 1 < W) {
+                    var rIdx = y * W + (x + 1);
+                    if (hmap[rIdx] > limitHi) { hmap[rIdx] = limitHi; changed = true; }
+                    else if (hmap[rIdx] < limitLo) { hmap[idx] = hmap[rIdx] + maxDz; changed = true; }
+                }
+                if (y + 1 < H) {
+                    var bIdx = (y + 1) * W + x;
+                    if (hmap[bIdx] > limitHi) { hmap[bIdx] = limitHi; changed = true; }
+                    else if (hmap[bIdx] < limitLo) { hmap[idx] = hmap[bIdx] + maxDz; changed = true; }
+                }
+            }
+        }
+
+        if (!changed) break;
+    }
+
+    return new Float32Array(hmap);
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Main entry point
 // ═══════════════════════════════════════════════════════════════
 
@@ -415,8 +498,16 @@ self.onmessage = function(e) {
     var baseThickness = data.baseThickness || 0.6;
     var ditherStrength = data.ditherStrength || 0.8;
     var lithophane = data.lithophane || false;
+    var physWidthMm = data.physWidthMm || 160;
+    var physHeightMm = data.physHeightMm || 120;
 
     var W = imgData.width, H = imgData.height;
+
+    if (W < 4 || H < 4) {
+        self.postMessage({ error: 'Image too small — need at least 4x4 pixels' });
+        return;
+    }
+
     var pixels = imgData.data; // Uint8ClampedArray RGBA
 
     // ── Extract RGB array ──
@@ -439,6 +530,20 @@ self.onmessage = function(e) {
 
     // ── Extract dominant colors → match filaments ──
     var dominantRgb = kmeansColors(samplePixels, numColors);
+
+    // Deduplicate near-identical centroids (DeltaE < 5)
+    var uniqueColors = [];
+    for (var c = 0; c < dominantRgb.length; c++) {
+        var dup = false;
+        var lab1 = rgbToLab(dominantRgb[c][0]/255, dominantRgb[c][1]/255, dominantRgb[c][2]/255);
+        for (var u = 0; u < uniqueColors.length; u++) {
+            var lab2 = rgbToLab(uniqueColors[u][0]/255, uniqueColors[u][1]/255, uniqueColors[u][2]/255);
+            if (cie76(lab1, lab2) < 5) { dup = true; break; }
+        }
+        if (!dup) uniqueColors.push(dominantRgb[c]);
+    }
+    dominantRgb = uniqueColors;
+
     var filaments = findClosestFilaments(dominantRgb);
 
     if (filaments.length === 0) {
@@ -456,6 +561,10 @@ self.onmessage = function(e) {
 
     // ── Map pixels to heights ──
     var result = mapColorsToHeight(imageRGB, swatches, maxDepth, layerHeight, ditherStrength, lithophane);
+
+    // ── Overhang slope limiting (preview — lightweight version) ──
+    var pixelSpacing = Math.max(physWidthMm || 160, physHeightMm || 120) / Math.max(W, H);
+    result.heightMap = limitOverhangSlope(result.heightMap, H, W, pixelSpacing);
 
     // ── Compute per-pixel blended color (from swatch lookup) ──
     var colorMap = new Uint8Array(H*W*3);

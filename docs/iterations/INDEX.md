@@ -2,6 +2,8 @@
 
 Sorted by time (newest first).
 
+- [2026-05-25] [P1: Web 实时预览 — 实施记录](preview-implementation-20260525.md)
+- [2026-05-25] [calm wobbling quail](2026-05-25-011720-report.md)
 - [2026-05-24] [HueForge 生态调研 & 对比分析 — 示例逆向 + 同类工具评估 + 集成建议](hueforge-ecosystem-analysis-20260524.md)
 - [2026-05-22] [Multi-Color UX 简化：自动颜色提取替代手动 JSON 输入](multi-color-ux-simplify-20260522.md)
 - [2026-05-22] [Multi-Color Pipeline — Functional Test Report](multi-color-test-report-20260522.md)

@@ -158,8 +158,10 @@ def compute_color_layers(image_path, filaments=None, layer_height=0.08,
 
     # Step 5: Build mesh
     _emit("mesh", message=f"Building mesh from {n_pixels} pixels...")
+    log.append(f"Overhang prevention: enabled (max 50°, pixel_spacing={pixel_spacing_mm}mm)")
     verts, faces = build_multi_color_mesh(
-        height_map, phys_w, phys_h, base_thickness_mm)
+        height_map, phys_w, phys_h, base_thickness_mm,
+        pixel_spacing_mm=pixel_spacing_mm)
 
     total_thickness = base_thickness_mm + max_thickness_mm
     log.append(f"Mesh: {len(verts)} verts, {len(faces)} faces")

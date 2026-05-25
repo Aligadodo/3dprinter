@@ -243,7 +243,8 @@ def process_manga(image_path, dark_filament=None, light_filament=None,
     # ── Build mesh ──
     from .mesh_builder import build_multi_color_mesh
     verts, faces = build_multi_color_mesh(
-        height_map, phys_w, phys_h, base_thickness_mm)
+        height_map, phys_w, phys_h, base_thickness_mm,
+        pixel_spacing_mm=pixel_spacing_mm)
     log.append(f"Mesh: {len(verts)} verts, {len(faces)} faces")
 
     # ── Build swaps ──
