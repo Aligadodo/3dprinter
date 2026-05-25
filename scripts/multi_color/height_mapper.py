@@ -73,7 +73,7 @@ def map_colors_to_height(image_rgb, swatches, max_height_mm, layer_height=0.08,
 
         # Progress every 25% (suppress at 100% — final message comes from caller)
         pct = int(end / n_pixels * 100)
-        if pct % 25 == 0 and pct < 100 and end == n_pixels // (100 // pct):
+        if pct > 0 and pct % 25 == 0 and pct < 100:
             _emit_progress("matching", pct=pct,
                            message=f"Color matching {pct}%...")
 
