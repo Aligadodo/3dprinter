@@ -62,12 +62,12 @@ export default async function renderPreview(main, hash) {
             <input type="range" id="pv-dither" min="0" max="1.0" value="0.8" step="0.05">
           </div>
           <div class="pv-field">
-            <label>${isZh ? '宽度 (mm)' : 'Width'} <span class="val" id="pv-width-val">160</span></label>
-            <input type="range" id="pv-width" min="20" max="500" value="160" step="5">
+            <label>${isZh ? '宽度 (mm)' : 'Width'} <span class="val" id="pv-width-val">250</span></label>
+            <input type="range" id="pv-width" min="20" max="250" value="250" step="1">
           </div>
           <div class="pv-field">
-            <label>${isZh ? '高度 (mm)' : 'Height'} <span class="val" id="pv-height-val">120</span></label>
-            <input type="range" id="pv-height" min="20" max="500" value="120" step="5">
+            <label>${isZh ? '高度 (mm)' : 'Height'} <span class="val" id="pv-height-val">250</span></label>
+            <input type="range" id="pv-height" min="20" max="250" value="250" step="1">
           </div>
           <div class="pv-field">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -261,6 +261,27 @@ function scheduleRecompute() {
 function recompute() {
     if (!currentImageData) return;
 
+    // Auto-fit dimensions within 250mm while preserving image aspect ratio
+    var MAX_MM = 250;
+    var imgW = currentImageData.width, imgH = currentImageData.height;
+    var physW, physH;
+    if (!lastResult) {
+        if (imgW >= imgH) {
+            physW = MAX_MM;
+            physH = Math.max(20, Math.round(MAX_MM * imgH / imgW));
+        } else {
+            physH = MAX_MM;
+            physW = Math.max(20, Math.round(MAX_MM * imgW / imgH));
+        }
+        document.getElementById('pv-width').value = physW;
+        document.getElementById('pv-width-val').textContent = physW;
+        document.getElementById('pv-height').value = physH;
+        document.getElementById('pv-height-val').textContent = physH;
+    } else {
+        physW = parseFloat(document.getElementById('pv-width').value);
+        physH = parseFloat(document.getElementById('pv-height').value);
+    }
+
     setStatus('computing', true);
     document.getElementById('pv-canvas-status').style.display = 'flex';
 
@@ -283,11 +304,7 @@ function recompute() {
             log: data.log,
         };
 
-        // Update 3D view — preserve image aspect ratio
-        const physW = parseFloat(document.getElementById('pv-width').value);
-        const physH = physW * (data.height / data.width);
-        document.getElementById('pv-height-val').textContent = Math.round(physH);
-        document.getElementById('pv-height').value = Math.round(physH);
+        // Update 3D view — use pre-calculated dimensions (aspect-ratio locked)
         const baseT = parseFloat(document.getElementById('pv-base-thick').value);
         const maxD = parseFloat(document.getElementById('pv-max-depth').value);
         updateMesh(heightMap, colorMap, data.width, data.height, physW, physH, baseT, maxD);
@@ -341,8 +358,8 @@ function recompute() {
         baseThickness: parseFloat(document.getElementById('pv-base-thick').value),
         ditherStrength: parseFloat(document.getElementById('pv-dither').value),
         lithophane: document.getElementById('pv-lithophane').checked,
-        physWidthMm: parseFloat(document.getElementById('pv-width').value),
-        physHeightMm: parseFloat(document.getElementById('pv-height').value),
+        physWidthMm: physW,
+        physHeightMm: physH,
     };
 
     worker.postMessage(params);
