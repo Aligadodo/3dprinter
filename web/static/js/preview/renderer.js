@@ -21,10 +21,10 @@ export function initPreview(container, canvasWidth, canvasHeight) {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a1a2e);
 
-    // Camera
+    // Camera — positioned above looking down at the XZ-plane mesh
     camera = new THREE.PerspectiveCamera(45, canvasWidth / canvasHeight, 0.1, 1000);
-    camera.position.set(0, -1.5, 1.2);
-    camera.lookAt(0, 0, 0.3);
+    camera.position.set(0, 1.5, 1.2);
+    camera.lookAt(0, 0, 0);
 
     // Renderer
     renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -35,7 +35,7 @@ export function initPreview(container, canvasWidth, canvasHeight) {
 
     // Controls
     controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0, 0.3);
+    controls.target.set(0, 0, 0);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 0.3;
@@ -48,20 +48,20 @@ export function initPreview(container, canvasWidth, canvasHeight) {
     scene.add(ambientLight);
 
     const frontLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    frontLight.position.set(0, -2, 3);
+    frontLight.position.set(0, 2, 3);
     scene.add(frontLight);
 
     const backLight = new THREE.DirectionalLight(0x8888cc, 0.3);
-    backLight.position.set(0, 2, -1);
+    backLight.position.set(0, 1, -2);
     scene.add(backLight);
 
     const sideLight = new THREE.DirectionalLight(0xffffff, 0.3);
-    sideLight.position.set(2, 0, 1);
+    sideLight.position.set(2, 1, 0);
     scene.add(sideLight);
 
-    // Grid helper
+    // Grid helper — just below the mesh
     const grid = new THREE.GridHelper(0.5, 10, 0x444466, 0x222244);
-    grid.position.z = -0.01;
+    grid.position.y = -0.01;
     scene.add(grid);
 
     // Start render loop
@@ -80,8 +80,6 @@ export function updateMesh(heightMap, colorMap, width, height,
     if (wireframe) scene.remove(wireframe);
 
     var w = width, h = height;
-    var dx = physWidthMm / 1000 / Math.max(w - 1, 1);
-    var dy = physHeightMm / 1000 / Math.max(h - 1, 1);
     var totalThicknessM = (baseThicknessMm + (maxDepthMm || 0)) / 1000;
 
     var geometry = new THREE.PlaneGeometry(
@@ -91,15 +89,15 @@ export function updateMesh(heightMap, colorMap, width, height,
     const positions = geometry.attributes.position;
     const colors = new Float32Array(positions.count * 3);
 
-    // Displace Z and assign vertex colors
+    // Displace Y (plane normal after rotateX) and assign vertex colors
     for (let i = 0; i < positions.count; i++) {
         // Map vertex index back to pixel
         const row = Math.floor(i / w);
         const col = i % w;
 
         if (row < h && col < w) {
-            const z = baseThicknessMm / 1000 + heightMap[row * w + col] / 1000;
-            positions.setZ(i, z);
+            const hM = baseThicknessMm / 1000 + heightMap[row * w + col] / 1000;
+            positions.setY(i, hM);
 
             const ci = (row * w + col) * 3;
             colors[i * 3]     = colorMap[ci]     / 255;
@@ -133,28 +131,34 @@ export function updateMesh(heightMap, colorMap, width, height,
     wireframe = new THREE.Mesh(geometry, wireMat);
     scene.add(wireframe);
 
-    // Fit camera to mesh including Z thickness
+    // Fit camera to mesh — height is along Y after rotateX
     var maxDim = Math.max(physWidthMm, physHeightMm, (maxDepthMm || 0)) / 1000;
     var dist = Math.max(maxDim * 1.8, 0.3);
-    camera.position.set(dist * 0.6, -dist * 0.9, dist * 0.7 + totalThicknessM);
-    controls.target.set(0, 0, totalThicknessM * 0.5);
+    camera.position.set(dist * 0.6, dist * 0.7 + totalThicknessM, dist * 0.9);
+    controls.target.set(0, totalThicknessM * 0.5, 0);
     controls.update();
 }
 
-/** Toggle between front-lit and back-lit view. */
+/** Toggle between front (top) and back (underside) view. */
 export function setViewMode(mode) {
     _viewMode = mode;
     if (mesh) {
         if (mode === 'back') {
             mesh.material.side = THREE.BackSide;
+            // Flip camera below the mesh
             camera.position.set(
                 camera.position.x,
                 -camera.position.y,
                 camera.position.z);
+            controls.target.set(
+                controls.target.x,
+                -controls.target.y,
+                controls.target.z);
         } else {
             mesh.material.side = THREE.FrontSide;
         }
         mesh.material.needsUpdate = true;
+        controls.update();
     }
 }
 
