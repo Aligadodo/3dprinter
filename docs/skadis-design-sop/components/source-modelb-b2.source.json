@@ -1,0 +1,18 @@
+{
+  "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\ModelB.3mf",
+  "source_sha256": "f0225d67b8879877a8a90257129fd6850d84a2ef6db9e1e54161f4b751523e39",
+  "member": "3D/Objects/object_2.model",
+  "object_id": "17",
+  "source_unit": "millimeter",
+  "output_unit": "mm",
+  "coordinate_space": "source mesh local; no build/component transforms applied",
+  "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-modelb-b2.stl",
+  "sha256": "8e196e584f5441dc6406f6bc62abc92e1d200f3cbca3c8a4a2b6e69328d73cb1",
+  "extents_mm": [
+    42.74399948120117,
+    17.740009307861328,
+    20.397998809814453
+  ],
+  "watertight": true,
+  "mesh_only_not_assembly": true
+}

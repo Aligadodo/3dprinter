@@ -1,0 +1,10 @@
+{
+  "files_indexed": 54,
+  "mesh_definitions": 317,
+  "exact_duplicate_groups": 24,
+  "reference_parse_errors": 0,
+  "components_checked": 11,
+  "relative_markdown_links_pass": true,
+  "json_parse_pass": true,
+  "scope": "metadata/local bounds/asset integrity; no new load or physical testing"
+}

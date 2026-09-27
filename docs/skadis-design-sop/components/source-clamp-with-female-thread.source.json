@@ -1,0 +1,18 @@
+{
+  "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\桌边洞洞板夹具.3mf",
+  "source_sha256": "dae24b0a6a9838c5ff90395f6908a3f8746a3c1e0c5b240e78983aad54d1cc2f",
+  "member": "3D/Objects/object_17.model",
+  "object_id": "4",
+  "source_unit": "millimeter",
+  "output_unit": "mm",
+  "coordinate_space": "source mesh local; no build/component transforms applied",
+  "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-clamp-with-female-thread.stl",
+  "sha256": "f9049335d5601ec4462e615d3c159931bd8f6b1c537fb4c1defbb25042595f91",
+  "extents_mm": [
+    58.70000076293945,
+    40.0,
+    59.99915313720703
+  ],
+  "watertight": true,
+  "mesh_only_not_assembly": true
+}

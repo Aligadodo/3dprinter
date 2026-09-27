@@ -1,0 +1,18 @@
+{
+  "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\20mm-1.3mf",
+  "source_sha256": "24ae636176e2402a90943fc3bc73cfbedfb5199f31adf12e7f65502c6acaba7d",
+  "member": "3D/Objects/object_1.model",
+  "object_id": "1",
+  "source_unit": "millimeter",
+  "output_unit": "mm",
+  "coordinate_space": "source mesh local; no build/component transforms applied",
+  "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-small-hook.stl",
+  "sha256": "897797202b8038684f19c2c89360cfc9207bbe567b5b6eea02bf8f617a7277ca",
+  "extents_mm": [
+    43.5,
+    35.99406433105469,
+    4.800000190734863
+  ],
+  "watertight": true,
+  "mesh_only_not_assembly": true
+}

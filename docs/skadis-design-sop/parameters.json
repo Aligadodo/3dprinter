@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-27",
+  "units": "mm unless explicitly marked",
+  "status_legend": {
+    "reference_mesh_measurement": "从指定参考网格测量；非官方标准和实物测量",
+    "geometry_and_slice_checked": "几何及切片通过；未实物验证",
+    "project_default": "本项目设计默认值；不是通用强度规则"
+  },
+  "profiles": {
+    "reference_board_from_desk_clamp": {
+      "status": "reference_mesh_measurement",
+      "source": "桌边洞洞板夹具.3mf / 3D/Objects/object_4.model / object 6",
+      "board_thickness": 5,
+      "slot_width": 5.2,
+      "slot_height": 15.2,
+      "same_row_pitch": 40,
+      "same_column_pitch": 40,
+      "limitations": "中间排错位；真实板、涂层需复测"
+    },
+    "H4_bedhead_A_v11": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/bedhead_geometry.json / assembly.hooks",
+      "values": {
+        "slot_width_mm": 5.2,
+        "slot_height_mm": 15.2,
+        "board_mm": 5,
+        "pitch_yz_mm": [
+          40,
+          40
+        ],
+        "hook_width_mm": 4.4,
+        "side_clearance_each_mm": 0.4,
+        "throat_mm": 5.8,
+        "round_tip_radius_mm": 2.2,
+        "side_profile_radius_mm": 0.55,
+        "lowering_mm": 7.2,
+        "path_samples": 73,
+        "max_overlap_mm3": 0.0,
+        "seated_pullout_collision_mm3": 133.84345105633938,
+        "anti_lift_lock": false
+      },
+      "limitations": "未验证真实板及承重；无防上抬扣"
+    },
+    "S_M4_bedhead_A_v11": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/bedhead_geometry.json / assembly.m4",
+      "values": {
+        "hole_mm": 4.4,
+        "pitch_mm": 25,
+        "nut_AF_mm": 7,
+        "nut_thickness_mm": 3.2,
+        "channel_AF_mm": 7.6,
+        "channel_thickness_mm": 4.0,
+        "entry_mouth_thickness_mm": 4.8,
+        "entry_mouth_height_mm": 9.0,
+        "slope_deg": 15,
+        "flare_length_mm": 2,
+        "front_skin_min_channel_mm": 2.8,
+        "front_skin_min_mouth_mm": 2.4,
+        "central_web_between_channels_min_mm": 16.224,
+        "nut_path_pass": true,
+        "bottom_T_removed": true,
+        "bolts_mm": [
+          12,
+          16,
+          18
+        ],
+        "board_mm": 5
+      },
+      "seat_total_thickness": 20.4,
+      "blind_depth_from_front": 16,
+      "furniture_side_wall": 4.4,
+      "nut_near_far_from_front": [
+        3.2,
+        6.4
+      ],
+      "preferred_bolt_length": 16,
+      "unsupported_bolt_length": 25,
+      "limitations": "用于ModelB角孔体系；不适配厚防松或法兰螺母；无重力自滑保证"
+    },
+    "S_M4_cabinet_v31": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/cabinet_V3.1_README.md",
+      "hole_diameter": 4.4,
+      "hole_pitch": 25,
+      "corner_edge_offset": 12.5,
+      "seat_total_thickness": 20.4,
+      "channel_thickness": 4.0,
+      "channel_AF": 7.5,
+      "slope_degrees_approx": 17.5,
+      "drop_approx": 3,
+      "limitations": "与床头15度/7.6配置分开维护；未实物验证"
+    },
+    "bedhead_body_A_v11": {
+      "status": "project_default",
+      "source": "implementation-reference/build_v11.py",
+      "clamp_ranges": [
+        [
+          20,
+          40
+        ],
+        [
+          35,
+          55
+        ],
+        [
+          50,
+          70
+        ]
+      ],
+      "body_widths": [
+        36,
+        44,
+        60
+      ],
+      "front_arm_thickness": 14,
+      "head_min_width_H4": 54,
+      "head_min_width_S": 44,
+      "rear_arm_thickness": 10.65,
+      "front_pad_thickness": 1,
+      "top_pad_thickness": 1,
+      "rear_inner_x_formula": "range_max + 3",
+      "effective_openings": [
+        42,
+        57,
+        72
+      ],
+      "max_board_adjustment_reserve": 2,
+      "min_knob_rear_arm_gap_approx": 2.35,
+      "limitations": "宽度不代表额定载荷；前后墙缝须单独核对"
+    },
+    "reused_coarse_thread": {
+      "status": "geometry_and_slice_checked",
+      "source": "桌边洞洞板夹具.3mf / object_16.model + object_17.model",
+      "pitch_approx": 4,
+      "major_diameter_approx": 15.38,
+      "original_shaft": 40,
+      "original_knob": 15,
+      "current_shaft": 35,
+      "current_knob": 10,
+      "current_total": 45,
+      "limitations": "非标准M16；保存原牙型和配对母螺纹，不整体缩放"
+    },
+    "cabinet_crossbar_v31": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/cabinet_V3.1_README.md",
+      "board_widths": [
+        200,
+        220,
+        240,
+        260,
+        280
+      ],
+      "actual_lengths": [
+        180,
+        200,
+        220,
+        240,
+        260
+      ],
+      "body_thickness": 6,
+      "tongue_thickness": 4,
+      "insertion_each_end_approx": 12,
+      "clearance_each_side": 0.2,
+      "limitations": "柜侧系列专用，不是床头夹具的默认横梁"
+    },
+    "print_bedhead_v11": {
+      "status": "project_default",
+      "source": "evidence/P1S_PETG.json",
+      "printer": "P1S",
+      "nozzle": 0.4,
+      "material": "PETG",
+      "layer_height": 0.2,
+      "walls": 6,
+      "body_infill_percent": 50,
+      "infill_pattern": "gyroid",
+      "screw_infill_percent": 100,
+      "nozzle_celsius": 255,
+      "bed_celsius": 70,
+      "max_volumetric_mm3_s": 8,
+      "support": "normal(auto); model support allowed",
+      "orientation": "body on side; screw knob bottom down",
+      "limitations": "柜侧V3.1不启用支撑；温度流量按线材校准"
+    }
+  }
+}

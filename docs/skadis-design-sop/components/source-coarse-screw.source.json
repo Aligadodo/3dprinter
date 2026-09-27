@@ -1,0 +1,18 @@
+{
+  "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\桌边洞洞板夹具.3mf",
+  "source_sha256": "dae24b0a6a9838c5ff90395f6908a3f8746a3c1e0c5b240e78983aad54d1cc2f",
+  "member": "3D/Objects/object_16.model",
+  "object_id": "1",
+  "source_unit": "millimeter",
+  "output_unit": "mm",
+  "coordinate_space": "source mesh local; no build/component transforms applied",
+  "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-coarse-screw.stl",
+  "sha256": "f384cdc19bd00ba35ce2e178eb4b6be9f7d5744109ef5609551d81502daeddbd",
+  "extents_mm": [
+    25.0,
+    24.81999969482422,
+    55.0
+  ],
+  "watertight": true,
+  "mesh_only_not_assembly": true
+}

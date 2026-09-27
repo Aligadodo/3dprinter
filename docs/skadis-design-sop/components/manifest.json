@@ -1,0 +1,210 @@
+{
+  "component_count": 11,
+  "records": [
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\桌边洞洞板夹具.3mf",
+      "source_sha256": "dae24b0a6a9838c5ff90395f6908a3f8746a3c1e0c5b240e78983aad54d1cc2f",
+      "member": "3D/Objects/object_16.model",
+      "object_id": "1",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-coarse-screw.stl",
+      "sha256": "f384cdc19bd00ba35ce2e178eb4b6be9f7d5744109ef5609551d81502daeddbd",
+      "extents_mm": [
+        25.0,
+        24.81999969482422,
+        55.0
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-coarse-screw",
+      "file": "source-coarse-screw.stl",
+      "designer": "Ms",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "verify intended mating interface before reuse"
+    },
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\桌边洞洞板夹具.3mf",
+      "source_sha256": "dae24b0a6a9838c5ff90395f6908a3f8746a3c1e0c5b240e78983aad54d1cc2f",
+      "member": "3D/Objects/object_17.model",
+      "object_id": "4",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-clamp-with-female-thread.stl",
+      "sha256": "f9049335d5601ec4462e615d3c159931bd8f6b1c537fb4c1defbb25042595f91",
+      "extents_mm": [
+        58.70000076293945,
+        40.0,
+        59.99915313720703
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-clamp-with-female-thread",
+      "file": "source-clamp-with-female-thread.stl",
+      "designer": "Ms",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "source-clamp-with-female-thread requires selecting/fusing the sleeve; do not embed entire clamp"
+    },
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\桌边洞洞板夹具.3mf",
+      "source_sha256": "dae24b0a6a9838c5ff90395f6908a3f8746a3c1e0c5b240e78983aad54d1cc2f",
+      "member": "3D/Objects/object_4.model",
+      "object_id": "6",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-board.stl",
+      "sha256": "97a2d739c5523cbd6d6993762e0397cbefcb01edaa1ff84bbb168b7ebcb3f3d9",
+      "extents_mm": [
+        5.0,
+        200.0,
+        60.0
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-board",
+      "file": "source-board.stl",
+      "designer": "Ms",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "verify intended mating interface before reuse"
+    },
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\ModelB.3mf",
+      "source_sha256": "f0225d67b8879877a8a90257129fd6850d84a2ef6db9e1e54161f4b751523e39",
+      "member": "3D/Objects/object_2.model",
+      "object_id": "17",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-modelb-b2.stl",
+      "sha256": "8e196e584f5441dc6406f6bc62abc92e1d200f3cbca3c8a4a2b6e69328d73cb1",
+      "extents_mm": [
+        42.74399948120117,
+        17.740009307861328,
+        20.397998809814453
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-modelb-b2",
+      "file": "source-modelb-b2.stl",
+      "designer": "Combo",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "verify intended mating interface before reuse"
+    },
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\ModelB.3mf",
+      "source_sha256": "f0225d67b8879877a8a90257129fd6850d84a2ef6db9e1e54161f4b751523e39",
+      "member": "3D/Objects/object_3.model",
+      "object_id": "1",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-modelb-b4.stl",
+      "sha256": "59fbb89e5940f4e3c702be90a8544c8306ef798460eef2aaf14784aae30b5746",
+      "extents_mm": [
+        42.74199676513672,
+        42.74399948120117,
+        20.399999618530273
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-modelb-b4",
+      "file": "source-modelb-b4.stl",
+      "designer": "Combo",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "verify intended mating interface before reuse"
+    },
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\20mm-1.3mf",
+      "source_sha256": "24ae636176e2402a90943fc3bc73cfbedfb5199f31adf12e7f65502c6acaba7d",
+      "member": "3D/Objects/object_1.model",
+      "object_id": "1",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-small-hook.stl",
+      "sha256": "897797202b8038684f19c2c89360cfc9207bbe567b5b6eea02bf8f617a7277ca",
+      "extents_mm": [
+        43.5,
+        35.99406433105469,
+        4.800000190734863
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-small-hook",
+      "file": "source-small-hook.stl",
+      "designer": "528机房",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "verify intended mating interface before reuse"
+    },
+    {
+      "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\komplett.3mf",
+      "source_sha256": "fe396e8133771aa2bc1a97d5e4f2957735c3e2bb967ebd72e503da82a05c1689",
+      "member": "3D/Objects/object_55.model",
+      "object_id": "109",
+      "source_unit": "millimeter",
+      "output_unit": "mm",
+      "coordinate_space": "source mesh local; no build/component transforms applied",
+      "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-tool-hook.stl",
+      "sha256": "1da512db94bbfe58ec6474052a6880086775743da8a03b89fe8a996f8bd5fd44",
+      "extents_mm": [
+        23.5,
+        4.400000095367432,
+        36.03190612792969
+      ],
+      "watertight": true,
+      "mesh_only_not_assembly": true,
+      "id": "source-tool-hook",
+      "file": "source-tool-hook.stl",
+      "designer": "walleriusDesign",
+      "license_verbatim": "Standard Digital File License",
+      "status": "extracted source-local mesh; not a new print-ready assembly",
+      "reuse": "verify intended mating interface before reuse"
+    },
+    {
+      "id": "共用粗螺杆_杆35_旋钮10_总长45",
+      "file": "共用粗螺杆_杆35_旋钮10_总长45.stl",
+      "source": "D:\\projects\\3dprint\\output\\bedhead-clamp-concepts\\releases\\床头夹具_A_V1.1_左右斜坡螺母入口_十九盘\\单件STL\\共用粗螺杆_杆35_旋钮10_总长45.stl",
+      "sha256": "bef7b9dec8bc31851168032202461be1da6850526aebc47e055a06c8acd7d9ad",
+      "status": "geometry and slicing checked; physical fit pending",
+      "coordinate_space": "normalized print coordinates, not assembly coordinates",
+      "provenance": "bedhead A V1.1; coarse screw/female thread reuse Ms source, H4 and M4 coupon geometry built in project"
+    },
+    {
+      "id": "试配件_H4四钩_孔距40_板厚5",
+      "file": "试配件_H4四钩_孔距40_板厚5.stl",
+      "source": "D:\\projects\\3dprint\\output\\bedhead-clamp-concepts\\releases\\床头夹具_A_V1.1_左右斜坡螺母入口_十九盘\\单件STL\\试配件_H4四钩_孔距40_板厚5.stl",
+      "sha256": "324a5891659bfd9eea2b2dea5b2cc403c8f6ed00f75cd89f1a19cef0b83046e0",
+      "status": "geometry and slicing checked; physical fit pending",
+      "coordinate_space": "normalized print coordinates, not assembly coordinates",
+      "provenance": "bedhead A V1.1; coarse screw/female thread reuse Ms source, H4 and M4 coupon geometry built in project"
+    },
+    {
+      "id": "试配件_M4左右斜坡入口_孔距25",
+      "file": "试配件_M4左右斜坡入口_孔距25.stl",
+      "source": "D:\\projects\\3dprint\\output\\bedhead-clamp-concepts\\releases\\床头夹具_A_V1.1_左右斜坡螺母入口_十九盘\\单件STL\\试配件_M4左右斜坡入口_孔距25.stl",
+      "sha256": "c07aec391c5f123328fb9c06861d4f43f779a3be418563e1f2ca58f9b5f9281d",
+      "status": "geometry and slicing checked; physical fit pending",
+      "coordinate_space": "normalized print coordinates, not assembly coordinates",
+      "provenance": "bedhead A V1.1; coarse screw/female thread reuse Ms source, H4 and M4 coupon geometry built in project"
+    },
+    {
+      "id": "试配件_原牙型母螺口",
+      "file": "试配件_原牙型母螺口.stl",
+      "source": "D:\\projects\\3dprint\\output\\bedhead-clamp-concepts\\releases\\床头夹具_A_V1.1_左右斜坡螺母入口_十九盘\\单件STL\\试配件_原牙型母螺口.stl",
+      "sha256": "2aca28965d04c9550b36f140784b1513df9267e863350036a348ef5068899496",
+      "status": "geometry and slicing checked; physical fit pending",
+      "coordinate_space": "normalized print coordinates, not assembly coordinates",
+      "provenance": "bedhead A V1.1; coarse screw/female thread reuse Ms source, H4 and M4 coupon geometry built in project"
+    }
+  ],
+  "warning": "Source meshes are reference assets; print-ready coupons are labeled separately. Source license metadata is retained, not replaced."
+}

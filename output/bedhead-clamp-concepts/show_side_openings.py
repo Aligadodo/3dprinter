@@ -1,0 +1,21 @@
+from pathlib import Path
+exec((Path(__file__).parent/'draw_side_entry_v11.py').read_text(encoding='utf8').split("im=Image.new")[0])
+im=Image.new('RGB',(1500,1000),'#f6f8fb');d=ImageDraw.Draw(im)
+font=lambda n:ImageFont.truetype('C:/Windows/Fonts/msyh.ttc',n)
+def text(x,y,s,n=26):d.text((x,y),s,font=font(n),fill='#20374c')
+text(35,25,'V1.1 实际 STL：螺母入口在左右窄侧面',36)
+text(40,100,'侧向观察前座（实心外观）',26)
+render(d,[(close,(58,141,182))],(40,170,700,600),view=(-.2,-1,.2))
+text(825,100,'侧面轮廓：靠近侧表面剖切',26)
+ox,oy,k=1240,420,15
+def pos(x,z):return(ox+x*k,oy-z*k)
+for curve in close.section([0,1,0],[0,-21.99,0]).discrete:
+ d.line([pos(v[0],v[2]) for v in curve],fill='#287ba4',width=4)
+q=pos(-15.6,1.55)
+d.ellipse((q[0]-49,q[1]-87,q[0]+49,q[1]+87),outline='#e0872a',width=5)
+d.line([q,(1130,490),(1430,490)],fill='#e0872a',width=4)
+text(1120,510,'橙圈内是贯通侧口',24)
+text(820,735,'另一侧对称设置一个入口',25)
+text(40,845,'正面两圆孔用于进螺丝；左右侧窄槽用于进螺母。',30)
+text(40,913,'这是新版螺丝 S 款；早期 A/B/C 概念页及 H4 挂钩款没有这个入口。',25)
+out=BASE/'nut-entry-check'/'V11_侧入口实际位置.png';im.save(out);print(out)

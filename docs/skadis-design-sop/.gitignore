@@ -1,0 +1,7 @@
+# Local/generated models and previews; regenerate from the reference collection.
+components/*.stl
+reference-index/thumbnails/
+reference-index/contact-*.jpg
+*.html
+reference-index/*.html
+SHA256.json

@@ -1,0 +1,18 @@
+{
+  "source": "E:\\3dprint\\模型收藏合集\\宜家洞洞板系列收藏\\桌边洞洞板夹具.3mf",
+  "source_sha256": "dae24b0a6a9838c5ff90395f6908a3f8746a3c1e0c5b240e78983aad54d1cc2f",
+  "member": "3D/Objects/object_4.model",
+  "object_id": "6",
+  "source_unit": "millimeter",
+  "output_unit": "mm",
+  "coordinate_space": "source mesh local; no build/component transforms applied",
+  "output": "D:\\projects\\3dprint\\docs\\skadis-design-sop\\components\\source-board.stl",
+  "sha256": "97a2d739c5523cbd6d6993762e0397cbefcb01edaa1ff84bbb168b7ebcb3f3d9",
+  "extents_mm": [
+    5.0,
+    200.0,
+    60.0
+  ],
+  "watertight": true,
+  "mesh_only_not_assembly": true
+}
