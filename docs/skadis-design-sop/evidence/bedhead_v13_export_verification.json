@@ -1,0 +1,298 @@
+{
+  "STL": [
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽48",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽50",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽54",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽48",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽50",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽54",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽48",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽50",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽54",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽36",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽40",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽44",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽36",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽40",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽44",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽36",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽40",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽44",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    }
+  ],
+  "main_3mf_body_variants_checked": 18,
+  "grip": [
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽48",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.35
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽50",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.349
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽54",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.346
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽48",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.138
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽50",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.137
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽54",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.135
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽48",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 1.961
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽50",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 1.96
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽54",
+      "measured_face_angle_deg": 1.4999994577004168,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 1.959
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽36",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.246
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽40",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.241
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽44",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.236
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽36",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.051
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽40",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.047
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽44",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 2.043
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽36",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 1.888
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽40",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 1.884
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽44",
+      "measured_face_angle_deg": 1.4999996286669557,
+      "groove_center_depth_pass": true,
+      "rounded_tip_corner_removed": true,
+      "original_board_range_endpoints_clear": true,
+      "body_volume_reduction_vs_v12_percent": 1.881
+    }
+  ],
+  "custom_screws": [
+    {
+      "name": "粗螺杆_P10_最大伸入10_杆21.4_总31.4",
+      "samples": 41,
+      "max_overlap_mm3": 0,
+      "single_solid": true,
+      "length_pass": true
+    },
+    {
+      "name": "粗螺杆_P20_最大伸入20_杆31.4_总41.4",
+      "samples": 41,
+      "max_overlap_mm3": 0,
+      "single_solid": true,
+      "length_pass": true
+    },
+    {
+      "name": "粗螺杆_P30_最大伸入30_杆41.4_总51.4",
+      "samples": 41,
+      "max_overlap_mm3": 0,
+      "single_solid": true,
+      "length_pass": true
+    },
+    {
+      "name": "粗螺杆_P40_最大伸入40_杆51.4_总61.4",
+      "samples": 41,
+      "max_overlap_mm3": 0,
+      "single_solid": true,
+      "length_pass": true
+    },
+    {
+      "name": "粗螺杆_P50_最大伸入50_杆61.4_总71.4",
+      "samples": 41,
+      "max_overlap_mm3": 0,
+      "single_solid": true,
+      "length_pass": true
+    }
+  ],
+  "all_28_STL_single_solid": true,
+  "M4x16_confirmed_not_supported": true
+}
