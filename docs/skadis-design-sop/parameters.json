@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "date": "2026-09-27",
+  "date": "2026-09-28",
   "units": "mm unless explicitly marked",
   "status_legend": {
     "reference_mesh_measurement": "从指定参考网格测量；非官方标准和实物测量",
@@ -182,6 +182,107 @@
       "support": "normal(auto); model support allowed",
       "orientation": "body on side; screw knob bottom down",
       "limitations": "柜侧V3.1不启用支撑；温度流量按线材校准"
+    },
+    "bedhead_body_A_v12": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/bedhead_v12_geometry.json",
+      "front_arm": 9.4,
+      "top_beam": 9.4,
+      "rear_arm": 9.4,
+      "S_seat": 13.6,
+      "S_uniform_widths": [
+        36,
+        40,
+        44
+      ],
+      "H4_uniform_widths": [
+        48,
+        50,
+        54
+      ],
+      "clamp_ranges": [
+        [
+          20,
+          40
+        ],
+        [
+          35,
+          55
+        ],
+        [
+          50,
+          70
+        ]
+      ],
+      "body_walls": 4,
+      "body_infill_percent": 30,
+      "support": "normal(auto)",
+      "limitations": "未进行V1.2实物验证；板背支撑距离需更新；不是额定荷载参数"
+    },
+    "S_M4_bedhead_A_v12": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/bedhead_v12_geometry.json",
+      "values": {
+        "hole_mm": 4.4,
+        "pitch_mm": 25,
+        "nut_AF_mm": 7,
+        "nut_thickness_mm": 3.2,
+        "channel_AF_mm": 7.6,
+        "channel_thickness_mm": 4.0,
+        "entry_mouth_thickness_mm": 4.8,
+        "entry_mouth_height_mm": 9.0,
+        "slope_deg": 15,
+        "flare_length_mm": 2,
+        "front_skin_min_channel_mm": 2.4,
+        "front_skin_min_mouth_mm": 2.0,
+        "central_web_between_channels_min_mm": 16.224,
+        "nut_path_pass": true,
+        "bottom_T_removed": true,
+        "bolts_mm": [
+          12
+        ],
+        "board_mm": 5,
+        "blind_depth_mm": 9,
+        "tail_clearance_mm": 2,
+        "nominal_nut_depth_range_mm": [
+          2.8,
+          6.0
+        ],
+        "minimum_full_nut_exit_mm": 0.6
+      },
+      "limitations": "只按M4x12+5mm板+无垫片；16/18/25不可沿用"
+    },
+    "H4_bedhead_A_v12": {
+      "status": "geometry_and_slice_checked",
+      "source": "evidence/bedhead_v12_geometry.json",
+      "values": {
+        "slot_width_mm": 5.2,
+        "slot_height_mm": 15.2,
+        "board_mm": 5,
+        "pitch_yz_mm": [
+          40,
+          40
+        ],
+        "hook_width_mm": 4.4,
+        "side_clearance_each_mm": 0.4,
+        "throat_mm": 5.8,
+        "round_tip_radius_mm": 2.2,
+        "side_profile_radius_mm": 0.55,
+        "lowering_mm": 7.2,
+        "path_samples": 73,
+        "max_overlap_mm3": 0.0,
+        "seated_pullout_collision_mm3": 133.8434510563392,
+        "anti_lift_lock": false
+      },
+      "front_arm": 9.4,
+      "tip_above_beam": 4.6,
+      "limitations": "孔位YZ不变；X随前臂减薄向家具靠近4.6；未实物验证"
     }
-  }
+  },
+  "preferred_profiles": {
+    "bedhead_body": "bedhead_body_A_v12",
+    "bedhead_S_interface": "S_M4_bedhead_A_v12",
+    "bedhead_H4_interface": "H4_bedhead_A_v12"
+  },
+  "latest_bedhead_release": "床头夹具_A_V1.2_等宽轻量_M4x12_十九盘"
 }

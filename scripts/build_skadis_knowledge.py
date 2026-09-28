@@ -15,6 +15,12 @@ params={'schema_version':1,'date':'2026-09-27','units':'mm unless explicitly mar
  'reused_coarse_thread':{'status':'geometry_and_slice_checked','source':'桌边洞洞板夹具.3mf / object_16.model + object_17.model','pitch_approx':4,'major_diameter_approx':15.38,'original_shaft':40,'original_knob':15,'current_shaft':35,'current_knob':10,'current_total':45,'limitations':'非标准M16；保存原牙型和配对母螺纹，不整体缩放'},
  'cabinet_crossbar_v31':{'status':'geometry_and_slice_checked','source':'evidence/cabinet_V3.1_README.md','board_widths':[200,220,240,260,280],'actual_lengths':[180,200,220,240,260],'body_thickness':6,'tongue_thickness':4,'insertion_each_end_approx':12,'clearance_each_side':.2,'limitations':'柜侧系列专用，不是床头夹具的默认横梁'},
  'print_bedhead_v11':{'status':'project_default','source':'evidence/P1S_PETG.json','printer':'P1S','nozzle':.4,'material':'PETG','layer_height':.2,'walls':6,'body_infill_percent':50,'infill_pattern':'gyroid','screw_infill_percent':100,'nozzle_celsius':255,'bed_celsius':70,'max_volumetric_mm3_s':8,'support':'normal(auto); model support allowed','orientation':'body on side; screw knob bottom down','limitations':'柜侧V3.1不启用支撑；温度流量按线材校准'}}}
+if (OUT/'parameters.json').exists():
+ prior=json.loads((OUT/'parameters.json').read_text(encoding='utf8'))
+ params['profiles'].update({k:v for k,v in prior.get('profiles',{}).items() if k not in params['profiles']})
+ for key in ['preferred_profiles','latest_bedhead_release']:
+  if key in prior:params[key]=prior[key]
+ params['date']=max(params['date'],prior.get('date',''))
 (OUT/'parameters.json').write_text(json.dumps(params,ensure_ascii=False,indent=2),encoding='utf8')
 catalog=json.loads((OUT/'reference-index/catalog.json').read_text(encoding='utf8'))
 records=[]

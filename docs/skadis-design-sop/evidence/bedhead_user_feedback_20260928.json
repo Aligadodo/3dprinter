@@ -1,0 +1,8 @@
+{
+  "photo_filename": "IMG_20260928_095853.jpg",
+  "photo_sha256": "1a0dbdacd107f2be73287154a56ab6845908777857a96ca70112df5bfadf739b",
+  "observation": "visible loose/suspended strands and surface defects on prior prints",
+  "cause_limit": "photo alone cannot establish all causes",
+  "request": "uniform widths, reduce edges and thickness about one third, preserve interface positions, M4x12 only",
+  "new_physical_validation": false
+}

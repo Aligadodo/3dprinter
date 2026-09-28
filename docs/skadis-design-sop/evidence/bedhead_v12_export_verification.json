@@ -1,0 +1,114 @@
+{
+  "STL": [
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽48",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽50",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹20-40_宽54",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽48",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽50",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹35-55_宽54",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽48",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽50",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_挂钩H4_夹50-70_宽54",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": null
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽36",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽40",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹20-40_宽44",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽36",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽40",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹35-55_宽44",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽36",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽40",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    },
+    {
+      "name": "床头夹具_螺丝S_夹50-70_宽44",
+      "equal_body_width_pass": true,
+      "single_manifold_pass": true,
+      "M4x12_path_pass": true
+    }
+  ],
+  "main_3mf_body_variants_checked": 18,
+  "M4x16_confirmed_not_supported": true
+}

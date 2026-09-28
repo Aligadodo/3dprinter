@@ -1,0 +1,1904 @@
+{
+  "meshes": {
+    "共用粗螺杆_杆35_旋钮10_总长45": {
+      "dimensions_mm": [
+        25.0,
+        24.82,
+        44.995
+      ],
+      "volume_mm3": 8938.51,
+      "faces": 92782,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -12.5,
+          -12.40999984741211,
+          -17.5
+        ],
+        [
+          12.5,
+          12.40999984741211,
+          27.494522094726562
+        ]
+      ],
+      "print_translation": [
+        12.5,
+        12.40999984741211,
+        17.5
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹20-40_宽48": {
+      "dimensions_mm": [
+        70.6,
+        60.0,
+        48.0
+      ],
+      "volume_mm3": 68265.47,
+      "faces": 38078,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -24.0,
+          -45.0
+        ],
+        [
+          52.4,
+          24.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        24.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹35-55_宽48": {
+      "dimensions_mm": [
+        85.6,
+        60.0,
+        48.0
+      ],
+      "volume_mm3": 75034.72,
+      "faces": 38092,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -24.0,
+          -45.0
+        ],
+        [
+          67.4,
+          24.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        24.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹50-70_宽48": {
+      "dimensions_mm": [
+        100.6,
+        60.0,
+        48.0
+      ],
+      "volume_mm3": 81803.96,
+      "faces": 38090,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -24.0,
+          -45.0
+        ],
+        [
+          82.4,
+          24.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        24.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹20-40_宽50": {
+      "dimensions_mm": [
+        70.6,
+        60.0,
+        50.0
+      ],
+      "volume_mm3": 71151.35,
+      "faces": 38076,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -25.0,
+          -45.0
+        ],
+        [
+          52.4,
+          25.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        25.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹35-55_宽50": {
+      "dimensions_mm": [
+        85.6,
+        60.0,
+        50.0
+      ],
+      "volume_mm3": 78202.65,
+      "faces": 38092,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -25.0,
+          -45.0
+        ],
+        [
+          67.4,
+          25.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        25.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹50-70_宽50": {
+      "dimensions_mm": [
+        100.6,
+        60.0,
+        50.0
+      ],
+      "volume_mm3": 85253.95,
+      "faces": 38070,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -25.0,
+          -45.0
+        ],
+        [
+          82.4,
+          25.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        25.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹20-40_宽54": {
+      "dimensions_mm": [
+        70.6,
+        60.0,
+        54.0
+      ],
+      "volume_mm3": 76923.13,
+      "faces": 38070,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -27.0,
+          -45.0
+        ],
+        [
+          52.4,
+          27.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        27.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹35-55_宽54": {
+      "dimensions_mm": [
+        85.6,
+        60.0,
+        54.0
+      ],
+      "volume_mm3": 84538.53,
+      "faces": 38078,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -27.0,
+          -45.0
+        ],
+        [
+          67.4,
+          27.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        27.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_挂钩H4_夹50-70_宽54": {
+      "dimensions_mm": [
+        100.6,
+        60.0,
+        54.0
+      ],
+      "volume_mm3": 92153.92,
+      "faces": 38082,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -27.0,
+          -45.0
+        ],
+        [
+          82.4,
+          27.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        27.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹20-40_宽36": {
+      "dimensions_mm": [
+        66.0,
+        55.4,
+        36.0
+      ],
+      "volume_mm3": 53513.79,
+      "faces": 36976,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -18.0,
+          -45.0
+        ],
+        [
+          52.4,
+          18.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        18.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹35-55_宽36": {
+      "dimensions_mm": [
+        81.0,
+        55.4,
+        36.0
+      ],
+      "volume_mm3": 58590.72,
+      "faces": 36962,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -18.0,
+          -45.0
+        ],
+        [
+          67.4,
+          18.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        18.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹50-70_宽36": {
+      "dimensions_mm": [
+        96.0,
+        55.4,
+        36.0
+      ],
+      "volume_mm3": 63667.65,
+      "faces": 36958,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -18.0,
+          -45.0
+        ],
+        [
+          82.4,
+          18.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        18.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹20-40_宽40": {
+      "dimensions_mm": [
+        66.0,
+        55.4,
+        40.0
+      ],
+      "volume_mm3": 59606.13,
+      "faces": 36984,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -20.0,
+          -45.0
+        ],
+        [
+          52.4,
+          20.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        20.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹35-55_宽40": {
+      "dimensions_mm": [
+        81.0,
+        55.4,
+        40.0
+      ],
+      "volume_mm3": 65247.17,
+      "faces": 36966,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -20.0,
+          -45.0
+        ],
+        [
+          67.4,
+          20.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        20.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹50-70_宽40": {
+      "dimensions_mm": [
+        96.0,
+        55.4,
+        40.0
+      ],
+      "volume_mm3": 70888.19,
+      "faces": 36972,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -20.0,
+          -45.0
+        ],
+        [
+          82.4,
+          20.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        20.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹20-40_宽44": {
+      "dimensions_mm": [
+        66.0,
+        55.4,
+        44.0
+      ],
+      "volume_mm3": 65698.43,
+      "faces": 36972,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -22.0,
+          -45.0
+        ],
+        [
+          52.4,
+          22.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        22.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹35-55_宽44": {
+      "dimensions_mm": [
+        81.0,
+        55.4,
+        44.0
+      ],
+      "volume_mm3": 71903.57,
+      "faces": 36960,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -22.0,
+          -45.0
+        ],
+        [
+          67.4,
+          22.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        22.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "床头夹具_螺丝S_夹50-70_宽44": {
+      "dimensions_mm": [
+        96.0,
+        55.4,
+        44.0
+      ],
+      "volume_mm3": 78108.71,
+      "faces": 36952,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.600000001490116,
+          -22.0,
+          -45.0
+        ],
+        [
+          82.4,
+          22.0,
+          10.399999998509884
+        ]
+      ],
+      "print_translation": [
+        13.600000001490116,
+        10.399999998509884,
+        22.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "试配件_H4四钩_孔距40_板厚5": {
+      "dimensions_mm": [
+        12.8,
+        59.0,
+        48.0
+      ],
+      "volume_mm3": 11281.71,
+      "faces": 2180,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -18.199999997019766,
+          -24.0,
+          -44.0
+        ],
+        [
+          -5.4,
+          24.0,
+          15.0
+        ]
+      ],
+      "print_translation": [
+        18.199999997019766,
+        15.0,
+        24.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "试配件_M4左右斜坡入口_孔距25": {
+      "dimensions_mm": [
+        13.6,
+        27.4,
+        36.0
+      ],
+      "volume_mm3": 12666.52,
+      "faces": 884,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -13.6,
+          -18.0,
+          -17.0
+        ],
+        [
+          0.0,
+          18.0,
+          10.399999999999999
+        ]
+      ],
+      "print_translation": [
+        13.6,
+        10.399999999999999,
+        18.0
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          -1.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    },
+    "试配件_原牙型母螺口": {
+      "dimensions_mm": [
+        23.4,
+        23.4,
+        8.75
+      ],
+      "volume_mm3": 2204.04,
+      "faces": 35054,
+      "watertight_single_solid": true,
+      "assembly_bounds": [
+        [
+          -11.7,
+          -11.7,
+          -28.75
+        ],
+        [
+          11.700000000000001,
+          11.7,
+          -19.999574661254883
+        ]
+      ],
+      "print_translation": [
+        11.7,
+        11.7,
+        28.75
+      ],
+      "assembly_to_print_rotation": [
+        [
+          1.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      ]
+    }
+  },
+  "assembly": {
+    "床头夹具_挂钩H4_夹20-40_宽48": {
+      "board_range_mm": [
+        20,
+        40
+      ],
+      "effective_opening_mm": 42,
+      "raw_opening_mm": 43,
+      "body_width_mm": 48,
+      "interface_width_mm": 48,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹35-55_宽48": {
+      "board_range_mm": [
+        35,
+        55
+      ],
+      "effective_opening_mm": 57,
+      "raw_opening_mm": 58,
+      "body_width_mm": 48,
+      "interface_width_mm": 48,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹50-70_宽48": {
+      "board_range_mm": [
+        50,
+        70
+      ],
+      "effective_opening_mm": 72,
+      "raw_opening_mm": 73,
+      "body_width_mm": 48,
+      "interface_width_mm": 48,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹20-40_宽50": {
+      "board_range_mm": [
+        20,
+        40
+      ],
+      "effective_opening_mm": 42,
+      "raw_opening_mm": 43,
+      "body_width_mm": 50,
+      "interface_width_mm": 50,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹35-55_宽50": {
+      "board_range_mm": [
+        35,
+        55
+      ],
+      "effective_opening_mm": 57,
+      "raw_opening_mm": 58,
+      "body_width_mm": 50,
+      "interface_width_mm": 50,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹50-70_宽50": {
+      "board_range_mm": [
+        50,
+        70
+      ],
+      "effective_opening_mm": 72,
+      "raw_opening_mm": 73,
+      "body_width_mm": 50,
+      "interface_width_mm": 50,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹20-40_宽54": {
+      "board_range_mm": [
+        20,
+        40
+      ],
+      "effective_opening_mm": 42,
+      "raw_opening_mm": 43,
+      "body_width_mm": 54,
+      "interface_width_mm": 54,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹35-55_宽54": {
+      "board_range_mm": [
+        35,
+        55
+      ],
+      "effective_opening_mm": 57,
+      "raw_opening_mm": 58,
+      "body_width_mm": 54,
+      "interface_width_mm": 54,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_挂钩H4_夹50-70_宽54": {
+      "board_range_mm": [
+        50,
+        70
+      ],
+      "effective_opening_mm": 72,
+      "raw_opening_mm": 73,
+      "body_width_mm": 54,
+      "interface_width_mm": 54,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 9.4,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹20-40_宽36": {
+      "board_range_mm": [
+        20,
+        40
+      ],
+      "effective_opening_mm": 42,
+      "raw_opening_mm": 43,
+      "body_width_mm": 36,
+      "interface_width_mm": 36,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹35-55_宽36": {
+      "board_range_mm": [
+        35,
+        55
+      ],
+      "effective_opening_mm": 57,
+      "raw_opening_mm": 58,
+      "body_width_mm": 36,
+      "interface_width_mm": 36,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹50-70_宽36": {
+      "board_range_mm": [
+        50,
+        70
+      ],
+      "effective_opening_mm": 72,
+      "raw_opening_mm": 73,
+      "body_width_mm": 36,
+      "interface_width_mm": 36,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹20-40_宽40": {
+      "board_range_mm": [
+        20,
+        40
+      ],
+      "effective_opening_mm": 42,
+      "raw_opening_mm": 43,
+      "body_width_mm": 40,
+      "interface_width_mm": 40,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹35-55_宽40": {
+      "board_range_mm": [
+        35,
+        55
+      ],
+      "effective_opening_mm": 57,
+      "raw_opening_mm": 58,
+      "body_width_mm": 40,
+      "interface_width_mm": 40,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹50-70_宽40": {
+      "board_range_mm": [
+        50,
+        70
+      ],
+      "effective_opening_mm": 72,
+      "raw_opening_mm": 73,
+      "body_width_mm": 40,
+      "interface_width_mm": 40,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹20-40_宽44": {
+      "board_range_mm": [
+        20,
+        40
+      ],
+      "effective_opening_mm": 42,
+      "raw_opening_mm": 43,
+      "body_width_mm": 44,
+      "interface_width_mm": 44,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹35-55_宽44": {
+      "board_range_mm": [
+        35,
+        55
+      ],
+      "effective_opening_mm": 57,
+      "raw_opening_mm": 58,
+      "body_width_mm": 44,
+      "interface_width_mm": 44,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "床头夹具_螺丝S_夹50-70_宽44": {
+      "board_range_mm": [
+        50,
+        70
+      ],
+      "effective_opening_mm": 72,
+      "raw_opening_mm": 73,
+      "body_width_mm": 44,
+      "interface_width_mm": 44,
+      "front_arm_mm": 9.4,
+      "top_beam_mm": 9.4,
+      "rear_arm_mm": 9.4,
+      "front_seat_mm": 13.6,
+      "min_knob_gap_mm": 3.6,
+      "max_knob_gap_mm": 23.6,
+      "rear_overhang_mm": 45
+    },
+    "comparison": [
+      {
+        "new": "床头夹具_挂钩H4_夹20-40_宽48",
+        "old_width": 36,
+        "new_width": 48,
+        "old_volume_mm3": 88713.93750798768,
+        "new_volume_mm3": 68265.46726823074,
+        "solid_volume_reduction_percent": 23.0,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹35-55_宽48",
+        "old_width": 36,
+        "new_width": 48,
+        "old_volume_mm3": 96274.01162099378,
+        "new_volume_mm3": 75034.71727502102,
+        "solid_volume_reduction_percent": 22.1,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹50-70_宽48",
+        "old_width": 36,
+        "new_width": 48,
+        "old_volume_mm3": 103834.07439484191,
+        "new_volume_mm3": 81803.96095769946,
+        "solid_volume_reduction_percent": 21.2,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹20-40_宽50",
+        "old_width": 44,
+        "new_width": 50,
+        "old_volume_mm3": 98633.14512087822,
+        "new_volume_mm3": 71151.35357052984,
+        "solid_volume_reduction_percent": 27.9,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹35-55_宽50",
+        "old_width": 44,
+        "new_width": 50,
+        "old_volume_mm3": 107873.23692391602,
+        "new_volume_mm3": 78202.64790690375,
+        "solid_volume_reduction_percent": 27.5,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹50-70_宽50",
+        "old_width": 44,
+        "new_width": 50,
+        "old_volume_mm3": 117113.3151774006,
+        "new_volume_mm3": 85253.94576008111,
+        "solid_volume_reduction_percent": 27.2,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹20-40_宽54",
+        "old_width": 60,
+        "new_width": 54,
+        "old_volume_mm3": 123510.93236337036,
+        "new_volume_mm3": 76923.12720203785,
+        "solid_volume_reduction_percent": 37.7,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹35-55_宽54",
+        "old_width": 60,
+        "new_width": 54,
+        "old_volume_mm3": 136112.47893583332,
+        "new_volume_mm3": 84538.5295264031,
+        "solid_volume_reduction_percent": 37.9,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_挂钩H4_夹50-70_宽54",
+        "old_width": 60,
+        "new_width": 54,
+        "old_volume_mm3": 148714.02810320142,
+        "new_volume_mm3": 92153.92307164123,
+        "solid_volume_reduction_percent": 38.0,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹20-40_宽36",
+        "old_width": 36,
+        "new_width": 36,
+        "old_volume_mm3": 84110.9930159509,
+        "new_volume_mm3": 53513.79273434447,
+        "solid_volume_reduction_percent": 36.4,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹35-55_宽36",
+        "old_width": 36,
+        "new_width": 36,
+        "old_volume_mm3": 91671.31540412213,
+        "new_volume_mm3": 58590.72179697774,
+        "solid_volume_reduction_percent": 36.1,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹50-70_宽36",
+        "old_width": 36,
+        "new_width": 36,
+        "old_volume_mm3": 99231.53824644639,
+        "new_volume_mm3": 63667.64720751363,
+        "solid_volume_reduction_percent": 35.8,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹20-40_宽40",
+        "old_width": 44,
+        "new_width": 40,
+        "old_volume_mm3": 97163.27800931611,
+        "new_volume_mm3": 59606.130755208644,
+        "solid_volume_reduction_percent": 38.7,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹35-55_宽40",
+        "old_width": 44,
+        "new_width": 40,
+        "old_volume_mm3": 106404.41390516351,
+        "new_volume_mm3": 65247.16502834319,
+        "solid_volume_reduction_percent": 38.7,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹50-70_宽40",
+        "old_width": 44,
+        "new_width": 40,
+        "old_volume_mm3": 115645.54913929124,
+        "new_volume_mm3": 70888.19296717795,
+        "solid_volume_reduction_percent": 38.7,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹20-40_宽44",
+        "old_width": 60,
+        "new_width": 44,
+        "old_volume_mm3": 133132.2249891343,
+        "new_volume_mm3": 65698.43307213965,
+        "solid_volume_reduction_percent": 50.7,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹35-55_宽44",
+        "old_width": 60,
+        "new_width": 44,
+        "old_volume_mm3": 145733.77266562052,
+        "new_volume_mm3": 71903.56940018143,
+        "solid_volume_reduction_percent": 50.7,
+        "equal_width_bridge_pass": true
+      },
+      {
+        "new": "床头夹具_螺丝S_夹50-70_宽44",
+        "old_width": 60,
+        "new_width": 44,
+        "old_volume_mm3": 158335.3255448653,
+        "new_volume_mm3": 78108.70539875612,
+        "solid_volume_reduction_percent": 50.7,
+        "equal_width_bridge_pass": true
+      }
+    ],
+    "thread": {
+      "pitch_mm": 4,
+      "phase_at_delta_minus37_5_deg": 180,
+      "sample_count": 81,
+      "max_overlap_mm3": 0.0,
+      "shaft_travel_mm": 20
+    },
+    "hooks": {
+      "slot_width_mm": 5.2,
+      "slot_height_mm": 15.2,
+      "board_mm": 5,
+      "pitch_yz_mm": [
+        40,
+        40
+      ],
+      "hook_width_mm": 4.4,
+      "side_clearance_each_mm": 0.4,
+      "throat_mm": 5.8,
+      "round_tip_radius_mm": 2.2,
+      "side_profile_radius_mm": 0.55,
+      "lowering_mm": 7.2,
+      "path_samples": 73,
+      "max_overlap_mm3": 0.0,
+      "seated_pullout_collision_mm3": 133.8434510563392,
+      "anti_lift_lock": false
+    },
+    "m4": {
+      "hole_mm": 4.4,
+      "pitch_mm": 25,
+      "nut_AF_mm": 7,
+      "nut_thickness_mm": 3.2,
+      "channel_AF_mm": 7.6,
+      "channel_thickness_mm": 4.0,
+      "entry_mouth_thickness_mm": 4.8,
+      "entry_mouth_height_mm": 9.0,
+      "slope_deg": 15,
+      "flare_length_mm": 2,
+      "front_skin_min_channel_mm": 2.4,
+      "front_skin_min_mouth_mm": 2.0,
+      "central_web_between_channels_min_mm": 16.224,
+      "nut_path_pass": true,
+      "bottom_T_removed": true,
+      "all_variants": [
+        {
+          "name": "床头夹具_螺丝S_夹20-40_宽36",
+          "face_width_mm": 36,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 1.474,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹35-55_宽36",
+          "face_width_mm": 36,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 1.474,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹50-70_宽36",
+          "face_width_mm": 36,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 1.474,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹20-40_宽40",
+          "face_width_mm": 40,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 2.01,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹35-55_宽40",
+          "face_width_mm": 40,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 2.01,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹50-70_宽40",
+          "face_width_mm": 40,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 2.01,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹20-40_宽44",
+          "face_width_mm": 44,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 2.546,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹35-55_宽44",
+          "face_width_mm": 44,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 2.546,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        },
+        {
+          "name": "床头夹具_螺丝S_夹50-70_宽44",
+          "face_width_mm": 44,
+          "paths": 2,
+          "samples_per_path": 81,
+          "maximum_overlap_mm3": 0,
+          "entry_center_above_seat_mm": 2.546,
+          "closed_bottom_pass": true,
+          "inner_stop_pass": true
+        }
+      ],
+      "bolts_mm": [
+        12
+      ],
+      "board_mm": 5,
+      "blind_depth_mm": 9,
+      "tail_clearance_mm": 2,
+      "nominal_nut_depth_range_mm": [
+        2.8,
+        6.0
+      ],
+      "minimum_full_nut_exit_mm": 0.6
+    }
+  },
+  "plates": [
+    {
+      "name": "第01盘_先试配_四钩螺口M4",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 16.600000381469727,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第02盘_挂钩H4_夹20-40_宽48_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第03盘_挂钩H4_夹35-55_宽48_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第04盘_挂钩H4_夹50-70_宽48_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第05盘_挂钩H4_夹20-40_宽50_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第06盘_挂钩H4_夹35-55_宽50_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第07盘_挂钩H4_夹50-70_宽50_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第08盘_挂钩H4_夹20-40_宽54_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第09盘_挂钩H4_夹35-55_宽54_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第10盘_挂钩H4_夹50-70_宽54_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 27.0,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第11盘_螺丝S_夹20-40_宽36_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第12盘_螺丝S_夹35-55_宽36_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第13盘_螺丝S_夹50-70_宽36_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第14盘_螺丝S_夹20-40_宽40_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第15盘_螺丝S_夹35-55_宽40_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第16盘_螺丝S_夹50-70_宽40_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第17盘_螺丝S_夹20-40_宽44_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第18盘_螺丝S_夹35-55_宽44_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    },
+    {
+      "name": "第19盘_螺丝S_夹50-70_宽44_一对含螺杆",
+      "objects": 4,
+      "min_bounding_box_gap_mm": 31.599998474121094,
+      "within_P1S_bed": true
+    }
+  ]
+}

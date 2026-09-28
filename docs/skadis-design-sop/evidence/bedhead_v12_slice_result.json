@@ -1,0 +1,1828 @@
+{
+    "error_string": "Success.",
+    "export_time": 1,
+    "layer_height": 0.20000000298023224,
+    "plate_index": 0,
+    "prepare_time": 3343,
+    "return_code": 0,
+    "sliced_plates": [
+        {
+            "feature_type_times": {
+                "Bottom surface": 26.37146759033203,
+                "Bridge": 20.436115264892578,
+                "Custom": 373.6335754394531,
+                "Flush": 29.0,
+                "Gap infill": 42.31820297241211,
+                "Inner wall": 2219.125244140625,
+                "Internal solid infill": 406.4918518066406,
+                "Outer wall": 1341.142822265625,
+                "Overhang wall": 34.35797119140625,
+                "Sparse infill": 1092.62109375,
+                "Support": 457.75189208984375,
+                "Support interface": 182.58639526367188,
+                "Support transition": 64.97411346435547,
+                "Top surface": 74.39177703857422,
+                "Travel": 755.3111572265625,
+                "Undefined": 739.6124877929688
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 41.02111053466797,
+                    "total_used_g": 41.02111053466797
+                }
+            ],
+            "generate_support_material_time": 353,
+            "id": 1,
+            "infill_time": 172,
+            "layer_filament_change": 0,
+            "main_predication": 6689.31494140625,
+            "make_perimeters_time": 219,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 59.0,
+                        "height": 48.0,
+                        "width": 12.799999237060547,
+                        "x": 25.0,
+                        "y": 35.0,
+                        "z": 0.0
+                    },
+                    "id": 5,
+                    "name": "试配件_H4四钩_孔距40_板厚5_01",
+                    "triangle_count": 2180
+                },
+                {
+                    "bbox": {
+                        "depth": 27.400001525878906,
+                        "height": 36.0,
+                        "width": 13.599994659423828,
+                        "x": 70.0,
+                        "y": 35.0,
+                        "z": 0.0
+                    },
+                    "id": 9,
+                    "name": "试配件_M4左右斜坡入口_孔距25_01",
+                    "triangle_count": 884
+                },
+                {
+                    "bbox": {
+                        "depth": 23.400001525878906,
+                        "height": 8.750425338745117,
+                        "width": 23.399993896484375,
+                        "x": 115.0,
+                        "y": 35.0,
+                        "z": 0.0
+                    },
+                    "id": 13,
+                    "name": "试配件_原牙型母螺口_01",
+                    "triangle_count": 35054
+                },
+                {
+                    "bbox": {
+                        "depth": 24.81999969482422,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 155.0,
+                        "y": 35.0,
+                        "z": 0.0
+                    },
+                    "id": 17,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 1806,
+            "sliced_time_with_cache": 907,
+            "total_predication": 7105.21923828125,
+            "triangle_count": 130900,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 138.7776641845703,
+                "Bridge": 96.17405700683594,
+                "Custom": 373.7372131347656,
+                "Flush": 29.0,
+                "Gap infill": 90.50989532470703,
+                "Inner wall": 6349.8720703125,
+                "Internal solid infill": 1111.2529296875,
+                "Outer wall": 3503.75,
+                "Overhang wall": 77.38426208496094,
+                "Sparse infill": 5759.6123046875,
+                "Support": 1032.8624267578125,
+                "Support interface": 337.5061950683594,
+                "Support transition": 122.82426452636719,
+                "Top surface": 204.59129333496094,
+                "Travel": 1516.7861328125,
+                "Undefined": 1501.0386962890625
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 133.87168884277344,
+                    "total_used_g": 133.87168884277344
+                }
+            ],
+            "generate_support_material_time": 462,
+            "id": 2,
+            "infill_time": 446,
+            "layer_filament_change": 0,
+            "main_predication": 20308.79296875,
+            "make_perimeters_time": 518,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 48.0,
+                        "width": 70.59998321533203,
+                        "x": 332.20001220703125,
+                        "y": 25.0,
+                        "z": 0.0
+                    },
+                    "id": 21,
+                    "name": "床头夹具_挂钩H4_夹20-40_宽48_01",
+                    "triangle_count": 38078
+                },
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 48.0,
+                        "width": 70.59998321533203,
+                        "x": 332.20001220703125,
+                        "y": 112.0,
+                        "z": 0.0
+                    },
+                    "id": 25,
+                    "name": "床头夹具_挂钩H4_夹20-40_宽48_02",
+                    "triangle_count": 38078
+                },
+                {
+                    "bbox": {
+                        "depth": 24.81999969482422,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": 48.0,
+                        "z": 0.0
+                    },
+                    "id": 29,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000732421875,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": 138.0,
+                        "z": 0.0
+                    },
+                    "id": 33,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3610,
+            "sliced_time_with_cache": 1799,
+            "total_predication": 20724.751953125,
+            "triangle_count": 261720,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 149.8426971435547,
+                "Bridge": 106.1426010131836,
+                "Custom": 373.4901428222656,
+                "Flush": 29.0,
+                "Gap infill": 89.80586242675781,
+                "Inner wall": 6825.68505859375,
+                "Internal solid infill": 1172.9898681640625,
+                "Outer wall": 3745.2578125,
+                "Overhang wall": 77.11241912841797,
+                "Sparse infill": 6147.52587890625,
+                "Support": 934.2108764648438,
+                "Support interface": 337.0759582519531,
+                "Support transition": 118.4192886352539,
+                "Top surface": 220.2563934326172,
+                "Travel": 1577.8575439453125,
+                "Undefined": 1562.357177734375
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 142.234375,
+                    "total_used_g": 142.234375
+                }
+            ],
+            "generate_support_material_time": 451,
+            "id": 3,
+            "infill_time": 459,
+            "layer_filament_change": 0,
+            "main_predication": 21467.9140625,
+            "make_perimeters_time": 533,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 48.0,
+                        "width": 85.59996795654297,
+                        "x": 639.4000244140625,
+                        "y": 25.0,
+                        "z": 0.0
+                    },
+                    "id": 37,
+                    "name": "床头夹具_挂钩H4_夹35-55_宽48_01",
+                    "triangle_count": 38092
+                },
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 48.0,
+                        "width": 85.59996795654297,
+                        "x": 639.4000244140625,
+                        "y": 112.0,
+                        "z": 0.0
+                    },
+                    "id": 41,
+                    "name": "床头夹具_挂钩H4_夹35-55_宽48_02",
+                    "triangle_count": 38092
+                },
+                {
+                    "bbox": {
+                        "depth": 24.81999969482422,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": 48.0,
+                        "z": 0.0
+                    },
+                    "id": 45,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000732421875,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": 138.0,
+                        "z": 0.0
+                    },
+                    "id": 49,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3616,
+            "sliced_time_with_cache": 1806,
+            "total_predication": 21883.873046875,
+            "triangle_count": 261748,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 160.94020080566406,
+                "Bridge": 115.34024047851563,
+                "Custom": 373.6915588378906,
+                "Flush": 29.0,
+                "Gap infill": 90.84200286865234,
+                "Inner wall": 7309.5673828125,
+                "Internal solid infill": 1229.4049072265625,
+                "Outer wall": 3985.580322265625,
+                "Overhang wall": 77.0929946899414,
+                "Sparse infill": 6555.16845703125,
+                "Support": 1042.66845703125,
+                "Support interface": 340.4176330566406,
+                "Support transition": 119.75180053710938,
+                "Top surface": 228.8676300048828,
+                "Travel": 1568.4359130859375,
+                "Undefined": 1552.734130859375
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 152.51675415039063,
+                    "total_used_g": 152.51675415039063
+                }
+            ],
+            "generate_support_material_time": 435,
+            "id": 4,
+            "infill_time": 452,
+            "layer_filament_change": 0,
+            "main_predication": 22793.791015625,
+            "make_perimeters_time": 512,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 48.0,
+                        "width": 100.60002136230469,
+                        "x": 946.5999755859375,
+                        "y": 25.0,
+                        "z": 0.0
+                    },
+                    "id": 53,
+                    "name": "床头夹具_挂钩H4_夹50-70_宽48_01",
+                    "triangle_count": 38090
+                },
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 48.0,
+                        "width": 100.60002136230469,
+                        "x": 946.5999755859375,
+                        "y": 112.0,
+                        "z": 0.0
+                    },
+                    "id": 57,
+                    "name": "床头夹具_挂钩H4_夹50-70_宽48_02",
+                    "triangle_count": 38090
+                },
+                {
+                    "bbox": {
+                        "depth": 24.81999969482422,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": 48.0,
+                        "z": 0.0
+                    },
+                    "id": 61,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000732421875,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": 138.0,
+                        "z": 0.0
+                    },
+                    "id": 65,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3577,
+            "sliced_time_with_cache": 1829,
+            "total_predication": 23209.75,
+            "triangle_count": 261744,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 138.77781677246094,
+                "Bridge": 97.30814361572266,
+                "Custom": 373.7372131347656,
+                "Flush": 29.0,
+                "Gap infill": 91.89849090576172,
+                "Inner wall": 6562.353515625,
+                "Internal solid infill": 1113.8026123046875,
+                "Outer wall": 3611.4580078125,
+                "Overhang wall": 78.19061279296875,
+                "Sparse infill": 5971.22216796875,
+                "Support": 1048.6121826171875,
+                "Support interface": 337.6787414550781,
+                "Support transition": 122.75773620605469,
+                "Top surface": 202.2187957763672,
+                "Travel": 1539.7664794921875,
+                "Undefined": 1524.01904296875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 138.02345275878906,
+                    "total_used_g": 138.02345275878906
+                }
+            ],
+            "generate_support_material_time": 432,
+            "id": 5,
+            "infill_time": 426,
+            "layer_filament_change": 0,
+            "main_predication": 20881.408203125,
+            "make_perimeters_time": 525,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 50.0,
+                        "width": 70.5999526977539,
+                        "x": 1253.800048828125,
+                        "y": 25.0,
+                        "z": 0.0
+                    },
+                    "id": 69,
+                    "name": "床头夹具_挂钩H4_夹20-40_宽50_01",
+                    "triangle_count": 38076
+                },
+                {
+                    "bbox": {
+                        "depth": 60.0,
+                        "height": 50.0,
+                        "width": 70.5999526977539,
+                        "x": 1253.800048828125,
+                        "y": 112.0,
+                        "z": 0.0
+                    },
+                    "id": 73,
+                    "name": "床头夹具_挂钩H4_夹20-40_宽50_02",
+                    "triangle_count": 38076
+                },
+                {
+                    "bbox": {
+                        "depth": 24.81999969482422,
+                        "height": 44.99452209472656,
+                        "width": 24.999950408935547,
+                        "x": 1408.800048828125,
+                        "y": 48.0,
+                        "z": 0.0
+                    },
+                    "id": 77,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000732421875,
+                        "height": 44.99452209472656,
+                        "width": 24.999950408935547,
+                        "x": 1408.800048828125,
+                        "y": 138.0,
+                        "z": 0.0
+                    },
+                    "id": 81,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3424,
+            "sliced_time_with_cache": 1710,
+            "total_predication": 21297.3671875,
+            "triangle_count": 261716,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 149.8430938720703,
+                "Bridge": 106.39645385742188,
+                "Custom": 373.1272277832031,
+                "Flush": 29.0,
+                "Gap infill": 92.35662078857422,
+                "Inner wall": 7063.27001953125,
+                "Internal solid infill": 1174.489990234375,
+                "Outer wall": 3864.61279296875,
+                "Overhang wall": 78.36283111572266,
+                "Sparse infill": 6376.017578125,
+                "Support": 950.5299682617188,
+                "Support interface": 334.332275390625,
+                "Support transition": 117.49811553955078,
+                "Top surface": 215.32196044921875,
+                "Travel": 1574.5491943359375,
+                "Undefined": 1559.4964599609375
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 146.74075317382813,
+                    "total_used_g": 146.74075317382813
+                }
+            ],
+            "generate_support_material_time": 432,
+            "id": 6,
+            "infill_time": 450,
+            "layer_filament_change": 0,
+            "main_predication": 22060.17578125,
+            "make_perimeters_time": 503,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0000114440918,
+                        "height": 50.0,
+                        "width": 85.5999984741211,
+                        "x": 24.999996185302734,
+                        "y": -282.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 85,
+                    "name": "床头夹具_挂钩H4_夹35-55_宽50_01",
+                    "triangle_count": 38092
+                },
+                {
+                    "bbox": {
+                        "depth": 59.999996185302734,
+                        "height": 50.0,
+                        "width": 85.5999984741211,
+                        "x": 24.999996185302734,
+                        "y": -195.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 89,
+                    "name": "床头夹具_挂钩H4_夹35-55_宽50_02",
+                    "triangle_count": 38092
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820011138916016,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 180.0,
+                        "y": -259.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 93,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820003509521484,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 180.0,
+                        "y": -169.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 97,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3467,
+            "sliced_time_with_cache": 1740,
+            "total_predication": 22476.220703125,
+            "triangle_count": 261748,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 160.94044494628906,
+                "Bridge": 115.72822570800781,
+                "Custom": 373.3476257324219,
+                "Flush": 29.0,
+                "Gap infill": 89.76420593261719,
+                "Inner wall": 7563.85986328125,
+                "Internal solid infill": 1232.7119140625,
+                "Outer wall": 4114.86181640625,
+                "Overhang wall": 77.3910140991211,
+                "Sparse infill": 6806.10107421875,
+                "Support": 1061.5802001953125,
+                "Support interface": 338.5103759765625,
+                "Support transition": 118.60529327392578,
+                "Top surface": 228.44549560546875,
+                "Travel": 1573.1634521484375,
+                "Undefined": 1557.8902587890625
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 157.43084716796875,
+                    "total_used_g": 157.43084716796875
+                }
+            ],
+            "generate_support_material_time": 426,
+            "id": 7,
+            "infill_time": 450,
+            "layer_filament_change": 0,
+            "main_predication": 23449.001953125,
+            "make_perimeters_time": 513,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0000114440918,
+                        "height": 50.0,
+                        "width": 100.60001373291016,
+                        "x": 332.1999816894531,
+                        "y": -282.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 101,
+                    "name": "床头夹具_挂钩H4_夹50-70_宽50_01",
+                    "triangle_count": 38070
+                },
+                {
+                    "bbox": {
+                        "depth": 59.999996185302734,
+                        "height": 50.0,
+                        "width": 100.60001373291016,
+                        "x": 332.1999816894531,
+                        "y": -195.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 105,
+                    "name": "床头夹具_挂钩H4_夹50-70_宽50_02",
+                    "triangle_count": 38070
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820011138916016,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": -259.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 109,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820003509521484,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": -169.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 113,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3562,
+            "sliced_time_with_cache": 1823,
+            "total_predication": 23865.046875,
+            "triangle_count": 261704,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 138.7776336669922,
+                "Bridge": 96.72503662109375,
+                "Custom": 373.3959655761719,
+                "Flush": 29.0,
+                "Gap infill": 90.8341064453125,
+                "Inner wall": 6990.56982421875,
+                "Internal solid infill": 1114.3397216796875,
+                "Outer wall": 3829.443115234375,
+                "Overhang wall": 77.44853210449219,
+                "Sparse infill": 6397.59033203125,
+                "Support": 1080.5946044921875,
+                "Support interface": 335.8840026855469,
+                "Support transition": 120.79231262207031,
+                "Top surface": 202.3140411376953,
+                "Travel": 1547.0618896484375,
+                "Undefined": 1531.7403564453125
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 146.35855102539063,
+                    "total_used_g": 146.35855102539063
+                }
+            ],
+            "generate_support_material_time": 428,
+            "id": 8,
+            "infill_time": 443,
+            "layer_filament_change": 0,
+            "main_predication": 21986.55859375,
+            "make_perimeters_time": 527,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0000114440918,
+                        "height": 54.0,
+                        "width": 70.5999755859375,
+                        "x": 639.4000244140625,
+                        "y": -282.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 117,
+                    "name": "床头夹具_挂钩H4_夹20-40_宽54_01",
+                    "triangle_count": 38070
+                },
+                {
+                    "bbox": {
+                        "depth": 59.999996185302734,
+                        "height": 54.0,
+                        "width": 70.5999755859375,
+                        "x": 639.4000244140625,
+                        "y": -195.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 121,
+                    "name": "床头夹具_挂钩H4_夹20-40_宽54_02",
+                    "triangle_count": 38070
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820011138916016,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": -259.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 125,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820003509521484,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": -169.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 129,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3496,
+            "sliced_time_with_cache": 1753,
+            "total_predication": 22402.603515625,
+            "triangle_count": 261704,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 149.843017578125,
+                "Bridge": 106.74463653564453,
+                "Custom": 373.1760559082031,
+                "Flush": 29.0,
+                "Gap infill": 90.81116485595703,
+                "Inner wall": 7528.6533203125,
+                "Internal solid infill": 1175.9439697265625,
+                "Outer wall": 4101.08154296875,
+                "Overhang wall": 77.17605590820313,
+                "Sparse infill": 6839.95751953125,
+                "Support": 976.684326171875,
+                "Support interface": 335.11444091796875,
+                "Support transition": 117.05476379394531,
+                "Top surface": 218.3438262939453,
+                "Travel": 1629.6314697265625,
+                "Undefined": 1614.5299072265625
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 155.7728729248047,
+                    "total_used_g": 155.7728729248047
+                }
+            ],
+            "generate_support_material_time": 441,
+            "id": 9,
+            "infill_time": 441,
+            "layer_filament_change": 0,
+            "main_predication": 23310.67578125,
+            "make_perimeters_time": 520,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0000114440918,
+                        "height": 54.0,
+                        "width": 85.60002136230469,
+                        "x": 946.5999755859375,
+                        "y": -282.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 133,
+                    "name": "床头夹具_挂钩H4_夹35-55_宽54_01",
+                    "triangle_count": 38078
+                },
+                {
+                    "bbox": {
+                        "depth": 59.999996185302734,
+                        "height": 54.0,
+                        "width": 85.60002136230469,
+                        "x": 946.5999755859375,
+                        "y": -195.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 137,
+                    "name": "床头夹具_挂钩H4_夹35-55_宽54_02",
+                    "triangle_count": 38078
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820011138916016,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": -259.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 141,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820003509521484,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": -169.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 145,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3596,
+            "sliced_time_with_cache": 1844,
+            "total_predication": 23726.720703125,
+            "triangle_count": 261720,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 160.9403839111328,
+                "Bridge": 115.35174560546875,
+                "Custom": 373.3476257324219,
+                "Flush": 29.0,
+                "Gap infill": 91.03160858154297,
+                "Inner wall": 8071.548828125,
+                "Internal solid infill": 1232.0576171875,
+                "Outer wall": 4372.51904296875,
+                "Overhang wall": 77.46343994140625,
+                "Sparse infill": 7303.06689453125,
+                "Support": 1093.901123046875,
+                "Support interface": 339.2616882324219,
+                "Support transition": 118.4465103149414,
+                "Top surface": 231.46888732910156,
+                "Travel": 1638.9547119140625,
+                "Undefined": 1623.6815185546875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 167.2342987060547,
+                    "total_used_g": 167.2342987060547
+                }
+            ],
+            "generate_support_material_time": 435,
+            "id": 10,
+            "infill_time": 457,
+            "layer_filament_change": 0,
+            "main_predication": 24813.7734375,
+            "make_perimeters_time": 541,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 60.0000114440918,
+                        "height": 54.0,
+                        "width": 100.59994506835938,
+                        "x": 1253.800048828125,
+                        "y": -282.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 149,
+                    "name": "床头夹具_挂钩H4_夹50-70_宽54_01",
+                    "triangle_count": 38082
+                },
+                {
+                    "bbox": {
+                        "depth": 59.999996185302734,
+                        "height": 54.0,
+                        "width": 100.59994506835938,
+                        "x": 1253.800048828125,
+                        "y": -195.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 153,
+                    "name": "床头夹具_挂钩H4_夹50-70_宽54_02",
+                    "triangle_count": 38082
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820011138916016,
+                        "height": 44.99452209472656,
+                        "width": 24.999950408935547,
+                        "x": 1408.800048828125,
+                        "y": -259.20001220703125,
+                        "z": 0.0
+                    },
+                    "id": 157,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820003509521484,
+                        "height": 44.99452209472656,
+                        "width": 24.999950408935547,
+                        "x": 1408.800048828125,
+                        "y": -169.1999969482422,
+                        "z": 0.0
+                    },
+                    "id": 161,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3652,
+            "sliced_time_with_cache": 1858,
+            "total_predication": 25229.818359375,
+            "triangle_count": 261728,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 142.35923767089844,
+                "Bridge": 122.33163452148438,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 63.2696647644043,
+                "Inner wall": 5229.9794921875,
+                "Internal solid infill": 1189.744140625,
+                "Outer wall": 2941.41259765625,
+                "Overhang wall": 12.683785438537598,
+                "Sparse infill": 4670.7236328125,
+                "Support": 560.9686279296875,
+                "Support interface": 308.5068664550781,
+                "Support transition": 103.18745422363281,
+                "Top surface": 204.24166870117188,
+                "Travel": 1370.4368896484375,
+                "Undefined": 1355.0037841796875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 108.58147430419922,
+                    "total_used_g": 108.58146667480469
+                }
+            ],
+            "generate_support_material_time": 436,
+            "id": 11,
+            "infill_time": 449,
+            "layer_filament_change": 0,
+            "main_predication": 16892.728515625,
+            "make_perimeters_time": 519,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.4000244140625,
+                        "height": 36.0,
+                        "width": 66.0,
+                        "x": 25.0,
+                        "y": -589.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 165,
+                    "name": "床头夹具_螺丝S_夹20-40_宽36_01",
+                    "triangle_count": 36976
+                },
+                {
+                    "bbox": {
+                        "depth": 55.399993896484375,
+                        "height": 36.0,
+                        "width": 66.0,
+                        "x": 25.0,
+                        "y": -502.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 169,
+                    "name": "床头夹具_螺丝S_夹20-40_宽36_02",
+                    "triangle_count": 36976
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820024490356445,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 180.0,
+                        "y": -566.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 173,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000160217285,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 180.0,
+                        "y": -476.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 177,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3261,
+            "sliced_time_with_cache": 1564,
+            "total_predication": 17308.7734375,
+            "triangle_count": 259516,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 153.40634155273438,
+                "Bridge": 131.73306274414063,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 60.015567779541016,
+                "Inner wall": 5587.76318359375,
+                "Internal solid infill": 1253.169189453125,
+                "Outer wall": 3121.080322265625,
+                "Overhang wall": 12.39858627319336,
+                "Sparse infill": 4972.4599609375,
+                "Support": 517.034912109375,
+                "Support interface": 300.48876953125,
+                "Support transition": 101.28248596191406,
+                "Top surface": 217.14340209960938,
+                "Travel": 1385.8343505859375,
+                "Undefined": 1370.4012451171875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 115.43002319335938,
+                    "total_used_g": 115.43002319335938
+                }
+            ],
+            "generate_support_material_time": 424,
+            "id": 12,
+            "infill_time": 457,
+            "layer_filament_change": 0,
+            "main_predication": 17785.876953125,
+            "make_perimeters_time": 527,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.4000244140625,
+                        "height": 36.0,
+                        "width": 80.99998474121094,
+                        "x": 332.20001220703125,
+                        "y": -589.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 181,
+                    "name": "床头夹具_螺丝S_夹35-55_宽36_01",
+                    "triangle_count": 36962
+                },
+                {
+                    "bbox": {
+                        "depth": 55.399993896484375,
+                        "height": 36.0,
+                        "width": 80.99998474121094,
+                        "x": 332.20001220703125,
+                        "y": -502.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 185,
+                    "name": "床头夹具_螺丝S_夹35-55_宽36_02",
+                    "triangle_count": 36962
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820024490356445,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": -566.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 189,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000160217285,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": -476.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 193,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3288,
+            "sliced_time_with_cache": 1572,
+            "total_predication": 18201.921875,
+            "triangle_count": 259488,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 164.55865478515625,
+                "Bridge": 139.9635772705078,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 59.37727737426758,
+                "Inner wall": 5947.970703125,
+                "Internal solid infill": 1308.859619140625,
+                "Outer wall": 3301.26806640625,
+                "Overhang wall": 12.175188064575195,
+                "Sparse infill": 5289.99609375,
+                "Support": 546.8824462890625,
+                "Support interface": 303.6819763183594,
+                "Support transition": 102.52751922607422,
+                "Top surface": 232.3314208984375,
+                "Travel": 1421.1683349609375,
+                "Undefined": 1405.7352294921875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 122.78483581542969,
+                    "total_used_g": 122.78483581542969
+                }
+            ],
+            "generate_support_material_time": 428,
+            "id": 13,
+            "infill_time": 473,
+            "layer_filament_change": 0,
+            "main_predication": 18799.890625,
+            "make_perimeters_time": 519,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.4000244140625,
+                        "height": 36.0,
+                        "width": 95.9999771118164,
+                        "x": 639.4000244140625,
+                        "y": -589.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 197,
+                    "name": "床头夹具_螺丝S_夹50-70_宽36_01",
+                    "triangle_count": 36958
+                },
+                {
+                    "bbox": {
+                        "depth": 55.399993896484375,
+                        "height": 36.0,
+                        "width": 95.9999771118164,
+                        "x": 639.4000244140625,
+                        "y": -502.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 201,
+                    "name": "床头夹具_螺丝S_夹50-70_宽36_02",
+                    "triangle_count": 36958
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820024490356445,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": -566.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 205,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000160217285,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": -476.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 209,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3339,
+            "sliced_time_with_cache": 1618,
+            "total_predication": 19215.935546875,
+            "triangle_count": 259480,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 142.08309936523438,
+                "Bridge": 121.73908233642578,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 60.2353630065918,
+                "Inner wall": 5706.65478515625,
+                "Internal solid infill": 1190.5303955078125,
+                "Outer wall": 3184.977783203125,
+                "Overhang wall": 12.383358001708984,
+                "Sparse infill": 5129.91357421875,
+                "Support": 577.234375,
+                "Support interface": 307.8962097167969,
+                "Support transition": 103.3380126953125,
+                "Top surface": 204.84645080566406,
+                "Travel": 1438.748046875,
+                "Undefined": 1423.31494140625
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 117.40403747558594,
+                    "total_used_g": 117.40403747558594
+                }
+            ],
+            "generate_support_material_time": 428,
+            "id": 14,
+            "infill_time": 447,
+            "layer_filament_change": 0,
+            "main_predication": 18150.09375,
+            "make_perimeters_time": 537,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.4000244140625,
+                        "height": 40.0,
+                        "width": 66.0000228881836,
+                        "x": 946.5999755859375,
+                        "y": -589.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 213,
+                    "name": "床头夹具_螺丝S_夹20-40_宽40_01",
+                    "triangle_count": 36984
+                },
+                {
+                    "bbox": {
+                        "depth": 55.399993896484375,
+                        "height": 40.0,
+                        "width": 66.0000228881836,
+                        "x": 946.5999755859375,
+                        "y": -502.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 217,
+                    "name": "床头夹具_螺丝S_夹20-40_宽40_02",
+                    "triangle_count": 36984
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820024490356445,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": -566.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 221,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000160217285,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": -476.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 225,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3317,
+            "sliced_time_with_cache": 1604,
+            "total_predication": 18566.138671875,
+            "triangle_count": 259532,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 153.1531219482422,
+                "Bridge": 131.0158233642578,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 59.658878326416016,
+                "Inner wall": 6106.26318359375,
+                "Internal solid infill": 1253.616455078125,
+                "Outer wall": 3386.391357421875,
+                "Overhang wall": 12.329721450805664,
+                "Sparse infill": 5458.93896484375,
+                "Support": 528.5013427734375,
+                "Support interface": 300.4921875,
+                "Support transition": 101.36190032958984,
+                "Top surface": 216.67379760742188,
+                "Travel": 1435.2265625,
+                "Undefined": 1419.79345703125
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 124.95939636230469,
+                    "total_used_g": 124.95939636230469
+                }
+            ],
+            "generate_support_material_time": 435,
+            "id": 15,
+            "infill_time": 453,
+            "layer_filament_change": 0,
+            "main_predication": 19113.33203125,
+            "make_perimeters_time": 554,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.4000244140625,
+                        "height": 40.0,
+                        "width": 80.99995422363281,
+                        "x": 1253.800048828125,
+                        "y": -589.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 229,
+                    "name": "床头夹具_螺丝S_夹35-55_宽40_01",
+                    "triangle_count": 36966
+                },
+                {
+                    "bbox": {
+                        "depth": 55.399993896484375,
+                        "height": 40.0,
+                        "width": 80.99995422363281,
+                        "x": 1253.800048828125,
+                        "y": -502.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 233,
+                    "name": "床头夹具_螺丝S_夹35-55_宽40_02",
+                    "triangle_count": 36966
+                },
+                {
+                    "bbox": {
+                        "depth": 24.820024490356445,
+                        "height": 44.99452209472656,
+                        "width": 24.999950408935547,
+                        "x": 1408.800048828125,
+                        "y": -566.4000244140625,
+                        "z": 0.0
+                    },
+                    "id": 237,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.82000160217285,
+                        "height": 44.99452209472656,
+                        "width": 24.999950408935547,
+                        "x": 1408.800048828125,
+                        "y": -476.3999938964844,
+                        "z": 0.0
+                    },
+                    "id": 241,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3380,
+            "sliced_time_with_cache": 1626,
+            "total_predication": 19529.376953125,
+            "triangle_count": 259496,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 164.05372619628906,
+                "Bridge": 139.24502563476563,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 59.506404876708984,
+                "Inner wall": 6508.04248046875,
+                "Internal solid infill": 1310.04150390625,
+                "Outer wall": 3587.74169921875,
+                "Overhang wall": 13.003896713256836,
+                "Sparse infill": 5817.5712890625,
+                "Support": 562.6832885742188,
+                "Support interface": 303.57684326171875,
+                "Support transition": 102.43353271484375,
+                "Top surface": 232.19155883789063,
+                "Travel": 1476.7445068359375,
+                "Undefined": 1461.3114013671875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 133.11045837402344,
+                    "total_used_g": 133.11045837402344
+                }
+            ],
+            "generate_support_material_time": 432,
+            "id": 16,
+            "infill_time": 487,
+            "layer_filament_change": 0,
+            "main_predication": 20243.13671875,
+            "make_perimeters_time": 543,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.39997863769531,
+                        "height": 40.0,
+                        "width": 96.0,
+                        "x": 25.0,
+                        "y": -896.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 245,
+                    "name": "床头夹具_螺丝S_夹50-70_宽40_01",
+                    "triangle_count": 36972
+                },
+                {
+                    "bbox": {
+                        "depth": 55.40003967285156,
+                        "height": 40.0,
+                        "width": 96.0,
+                        "x": 25.0,
+                        "y": -809.6000366210938,
+                        "z": 0.0
+                    },
+                    "id": 249,
+                    "name": "床头夹具_螺丝S_夹50-70_宽40_02",
+                    "triangle_count": 36972
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819974899291992,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 180.0,
+                        "y": -873.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 253,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819982528686523,
+                        "height": 44.99452209472656,
+                        "width": 25.0,
+                        "x": 180.0,
+                        "y": -783.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 257,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3441,
+            "sliced_time_with_cache": 1656,
+            "total_predication": 20659.181640625,
+            "triangle_count": 259508,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 140.0640411376953,
+                "Bridge": 121.08543395996094,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 62.071990966796875,
+                "Inner wall": 6185.4140625,
+                "Internal solid infill": 1190.523681640625,
+                "Outer wall": 3432.22998046875,
+                "Overhang wall": 12.458910942077637,
+                "Sparse infill": 5575.20556640625,
+                "Support": 591.90087890625,
+                "Support interface": 308.3331298828125,
+                "Support transition": 103.31381225585938,
+                "Top surface": 204.57041931152344,
+                "Travel": 1495.5511474609375,
+                "Undefined": 1480.1180419921875
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 126.18214416503906,
+                    "total_used_g": 126.18214416503906
+                }
+            ],
+            "generate_support_material_time": 439,
+            "id": 17,
+            "infill_time": 450,
+            "layer_filament_change": 0,
+            "main_predication": 19390.427734375,
+            "make_perimeters_time": 554,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.39997863769531,
+                        "height": 44.0,
+                        "width": 65.99998474121094,
+                        "x": 332.20001220703125,
+                        "y": -896.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 261,
+                    "name": "床头夹具_螺丝S_夹20-40_宽44_01",
+                    "triangle_count": 36972
+                },
+                {
+                    "bbox": {
+                        "depth": 55.40003967285156,
+                        "height": 44.0,
+                        "width": 65.99998474121094,
+                        "x": 332.20001220703125,
+                        "y": -809.6000366210938,
+                        "z": 0.0
+                    },
+                    "id": 265,
+                    "name": "床头夹具_螺丝S_夹20-40_宽44_02",
+                    "triangle_count": 36972
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819974899291992,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": -873.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 269,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819982528686523,
+                        "height": 44.99452209472656,
+                        "width": 24.999988555908203,
+                        "x": 487.20001220703125,
+                        "y": -783.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 273,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3428,
+            "sliced_time_with_cache": 1673,
+            "total_predication": 19806.47265625,
+            "triangle_count": 259508,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 151.18002319335938,
+                "Bridge": 130.49464416503906,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 59.95294189453125,
+                "Inner wall": 6623.84912109375,
+                "Internal solid infill": 1254.622802734375,
+                "Outer wall": 3652.499267578125,
+                "Overhang wall": 12.171049118041992,
+                "Sparse infill": 5945.80126953125,
+                "Support": 538.6610717773438,
+                "Support interface": 300.15087890625,
+                "Support transition": 101.19892120361328,
+                "Top surface": 219.6690673828125,
+                "Travel": 1496.6788330078125,
+                "Undefined": 1481.2457275390625
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 134.45228576660156,
+                    "total_used_g": 134.4522705078125
+                }
+            ],
+            "generate_support_material_time": 433,
+            "id": 18,
+            "infill_time": 475,
+            "layer_filament_change": 0,
+            "main_predication": 20455.9140625,
+            "make_perimeters_time": 582,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.39997863769531,
+                        "height": 44.0,
+                        "width": 80.9999771118164,
+                        "x": 639.4000244140625,
+                        "y": -896.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 277,
+                    "name": "床头夹具_螺丝S_夹35-55_宽44_01",
+                    "triangle_count": 36960
+                },
+                {
+                    "bbox": {
+                        "depth": 55.40003967285156,
+                        "height": 44.0,
+                        "width": 80.9999771118164,
+                        "x": 639.4000244140625,
+                        "y": -809.6000366210938,
+                        "z": 0.0
+                    },
+                    "id": 281,
+                    "name": "床头夹具_螺丝S_夹35-55_宽44_02",
+                    "triangle_count": 36960
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819974899291992,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": -873.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 285,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819982528686523,
+                        "height": 44.99452209472656,
+                        "width": 24.999975204467773,
+                        "x": 794.4000244140625,
+                        "y": -783.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 289,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3507,
+            "sliced_time_with_cache": 1695,
+            "total_predication": 20871.958984375,
+            "triangle_count": 259484,
+            "warning_message": ""
+        },
+        {
+            "feature_type_times": {
+                "Bottom surface": 162.24693298339844,
+                "Bridge": 138.94122314453125,
+                "Custom": 373.5075988769531,
+                "Flush": 29.0,
+                "Gap infill": 60.200164794921875,
+                "Inner wall": 7064.01123046875,
+                "Internal solid infill": 1311.0394287109375,
+                "Outer wall": 3872.38525390625,
+                "Overhang wall": 12.619945526123047,
+                "Sparse infill": 6348.40771484375,
+                "Support": 577.178466796875,
+                "Support interface": 303.3858642578125,
+                "Support transition": 102.72960662841797,
+                "Top surface": 232.17880249023438,
+                "Travel": 1536.541748046875,
+                "Undefined": 1521.108642578125
+            },
+            "filament_change_times": 0,
+            "filaments": [
+                {
+                    "filament_id": "GFG99",
+                    "id": 1,
+                    "main_used_g": 143.42965698242188,
+                    "total_used_g": 143.42965698242188
+                }
+            ],
+            "generate_support_material_time": 434,
+            "id": 19,
+            "infill_time": 505,
+            "layer_filament_change": 0,
+            "main_predication": 21688.4921875,
+            "make_perimeters_time": 553,
+            "obj_cached_cnt": 0,
+            "objects": [
+                {
+                    "bbox": {
+                        "depth": 55.39997863769531,
+                        "height": 44.0,
+                        "width": 96.0000228881836,
+                        "x": 946.5999755859375,
+                        "y": -896.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 293,
+                    "name": "床头夹具_螺丝S_夹50-70_宽44_01",
+                    "triangle_count": 36952
+                },
+                {
+                    "bbox": {
+                        "depth": 55.40003967285156,
+                        "height": 44.0,
+                        "width": 96.0000228881836,
+                        "x": 946.5999755859375,
+                        "y": -809.6000366210938,
+                        "z": 0.0
+                    },
+                    "id": 297,
+                    "name": "床头夹具_螺丝S_夹50-70_宽44_02",
+                    "triangle_count": 36952
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819974899291992,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": -873.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 301,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_01",
+                    "triangle_count": 92782
+                },
+                {
+                    "bbox": {
+                        "depth": 24.819982528686523,
+                        "height": 44.99452209472656,
+                        "width": 25.000024795532227,
+                        "x": 1101.5999755859375,
+                        "y": -783.5999755859375,
+                        "z": 0.0
+                    },
+                    "id": 305,
+                    "name": "共用粗螺杆_杆35_旋钮10_总长45_02",
+                    "triangle_count": 92782
+                }
+            ],
+            "sliced_time": 3534,
+            "sliced_time_with_cache": 1715,
+            "total_predication": 22104.537109375,
+            "triangle_count": 259468,
+            "warning_message": ""
+        }
+    ],
+    "sparse_infill_density": 30.0,
+    "upward_compatible_machine": [
+        "Bambu Lab P1P 0.4 nozzle",
+        "Bambu Lab X1 0.4 nozzle",
+        "Bambu Lab X1 Carbon 0.4 nozzle",
+        "Bambu Lab X1E 0.4 nozzle",
+        "Bambu Lab A1 0.4 nozzle",
+        "Bambu Lab H2D 0.4 nozzle",
+        "Bambu Lab H2D Pro 0.4 nozzle",
+        "Bambu Lab H2S 0.4 nozzle",
+        "Bambu Lab P2S 0.4 nozzle"
+    ],
+    "wall_loops": 4
+}
